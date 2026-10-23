@@ -20,6 +20,16 @@ Start here: [ROADMAP.md](ROADMAP.md) for the stages, [docs/research.md](docs/res
 | iFly | `~/Workspace/Provenance/iFly/iFly` | Skin code in `Sources/Core/Skins/` and `Sources/UI/Views/Skins/` |
 | iCube | `~/Workspace/Provenance/Provenance/Cores/Dolphin/dolphin-ios/Source/iOS/App` | Skin code in `DolphiniOS/UI/Emulation/Skins/`; UI in `Common/UI/Settings/SwiftUI/` |
 
+## Building and testing SkinKit
+
+```bash
+xcrun swift test              # non-UI modules on the macOS host (fast)
+scripts/ci-test.sh ios        # all modules on an iOS simulator
+scripts/ci-test.sh tvos       # all modules on a tvOS simulator
+```
+
+Use `xcrun swift`, not bare `swift`. The owner's `PATH` has an old 5.3 toolchain that can't read this package. The package targets iOS 17 / tvOS 17 (the lowest minimum across the three apps) in Swift 5 language mode; macOS 14 is listed only as a test host.
+
 ## Rules that bite
 
 - **Never break a skin that works in Delta or Manic today.** New `info.json` keys are additive; the base `representations` must stay a complete skin.
