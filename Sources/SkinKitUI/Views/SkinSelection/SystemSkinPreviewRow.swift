@@ -164,7 +164,7 @@ struct SystemSkinPreviewRow: View {
     // MARK: - Data Handling
 
     /// Whether a skin supports the given orientation on the current device.
-    private func skinSupportsOrientation(_ skin: DeltaSkinProtocol, orientation: SkinOrientation) -> Bool {
+    private func skinSupportsOrientation(_ skin: any DeltaSkinProtocol, orientation: SkinOrientation) -> Bool {
         let displayTypes: [DeltaSkinDisplayType] = [.standard, .edgeToEdge]
         for display in displayTypes {
             let traits = DeltaSkinTraits(
@@ -180,7 +180,7 @@ struct SystemSkinPreviewRow: View {
     /// Resolves the skin to preview: explicit selection first, then first compatible system skin.
     private func resolvePreviewSkin(
         for orientation: SkinOrientation,
-        from systemSkins: [DeltaSkinProtocol]
+        from systemSkins: [any DeltaSkinProtocol]
     ) -> (any DeltaSkinRenderable)? {
         if let skinId = selectionManager.effectiveSkinIdentifier(for: system.id, gameId: nil, orientation: orientation),
            let skin = systemSkins.first(where: { $0.identifier == skinId }),

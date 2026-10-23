@@ -829,7 +829,7 @@ public struct SkinCatalogDetailView: View {
 
     /// Checks whether a skin supports the given orientation on the current device.
     /// Mirrors the same logic used in `SystemSkinSelectionView.skinSupportsOrientation`.
-    private func skinSupportsOrientation(_ skin: DeltaSkinProtocol, orientation: SkinOrientation) -> Bool {
+    private func skinSupportsOrientation(_ skin: any DeltaSkinProtocol, orientation: SkinOrientation) -> Bool {
         let device: DeltaSkinDevice
         #if os(tvOS)
         device = .ipad
@@ -847,7 +847,7 @@ public struct SkinCatalogDetailView: View {
 
     /// Delegates to the shared `matchingInstalledSkin(for:in:)` helper so the
     /// matching logic is defined in a single place.
-    private func findMatchingInstalledSkin(for entry: SkinCatalogEntry, in skins: [DeltaSkinProtocol]) -> DeltaSkinProtocol? {
+    private func findMatchingInstalledSkin(for entry: SkinCatalogEntry, in skins: [any DeltaSkinProtocol]) -> (any DeltaSkinProtocol)? {
         matchingInstalledSkin(for: entry, in: skins)
     }
 

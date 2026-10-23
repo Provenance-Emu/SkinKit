@@ -44,7 +44,7 @@ struct ExporterRenderingTests {
 
     @Test("An exported copy of a bundled skin still renders")
     func exportedFixtureRenders() async throws {
-        let skin = try TestSupport.loadFixture("Backbone-GBA.deltaskin")
+        let skin = try TestSupport.loadFixture("PocketTaco-GBA.deltaskin")
         let traits = try #require(TestSupport.declaredTraits(of: skin).first)
         let exportedURL = try await DeltaSkinExporter.export(skin: skin, traits: traits, modifiedFrames: [:])
         defer { try? FileManager.default.removeItem(at: exportedURL) }

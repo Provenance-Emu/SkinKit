@@ -32,7 +32,7 @@ enum PreviewFixtures {
     static let landscape = DeltaSkinTraits(device: .iphone, displayType: .standard, orientation: .landscape)
 
     /// The fixture skins a few of the previews list.
-    static let names = ["Backbone-GBA", "Backbone-NES", "Backbone-SNES", "Backbone-N64", "Backbone-Genesis", "PocketTaco-GBA"]
+    static let names = ["PocketTaco-GBA", "PocketTaco-NES", "PocketTaco-SNES", "PocketTaco-N64", "PocketTaco-Genesis", "Soolra-GBA", "Backbone-GBA"]
 
     /// A manager that scans the fixture skins and keeps its imports in a scratch directory.
     @MainActor

@@ -9,6 +9,15 @@ import GameController
 #if canImport(UIKit)
 #endif
 
+/// A touch position that can live in a `Set`. `CGPoint` is only `Hashable` from iOS 18 / tvOS 18, and
+/// SkinKit supports iOS 17 / tvOS 17.
+private struct HashableTouchPoint: Hashable {
+    let x: CGFloat
+    let y: CGFloat
+    init(_ point: CGPoint) { x = point.x; y = point.y }
+    var point: CGPoint { CGPoint(x: x, y: y) }
+}
+
 // MARK: - Identifiable wrapper types for stable ForEach IDs
 
 /// Wrapper for active thumbstick info with stable ID
@@ -70,7 +79,7 @@ public struct DeltaSkinView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// State for touch and button interactions
-    @State private var touchLocations: Set<CGPoint> = []
+    @State private var touchLocations: Set<HashableTouchPoint> = []
     @State private var activeButton: (frame: CGRect, mappingSize: CGSize, buttonId: String)?
     @State private var lastButtonPressed: String?
     @State private var isButtonHapticEnabled = true  // Add this state
@@ -858,7 +867,7 @@ public struct DeltaSkinView: View {
                                 DLOG("Processing NEW touch: \(touch.id) at \(location)")
 
                                 // Store this touch point for visualization
-                                touchLocations.insert(location)
+                                touchLocations.insert(HashableTouchPoint(location))
 
                                 // Store the mapping between touch ID and location for D-pad tracking
                                 touchLocationsMap[touch.id] = location
@@ -934,7 +943,7 @@ public struct DeltaSkinView: View {
                                     }
 
                                     // Update touch location
-                                    touchLocations.insert(location)
+                                    touchLocations.insert(HashableTouchPoint(location))
                                     touchLocationsMap[touch.id] = location
 
                                     // Handle this touch location
@@ -955,7 +964,7 @@ public struct DeltaSkinView: View {
                                 turboToggledThisTouch.remove(touch.id)
 
                                 // Remove this touch point from visualization
-                                touchLocations.remove(touch.location)
+                                touchLocations.remove(HashableTouchPoint(touch.location))
 
                                 // Remove touch location mapping
                                 touchLocationsMap.removeValue(forKey: touch.id)
@@ -1297,7 +1306,7 @@ public struct DeltaSkinView: View {
                                        isTouchBegin: Bool = false) {
         DLOG("handleTouchAtLocation: location=\(location), touchId=\(touchId)")
         // Store the touch location for visual feedback and direction detection
-        touchLocations.insert(location)
+        touchLocations.insert(HashableTouchPoint(location))
 
         // NDS bottom-screen: if this touch is already tracked as an NDS screen touch,
         // update the touch position or release if it has moved off the screen area.
@@ -1803,7 +1812,7 @@ public struct DeltaSkinView: View {
     /// Handle D-pad input with support for direction changes and diagonals
     private func handleDPadInput(_ button: DeltaSkinButton, scale: CGFloat, xOffset: CGFloat, yOffset: CGFloat, mappingSize: CGSize, touchId: ObjectIdentifier, touchLocation: CGPoint? = nil) {
         // Get the touch location for this specific touch ID
-        let location = touchLocation ?? touchLocationsMap[touchId] ?? touchLocations.first
+        let location = touchLocation ?? touchLocationsMap[touchId] ?? touchLocations.first?.point
         guard let touchLocation = location else { return }
 
         // Use the actual preview size instead of estimating from touch location
@@ -2531,7 +2540,7 @@ public struct DeltaSkinView: View {
         case .directional(let commands):
             // For directional inputs, we need to determine which direction is being pressed
             // This requires checking the touch location relative to the button's center
-            if let touchLocation = touchLocations.first, let mappingSize = skin.mappingSize(for: traits) {
+            if let touchLocation = touchLocations.first?.point, let mappingSize = skin.mappingSize(for: traits) {
                 // Use the same coordinate transformation as handleTouch for consistency
                 let viewSize = previewSize.width > 0 && previewSize.height > 0 ? previewSize : CGSize(width: touchLocation.x * 2, height: touchLocation.y * 2)
                 let (buttonScaleX, buttonScaleY, xOffset, yOffset) = calculateButtonTransform(in: viewSize, mappingSize: mappingSize, safeAreaInsets: viewSafeAreaInsets)

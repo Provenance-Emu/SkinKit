@@ -734,51 +734,7 @@ private struct CatalogSkinCard: View {
 
 // MARK: - Shared Helpers
 
-/// Finds the first locally installed skin that matches a catalog entry.
-///
-/// Matching is done in priority order:
-/// 1. Catalog `id` matches the skin's internal `identifier` (exact match).
-/// 2. The on-disk stem matches ``SkinCatalogEntry/preferredLocalDownloadFileName()`` (catalog installs use this name).
-/// 3. The download URL filename (without extension) matches the skin's file on disk.
-/// 4. The catalog `name` matches the skin's `name` (case-insensitive).
-///
-/// Used by both `SkinCatalogBrowserView` and `SkinCatalogDetailView` to keep
-/// installed-matching logic in a single place.
-func matchingInstalledSkin(for entry: SkinCatalogEntry, in skins: [DeltaSkinProtocol]) -> DeltaSkinProtocol? {
-    guard !skins.isEmpty else { return nil }
-
-    // 1. Identifier match (most reliable when catalog id == info.json identifier)
-    if let match = skins.first(where: { $0.identifier == entry.id }) {
-        return match
-    }
-
-    // 2. Stem match: file saved as `preferredLocalDownloadFileName()` under DeltaSkins
-    let preferredStem = URL(fileURLWithPath: entry.preferredLocalDownloadFileName()).deletingPathExtension().lastPathComponent.lowercased()
-    if !preferredStem.isEmpty, let match = skins.first(where: {
-        $0.fileURL.deletingPathExtension().lastPathComponent.lowercased() == preferredStem
-    }) {
-        return match
-    }
-
-    // 3. Filename match: compare the download URL stem to the local file stem (manual / legacy installs)
-    let catalogStem = entry.downloadURL.deletingPathExtension().lastPathComponent.lowercased()
-    if !catalogStem.isEmpty, let match = skins.first(where: {
-        $0.fileURL.deletingPathExtension().lastPathComponent.lowercased() == catalogStem
-    }) {
-        return match
-    }
-
-    // 4. Name match (case-insensitive fallback)
-    let entryNameLower = entry.name.lowercased()
-    return skins.first(where: { $0.name.lowercased() == entryNameLower })
-}
-
-/// Checks whether a catalog entry matches any locally installed skin.
-///
-/// Delegates to `matchingInstalledSkin(for:in:)` for consistent matching logic.
-func isCatalogSkinInstalled(_ entry: SkinCatalogEntry, in skins: [DeltaSkinProtocol]) -> Bool {
-    matchingInstalledSkin(for: entry, in: skins) != nil
-}
+// `matchingInstalledSkin(for:in:)` and `isCatalogSkinInstalled(_:in:)` live in SkinKitManager.
 
 /// Formats a download/play count into a compact string (e.g. 1200 → "1.2k").
 func formatSkinDownloadCount(_ count: Int) -> String {

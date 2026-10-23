@@ -81,7 +81,7 @@ struct RenderableProtocolTests {
 
     @Test("A DeltaSkin seen as DeltaSkinProtocol converts back to a renderable")
     func renderableAccessor() throws {
-        let skin = try TestSupport.loadFixture("Backbone-GBA.deltaskin")
+        let skin = try TestSupport.loadFixture("PocketTaco-GBA.deltaskin")
         let plain: any DeltaSkinProtocol = skin
         #expect(plain.renderable != nil)
     }
@@ -89,7 +89,7 @@ struct RenderableProtocolTests {
     @Test("DeltaSkin.thumbnail (not the protocol default) is what DeltaSkin uses")
     func deltaSkinOverridesTheDefault() async throws {
         TestSupport.disableDefaultSkinFallback()
-        let skin = try TestSupport.loadFixture("Backbone-GBA.deltaskin")
+        let skin = try TestSupport.loadFixture("PocketTaco-GBA.deltaskin")
         let existential: any DeltaSkinRenderable = skin
         let traits = try #require(TestSupport.declaredTraits(of: skin).first)
         let viaProtocol = try await existential.thumbnail(for: traits, maxDimension: 64)

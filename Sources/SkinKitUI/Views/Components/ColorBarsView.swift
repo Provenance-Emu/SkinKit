@@ -2,6 +2,7 @@
 import SkinKitCore
 import SkinKitManager
 import SkinCatalogKit
+import Combine
 import SwiftUI
 
 struct ColorBarsView: View {

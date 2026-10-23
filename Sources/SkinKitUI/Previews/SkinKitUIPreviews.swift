@@ -7,7 +7,7 @@ import SkinKitManager
 // (see `PreviewFixtures`). Open this file in Xcode with the package checked out.
 
 #Preview("Skin view: GBA portrait") {
-    DeltaSkinView(skin: PreviewFixtures.skin("Backbone-GBA"), traits: PreviewFixtures.portrait,
+    DeltaSkinView(skin: PreviewFixtures.skin("PocketTaco-GBA"), traits: PreviewFixtures.portrait,
                   inputHandler: DeltaSkinPreviewInputHandler())
         .background(Color.black)
 }
@@ -19,21 +19,21 @@ import SkinKitManager
 }
 
 #Preview("Skin view: N64 with debug overlay") {
-    DeltaSkinView(skin: PreviewFixtures.skin("Backbone-N64"), traits: PreviewFixtures.portrait,
+    DeltaSkinView(skin: PreviewFixtures.skin("PocketTaco-N64"), traits: PreviewFixtures.portrait,
                   showDebugOverlay: true, showHitTestOverlay: true,
                   inputHandler: DeltaSkinPreviewInputHandler())
         .background(Color.black)
 }
 
 #Preview("Skin view: edit mode") {
-    DeltaSkinView(skin: PreviewFixtures.skin("Backbone-SNES"), traits: PreviewFixtures.portrait,
+    DeltaSkinView(skin: PreviewFixtures.skin("PocketTaco-SNES"), traits: PreviewFixtures.portrait,
                   inputHandler: DeltaSkinPreviewInputHandler(), isEditMode: .constant(true))
         .background(Color.black)
 }
 
 #Preview("Screens view") {
     GeometryReader { proxy in
-        DeltaSkinScreensView(skin: PreviewFixtures.skin("Backbone-NES"), traits: PreviewFixtures.portrait,
+        DeltaSkinScreensView(skin: PreviewFixtures.skin("PocketTaco-NES"), traits: PreviewFixtures.portrait,
                              containerSize: proxy.size)
     }
 }
@@ -44,7 +44,7 @@ import SkinKitManager
 
 #Preview("Skin test view") {
     NavigationStack {
-        DeltaSkinTestView(skin: PreviewFixtures.skin("Backbone-GBA"))
+        DeltaSkinTestView(skin: PreviewFixtures.skin("PocketTaco-GBA"))
     }
 }
 
@@ -55,7 +55,7 @@ import SkinKitManager
 }
 
 #Preview("Skin cell") {
-    SkinPreviewCell(skin: PreviewFixtures.skin("Backbone-GBA"), manager: PreviewFixtures.makeManager())
+    SkinPreviewCell(skin: PreviewFixtures.skin("PocketTaco-GBA"), manager: PreviewFixtures.makeManager())
         .frame(width: 180, height: 320)
         .padding()
         .background(Color.black)

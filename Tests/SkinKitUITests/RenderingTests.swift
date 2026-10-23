@@ -53,16 +53,21 @@ struct RenderingTests {
 
     @Test("A second render of the same traits is served from the cache")
     func secondRenderIsCached() async throws {
-        let skin = try TestSupport.loadFixture("Backbone-GBA.deltaskin")
-        let traits = try #require(TestSupport.declaredTraits(of: skin).first)
-        let first = try await skin.image(for: traits)
-        let second = try await skin.image(for: traits)
+        // A small synthetic skin: a real 750x1334pt skin is ~36 MB at 3x, over the 32 MB budget of the
+        // in-memory cache, so NSCache would drop it at once (unchanged from Provenance).
+        let scratch = try TestSupport.makeScratch()
+        defer { try? FileManager.default.removeItem(at: scratch) }
+        let skin = try DeltaSkin(fileURL: TestSupport.writeSkin(
+            info: TestSupport.gbaInfo(identifier: "com.test.memory-cache", asset: "art.pdf"),
+            files: ["art.pdf": TestSupport.makePDFData()], in: scratch))
+        let first = try await skin.image(for: TestSupport.portrait)
+        let second = try await skin.image(for: TestSupport.portrait)
         #expect(first === second)
     }
 
     @Test("Unsupported traits throw instead of rendering")
     func unsupportedTraitsThrow() async throws {
-        let skin = try TestSupport.loadFixture("Backbone-GBA.deltaskin")
+        let skin = try TestSupport.loadFixture("PocketTaco-GBA.deltaskin")
         let traits = DeltaSkinTraits(device: .tv, displayType: .externalDisplay, orientation: .landscape)
         if skin.supports(traits) { return }
         await #expect(throws: DeltaSkinError.self) { _ = try await skin.image(for: traits) }
@@ -93,7 +98,7 @@ struct RenderingTests {
             info: TestSupport.gbaInfo(identifier: "com.test.broken", asset: "missing.pdf"), files: [:], in: scratch))
         await #expect(throws: (any Error).self) { _ = try await broken.image(for: TestSupport.portrait) }
 
-        let substitute = try TestSupport.loadFixture("Backbone-GBA.deltaskin")
+        let substitute = try TestSupport.loadFixture("PocketTaco-GBA.deltaskin")
         let previous = DeltaSkinRendering.defaultSkinProvider
         DeltaSkinRendering.defaultSkinProvider = { _ in substitute }
         defer { DeltaSkinRendering.defaultSkinProvider = previous }

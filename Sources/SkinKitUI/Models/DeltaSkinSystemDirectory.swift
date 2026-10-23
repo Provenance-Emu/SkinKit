@@ -1,6 +1,6 @@
 #if canImport(UIKit)
 import Foundation
-import SkinKitCore
+@preconcurrency import SkinKitCore
 import SkinKitManager
 
 /// A system, as the picker and catalog views need to show it.
