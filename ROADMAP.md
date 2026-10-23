@@ -1,6 +1,6 @@
 # Roadmap
 
-Controller skins for Provenance, iFly, iCube and emuskins.com. Work is tracked as GitHub issues in this repo, one milestone per stage. Every issue says what it touches, what it depends on, and what done looks like.
+Controller skins for Provenance, iFly, iCube and emuskins.com. Work is tracked as GitHub issues in this repo, one [milestone](https://github.com/Provenance-Emu/SkinKit/milestones) per stage: stage 1 is #1–#8, stage 2 #9–#21, stage 3 #22–#23, stage 4 #24–#25, and later #26. Every issue says what it touches, what it depends on, and what done looks like.
 
 The stages are ordered by what blocks app releases. Stages 1 and 2 run in parallel.
 
