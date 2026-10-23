@@ -6,10 +6,10 @@ import SwiftUI
 import UIKit
 
 /// A custom hosting view for Delta skins to avoid generic type inference issues
-class DeltaSkinHostingView: UIView {
+public class DeltaSkinHostingView: UIView {
     private var hostingController: UIViewController
 
-    init<Content: View>(rootView: Content) {
+    public init<Content: View>(rootView: Content) {
         // Create a hosting controller with the root view
         let hostingController = UIHostingController(rootView: rootView)
         self.hostingController = hostingController
@@ -44,11 +44,11 @@ class DeltaSkinHostingView: UIView {
         }
     }
 
-    required init?(coder: NSCoder) {
+    public required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
+    public override func layoutSubviews() {
         super.layoutSubviews()
         hostingController.view.frame = bounds
 

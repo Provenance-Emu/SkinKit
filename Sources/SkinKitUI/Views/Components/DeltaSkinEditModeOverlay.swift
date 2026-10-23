@@ -13,7 +13,7 @@ import SwiftUI
 ///
 /// tvOS: the drag handles are rendered for visual affordance, but `DragGesture` is
 /// not available on tvOS, so actual repositioning is iOS-only.
-struct DeltaSkinEditModeOverlay: View {
+public struct DeltaSkinEditModeOverlay: View {
 
     let skin: any DeltaSkinRenderable
     let traits: DeltaSkinTraits
@@ -25,7 +25,23 @@ struct DeltaSkinEditModeOverlay: View {
     /// Currently dragging button id → accumulated drag translation in screen points.
     @State private var dragTranslations: [String: CGSize] = [:]
 
-    var body: some View {
+    public init(
+        skin: any DeltaSkinRenderable,
+        traits: DeltaSkinTraits,
+        mappingSize: CGSize,
+        containerSize: CGSize,
+        buttonOffsets: DeltaSkinButtonOffsets,
+        onOffsetChanged: @escaping (String, CGPoint) -> Void
+    ) {
+        self.skin = skin
+        self.traits = traits
+        self.mappingSize = mappingSize
+        self.containerSize = containerSize
+        self.buttonOffsets = buttonOffsets
+        self.onOffsetChanged = onOffsetChanged
+    }
+
+    public var body: some View {
         ZStack {
             // Dim background so it's clear the layout is being edited
             Color.black.opacity(0.35)
@@ -157,13 +173,20 @@ struct DeltaSkinEditModeOverlay: View {
 
 /// Shown only while the layout editor is open (it is entered from the pause menu or the
 /// three-finger hold): a "Done" pill that leaves edit mode and a "Reset" link.
-struct DeltaSkinEditModeToolbar: View {
+public struct DeltaSkinEditModeToolbar: View {
     @Binding var isEditMode: Bool
     let skinIdentifier: String
     let buttonOffsets: DeltaSkinButtonOffsets
     let hasCustomOffsets: Bool
 
-    var body: some View {
+    public init(isEditMode: Binding<Bool>, skinIdentifier: String, buttonOffsets: DeltaSkinButtonOffsets, hasCustomOffsets: Bool) {
+        self._isEditMode = isEditMode
+        self.skinIdentifier = skinIdentifier
+        self.buttonOffsets = buttonOffsets
+        self.hasCustomOffsets = hasCustomOffsets
+    }
+
+    public var body: some View {
         VStack(spacing: 8) {
             Button {
                 isEditMode = false
