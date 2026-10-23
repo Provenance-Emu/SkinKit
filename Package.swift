@@ -37,7 +37,10 @@ let package = Package(
             resources: [.copy("Resources/system-native-resolutions.json")]
         ),
         .target(name: "SkinCatalogKit"),
-        .target(name: "SkinKitManager", dependencies: ["SkinKitCore", "SkinCatalogKit"]),
+        .target(
+            name: "SkinKitManager",
+            dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
+        ),
         .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinKitManager"]),
 
         .testTarget(
@@ -46,7 +49,14 @@ let package = Package(
             resources: [.copy("Fixtures")]
         ),
         .testTarget(name: "SkinCatalogKitTests", dependencies: ["SkinCatalogKit"], resources: [.copy("Fixtures")]),
-        .testTarget(name: "SkinKitManagerTests", dependencies: ["SkinKitManager"]),
+        .testTarget(
+            name: "SkinKitManagerTests",
+            dependencies: [
+                "SkinKitManager", "SkinKitCore", "SkinCatalogKit",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+            ],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "SkinKitUITests", dependencies: ["SkinKitUI"]),
     ],
     swiftLanguageModes: [.v5]
