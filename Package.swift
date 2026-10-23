@@ -26,13 +26,25 @@ let package = Package(
         .library(name: "SkinKitManager", targets: ["SkinKitManager"]),
         .library(name: "SkinKitUI", targets: ["SkinKitUI"]),
     ],
+    dependencies: [
+        // Same range Provenance resolves (via PVLookup).
+        .package(url: "https://github.com/weichsel/ZIPFoundation.git", .upToNextMajor(from: "0.9.18")),
+    ],
     targets: [
-        .target(name: "SkinKitCore"),
+        .target(
+            name: "SkinKitCore",
+            dependencies: [.product(name: "ZIPFoundation", package: "ZIPFoundation")],
+            resources: [.copy("Resources/system-native-resolutions.json")]
+        ),
         .target(name: "SkinCatalogKit"),
         .target(name: "SkinKitManager", dependencies: ["SkinKitCore", "SkinCatalogKit"]),
         .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinKitManager"]),
 
-        .testTarget(name: "SkinKitCoreTests", dependencies: ["SkinKitCore"]),
+        .testTarget(
+            name: "SkinKitCoreTests",
+            dependencies: ["SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
+            resources: [.copy("Fixtures")]
+        ),
         .testTarget(name: "SkinCatalogKitTests", dependencies: ["SkinCatalogKit"]),
         .testTarget(name: "SkinKitManagerTests", dependencies: ["SkinKitManager"]),
         .testTarget(name: "SkinKitUITests", dependencies: ["SkinKitUI"]),
