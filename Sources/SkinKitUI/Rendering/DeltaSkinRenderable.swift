@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import UIKit
 import SkinKitCore
+import SkinKitManager
 
 /// A skin that can draw its own artwork.
 ///
@@ -66,7 +67,7 @@ public extension DeltaSkinProtocol {
 /// Hooks the rendering code needs from the host app.
 public enum DeltaSkinRendering {
     private static let lock = NSLock()
-    nonisolated(unsafe) private static var _defaultSkinProvider: @Sendable (DeltaSkinGameType) async -> (any DeltaSkinRenderable)? = { gameType in
+    private static var _defaultSkinProvider: @Sendable (DeltaSkinGameType) async -> (any DeltaSkinRenderable)? = { gameType in
         guard let skin = try? await DeltaSkinManager.shared.defaultSkin(for: gameType) else { return nil }
         return skin.renderable
     }
