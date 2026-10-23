@@ -119,7 +119,7 @@ public class DeltaSkinScreenFilter {
 ///
 /// On iOS and tvOS this is `NSValue(cgAffineTransform:)`, as Provenance used. That initializer
 /// comes from UIKit, so the macOS test host builds the `NSAffineTransform` CoreImage expects there.
-func affineTransformValue(_ transform: CGAffineTransform) -> NSValue {
+func affineTransformValue(_ transform: CGAffineTransform) -> Any {
     #if canImport(UIKit)
     return NSValue(cgAffineTransform: transform)
     #else
@@ -129,6 +129,6 @@ func affineTransformValue(_ transform: CGAffineTransform) -> NSValue {
         m21: transform.c, m22: transform.d,
         tX: transform.tx, tY: transform.ty
     )
-    return unsafeBitCast(result, to: NSValue.self)
+    return result
     #endif
 }

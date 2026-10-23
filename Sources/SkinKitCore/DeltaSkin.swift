@@ -367,6 +367,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
         /// Per-device asset overrides. Keyed by device rawValue → displayType → orientation → AssetRepresentation.
         /// assets["iphone"]["standard"]["portrait"] = AssetRepresentation
         public let assets: [String: [String: [String: AssetRepresentation]]]?
+
+        public init(id: String, name: String, assets: [String: [String: [String: AssetRepresentation]]]? = nil) {
+            self.id = id
+            self.name = name
+            self.assets = assets
+        }
     }
 
     /// JSON structure for DeltaSkin info.json
@@ -808,6 +814,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
         public let name: String
         public let width: CGFloat
         public let height: CGFloat
+
+        public init(name: String, width: CGFloat, height: CGFloat) {
+            self.name = name
+            self.width = width
+            self.height = height
+        }
     }
 
     /// Screen configuration and filters

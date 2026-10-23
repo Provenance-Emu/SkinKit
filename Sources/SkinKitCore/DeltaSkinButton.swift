@@ -186,6 +186,10 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
 /// Per-state image config for a button
 public struct DeltaSkinButtonStateImage: Codable, Equatable {
     public let image: String
+
+    public init(image: String) {
+        self.image = image
+    }
 }
 
 /// Animated frame config (fps + looping frame sequence)
@@ -193,6 +197,12 @@ public struct DeltaSkinButtonAnimated: Codable, Equatable {
     public let frames: [String]
     public let fps: Double
     public let loops: Bool
+
+    public init(frames: [String], fps: Double, loops: Bool) {
+        self.frames = frames
+        self.fps = fps
+        self.loops = loops
+    }
 }
 
 /// Animation curve for switch button transitions (Manic-style spring animations)
@@ -266,6 +276,12 @@ public struct DeltaSkinButtonGroup: Codable, Equatable {
 
     /// Whether buttons should be translucent
     public let translucent: Bool?
+
+    public init(buttons: [DeltaSkinButton], extendedEdges: DeltaSkinEdgeInsets?, translucent: Bool?) {
+        self.buttons = buttons
+        self.extendedEdges = extendedEdges
+        self.translucent = translucent
+    }
 }
 
 /// Represents a button mapping in a Delta skin

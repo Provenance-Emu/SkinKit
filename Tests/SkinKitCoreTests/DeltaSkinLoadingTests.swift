@@ -3,9 +3,9 @@ import Testing
 import ZIPFoundation
 @testable import SkinKitCore
 
-/// Loads real skin fixtures (a directory package and a zipped archive) through `DeltaSkin(fileURL:)`
-/// and checks trait resolution and asset lookup. These are new tests: Provenance had no test that
-/// loaded a skin from disk besides the exporter round-trip.
+/// Loads fixture skins (a directory package and a zipped archive) through `DeltaSkin(fileURL:)`
+/// and checks trait resolution and asset lookup. New tests: Provenance's tests build skins from
+/// inline JSON, and none of them load a zip archive.
 @Suite("DeltaSkin loading")
 struct DeltaSkinLoadingTests {
 
