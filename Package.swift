@@ -41,7 +41,7 @@ let package = Package(
             name: "SkinKitManager",
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
         ),
-        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinKitManager"]),
+        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager"]),
 
         .testTarget(
             name: "SkinKitCoreTests",
@@ -57,7 +57,14 @@ let package = Package(
             ],
             resources: [.copy("Fixtures")]
         ),
-        .testTarget(name: "SkinKitUITests", dependencies: ["SkinKitUI"]),
+        .testTarget(
+            name: "SkinKitUITests",
+            dependencies: [
+                "SkinKitUI", "SkinKitCore", "SkinKitManager", "SkinCatalogKit",
+                .product(name: "ZIPFoundation", package: "ZIPFoundation"),
+            ],
+            resources: [.copy("Fixtures")]
+        ),
     ],
     swiftLanguageModes: [.v5]
 )
