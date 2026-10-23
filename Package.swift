@@ -33,7 +33,7 @@ let package = Package(
         .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinKitManager"]),
 
         .testTarget(name: "SkinKitCoreTests", dependencies: ["SkinKitCore"]),
-        .testTarget(name: "SkinCatalogKitTests", dependencies: ["SkinCatalogKit"]),
+        .testTarget(name: "SkinCatalogKitTests", dependencies: ["SkinCatalogKit"], resources: [.copy("Fixtures")]),
         .testTarget(name: "SkinKitManagerTests", dependencies: ["SkinKitManager"]),
         .testTarget(name: "SkinKitUITests", dependencies: ["SkinKitUI"]),
     ],
