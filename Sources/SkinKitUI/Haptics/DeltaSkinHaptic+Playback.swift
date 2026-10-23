@@ -2,23 +2,6 @@
 import UIKit
 import SkinKitCore
 
-/// Whether button haptics are allowed.
-///
-/// Provenance gated `DeltaSkinHaptic.play()` on its `buttonVibration` setting
-/// (`Defaults[.buttonVibration]`). SkinKitUI has no settings store, so the host app injects the check.
-/// The default allows haptics.
-public enum DeltaSkinHapticSettings {
-    private static let lock = NSLock()
-    private static var _isEnabled: @Sendable () -> Bool = { true }
-
-    /// Returns `true` when the user wants button haptics. Provenance:
-    /// `DeltaSkinHapticSettings.isEnabled = { Defaults[.buttonVibration] }`.
-    public static var isEnabled: @Sendable () -> Bool {
-        get { lock.withLock { _isEnabled } }
-        set { lock.withLock { _isEnabled = newValue } }
-    }
-}
-
 public extension DeltaSkinHaptic {
     /// Map style string to UIImpactFeedbackGenerator.FeedbackStyle
     var feedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle {
@@ -31,9 +14,10 @@ public extension DeltaSkinHaptic {
         }
     }
 
-    /// Play this haptic, respecting user preferences (see ``DeltaSkinHapticSettings``).
+    /// Play this haptic, respecting user preferences (`DeltaSkinInteractionSettings.isButtonVibrationEnabled`;
+    /// Provenance gated this on `Defaults[.buttonVibration]`).
     func play() {
-        guard DeltaSkinHapticSettings.isEnabled() else { return }
+        guard DeltaSkinInteractionSettings.current.isButtonVibrationEnabled() else { return }
         if style.lowercased() == "selection" {
             let generator = UISelectionFeedbackGenerator()
             generator.prepare()

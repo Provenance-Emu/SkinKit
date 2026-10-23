@@ -113,14 +113,14 @@ struct HapticTests {
 
     @Test("play() asks the injected setting and does not crash either way")
     func playRespectsTheSetting() {
-        let previous = DeltaSkinHapticSettings.isEnabled
-        defer { DeltaSkinHapticSettings.isEnabled = previous }
+        let previous = DeltaSkinInteractionSettings.current
+        defer { DeltaSkinInteractionSettings.current = previous }
         nonisolated(unsafe) var asked = 0
-        DeltaSkinHapticSettings.isEnabled = { asked += 1; return false }
+        DeltaSkinInteractionSettings.current.isButtonVibrationEnabled = { asked += 1; return false }
         DeltaSkinHaptic(style: "selection").play()
         DeltaSkinHaptic(style: "heavy", intensity: 2).play()
         #expect(asked == 2)
-        DeltaSkinHapticSettings.isEnabled = { true }
+        DeltaSkinInteractionSettings.current.isButtonVibrationEnabled = { true }
         DeltaSkinHaptic(style: "selection").play()
         DeltaSkinHaptic(style: "rigid", intensity: -1).play()
     }

@@ -90,3 +90,10 @@ public enum DeltaSkinRendering {
     }
 }
 #endif
+
+#if canImport(UIKit)
+public extension DeltaSkinManager {
+    /// ``loadedSkins`` that can draw themselves (all of them, for skins the manager loads).
+    var renderableSkins: [any DeltaSkinRenderable] { loadedSkins.compactMap(\.renderable) }
+}
+#endif
