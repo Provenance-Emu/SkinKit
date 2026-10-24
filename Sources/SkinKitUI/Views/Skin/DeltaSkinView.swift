@@ -182,6 +182,19 @@ public struct DeltaSkinView: View {
         return validScreens.min(by: { $0.area < $1.area })?.screen
     }
 
+    /// A screen's `outputFrame` in 0–1 space. Some skins give it normalized, others in mapping-space
+    /// pixels (the same check `mapToNDSBottomScreen` makes).
+    private func normalizedOutputFrame(_ frame: CGRect, mappingSize: CGSize?) -> CGRect {
+        guard frame.maxX > 1 || frame.maxY > 1,
+              let mappingSize = mappingSize, mappingSize.width > 0, mappingSize.height > 0 else { return frame }
+        return CGRect(
+            x: frame.minX / mappingSize.width,
+            y: frame.minY / mappingSize.height,
+            width: frame.width / mappingSize.width,
+            height: frame.height / mappingSize.height
+        )
+    }
+
     /// State for the loaded skin image
     @State private var loadingError: Error?
     @State private var screenGroups: [DeltaSkinScreenGroup]?
@@ -795,7 +808,7 @@ public struct DeltaSkinView: View {
                         if let screens = skin.screens(for: traits),
                            let mappingSize = skin.mappingSize(for: traits),
                            let smallestScreen = getSmallestScreen(from: screens, mappingSize: mappingSize),
-                           let outputFrame = smallestScreen.outputFrame {
+                           let outputFrame = smallestScreen.outputFrame.map({ normalizedOutputFrame($0, mappingSize: mappingSize) }) {
                             let scaledFrame = CGRect(
                                 x: outputFrame.minX * layout.width,
                                 y: outputFrame.minY * layout.height,
@@ -1448,8 +1461,11 @@ public struct DeltaSkinView: View {
                     handleButtonRelease(command)
                 }
                 // Only newly covered inputs: one this touch already held stays as it is, so a sticky
-                // button released by double-tap is not pressed again by the next move.
-                for command in desired.subtracting(previous) where !pressedButtons.contains(command) {
+                // button released by double-tap is not pressed again by the next move. A new touch on a
+                // locked sticky button still goes through, so the sticky manager sees the double-tap that
+                // unlocks it (`handleButtonPress` absorbs the single tap and skips duplicate presses).
+                for command in desired.subtracting(previous)
+                where !pressedButtons.contains(command) || (isTouchBegin && inputHandler.stickyManager.isSticky(command)) {
                     handleButtonPress(command)
                     DLOG("Pressed button \(command) via touch \(touchId)")
                 }
@@ -2066,7 +2082,8 @@ public struct DeltaSkinView: View {
     // Update the screenView method to use DeltaSkinTestPatternView instead of TestPatternView
     @ViewBuilder
     private func screenView(_ screen: DeltaSkinScreen, in geometry: GeometryProxy, layout: SkinLayout) -> some View {
-        let scaledFrame = screen.outputFrame.map { frame in
+        let mappingSize = skin.mappingSize(for: traits)
+        let scaledFrame = screen.outputFrame.map { normalizedOutputFrame($0, mappingSize: mappingSize) }.map { frame in
             CGRect(
                 x: frame.minX * layout.width,
                 y: frame.minY * layout.height,

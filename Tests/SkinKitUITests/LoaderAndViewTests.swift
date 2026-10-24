@@ -46,6 +46,23 @@ extension UIKitSerial {
         }
 
         @MainActor
+        @Test("The fast path skips a saved selection the automatic-selection policy rejects")
+        func fastPathAppliesSelectionPolicy() async throws {
+            let manager = PreviewlessManager.make(names: ["PocketTaco-GBA", "Soolra-GBA"],
+                                                  isAllowedInAutomaticSelection: { !$0.lowercased().contains("soolra") })
+            _ = try await manager.availableSkins(forceRescan: false)
+            #expect(manager.skinsAreLoaded)
+            let gba = manager.loadedSkins.filter { $0.gameType == .gba }
+            let rejected = try #require(gba.first { $0.identifier.lowercased().contains("soolra") })
+            let allowed = try #require(gba.first { !$0.identifier.lowercased().contains("soolra") })
+            await manager.selectionManager.setSkin(rejected.identifier, for: SkinSystemID("GBA"), orientation: .portrait, scope: .system)
+
+            let loader = DeltaSkinLoader(manager: manager)
+            let skin = await loader.loadSkin(forSystem: .init(id: SkinSystemID("GBA"), gameType: .gba))
+            #expect(skin?.identifier == allowed.identifier)
+        }
+
+        @MainActor
         @Test("A system can accept another game type's skins; no skin means nil and a finished load")
         func alsoAccepted() async throws {
             let manager = PreviewlessManager.make(names: ["Backbone-NES"])

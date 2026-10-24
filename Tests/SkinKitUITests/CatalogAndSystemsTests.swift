@@ -162,13 +162,15 @@ extension UIKitSerial {
 /// A manager over the bundled fixtures, in a scratch directory.
 enum PreviewlessManager {
     @MainActor
-    static func make(names: [String] = ["PocketTaco-GBA", "PocketTaco-NES"]) -> DeltaSkinManager {
+    static func make(names: [String] = ["PocketTaco-GBA", "PocketTaco-NES"],
+                     isAllowedInAutomaticSelection: @escaping @Sendable (String) -> Bool = { _ in true }) -> DeltaSkinManager {
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("SkinKitUITests-\(UUID().uuidString)")
         let urls = names.compactMap { Bundle.module.url(forResource: "Fixtures/\($0).deltaskin", withExtension: nil) }
         let defaults = UserDefaults(suiteName: "SkinKitUITests-\(UUID().uuidString)")!
         let selection = DeltaSkinSelectionManager(preferences: DeltaSkinPreferences(defaults: defaults))
         return DeltaSkinManager(
-            configuration: .init(skinsDirectory: scratch, bundledSkinLocations: { urls }),
+            configuration: .init(skinsDirectory: scratch, bundledSkinLocations: { urls },
+                                 isAllowedInAutomaticSelection: isAllowedInAutomaticSelection),
             selectionManager: selection)
     }
 }

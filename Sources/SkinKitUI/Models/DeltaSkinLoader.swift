@@ -75,7 +75,11 @@ public final class DeltaSkinLoader: ObservableObject {
                     for: systemId,
                     gameId: nil,
                     orientation: orientation
-                ), let skin = await MainActor.run(body: { manager.loadedSkins.first(where: { $0.identifier == selectedIdentifier })?.renderable }) {
+                ),
+                    // Same companion-skin policy as `DeltaSkinManager.selectedSkin`; a rejected
+                    // selection falls through to the default-skin lookup below.
+                    manager.configuration.isAllowedInAutomaticSelection(selectedIdentifier),
+                    let skin = await MainActor.run(body: { manager.loadedSkins.first(where: { $0.identifier == selectedIdentifier })?.renderable }) {
                     await MainActor.run {
                         self.selectedSkin = skin
                         self.updateLoadingState(.complete)
