@@ -33,8 +33,7 @@ xcodebuild test \
   -scheme SkinKit-Package \
   -destination "id=$udid" \
   -skipPackagePluginValidation \
-  > /tmp/skinkit-build.log 2>&1
-rc=$?
+  > /tmp/skinkit-build.log 2>&1 && rc=0 || rc=$?
 grep -E "error:|warning: unre" /tmp/skinkit-build.log | sort -u | head -60
 tail -n 40 /tmp/skinkit-build.log
 exit $rc
