@@ -108,8 +108,12 @@ extension UIKitSerial {
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
             ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: side, height: side))
             var lit = 0
-            for i in stride(from: 0, to: pixels.count, by: 4) where Int(pixels[i]) + Int(pixels[i + 1]) + Int(pixels[i + 2]) > 15 {
-                lit += 1
+            for i in stride(from: 0, to: pixels.count, by: 4) {
+                let red = Int(pixels[i])
+                let green = Int(pixels[i + 1])
+                let blue = Int(pixels[i + 2])
+                let brightness: Int = red + green + blue
+                if brightness > 15 { lit += 1 }
             }
             return Double(lit) / Double(side * side) >= minimumShare
         }
