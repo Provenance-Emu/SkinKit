@@ -33,5 +33,8 @@ xcodebuild test \
   -scheme SkinKit-Package \
   -destination "id=$udid" \
   -skipPackagePluginValidation \
-  | tail -n 40
-exit "${PIPESTATUS[0]}"
+  > /tmp/skinkit-build.log 2>&1
+rc=$?
+grep -E "error:|warning: unre" /tmp/skinkit-build.log | sort -u | head -60
+tail -n 40 /tmp/skinkit-build.log
+exit $rc
