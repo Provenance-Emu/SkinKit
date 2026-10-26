@@ -226,13 +226,49 @@ final class SkinCatalogServiceTests: XCTestCase {
         XCTAssertTrue(lines.first?.1.contains("\(SkinCatalogFixture.entryCount) skins") ?? false)
     }
 
+    func testGlobalLoggerHookIsUsedWhenNoLogIsGiven() async throws {
+        let sink = LogSink()
+        let server = server
+        let clock = clock
+        let service = SkinCatalogService(
+            catalogURLs: [URL(fileURLWithPath: "/catalog.json")],
+            cacheURL: cacheURL,
+            now: { clock.now },
+            fetch: { url in try server.respond(url) }
+        )
+        // Set after the service exists: the hook is looked up per line, so `shared` follows it too.
+        let previous = SkinCatalogLog.logger
+        SkinCatalogLog.logger = { sink.append($0, $1) }
+        defer { SkinCatalogLog.logger = previous }
+
+        _ = try await service.catalog()
+
+        XCTAssertEqual(sink.lines.count, 1)
+        XCTAssertEqual(sink.lines.first?.0, .info)
+        XCTAssertTrue(sink.lines.first?.1.contains("\(SkinCatalogFixture.entryCount) skins") ?? false)
+    }
+
+    func testServiceLogParameterWinsOverTheGlobalHook() async throws {
+        let globalSink = LogSink()
+        let previous = SkinCatalogLog.logger
+        SkinCatalogLog.logger = { globalSink.append($0, $1) }
+        defer { SkinCatalogLog.logger = previous }
+
+        _ = try await makeService().catalog()
+
+        XCTAssertEqual(logs.lines.count, 1)
+        XCTAssertTrue(globalSink.lines.isEmpty)
+    }
+
     // MARK: - Primary → fallback
 
-    func testDefaultURLsArePrimaryThenRawGitHub() {
+    func testDefaultURLsAreEmuskinsThenRawGitHub() {
         XCTAssertEqual(SkinCatalogService.defaultCatalogURLs.map(\.absoluteString), [
-            "https://provenance-emu.com/skins/catalog.json",
+            "https://emuskins.com/catalog.json",
             "https://raw.githubusercontent.com/Provenance-Emu/skins/main/catalog.json",
         ])
+        XCTAssertFalse(SkinCatalogService.defaultCatalogURLs.contains { $0.host?.contains("provenance-emu.com") == true },
+                       "the old provenance-emu.com URL only redirects")
     }
 
     func testSecondURLIsTriedWhenFirstFails() async throws {

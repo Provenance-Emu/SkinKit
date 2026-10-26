@@ -11,16 +11,29 @@ public enum SkinCatalogLogLevel: Sendable {
 public typealias SkinCatalogLogger = @Sendable (SkinCatalogLogLevel, String) -> Void
 
 public enum SkinCatalogLog {
-    private static let logger = Logger(subsystem: "com.provenance-emu.SkinKit", category: "SkinCatalog")
+    private static let osLogger = Logger(subsystem: "com.provenance-emu.SkinKit", category: "SkinCatalog")
+    private static let lock = NSLock()
+    private static var _logger: SkinCatalogLogger = SkinCatalogLog.osLog
 
     /// The default: `os.Logger`, subsystem `com.provenance-emu.SkinKit`.
     public static let osLog: SkinCatalogLogger = { level, message in
         switch level {
-        case .info: logger.info("\(message, privacy: .public)")
-        case .warning: logger.warning("\(message, privacy: .public)")
+        case .info: osLogger.info("\(message, privacy: .public)")
+        case .warning: osLogger.warning("\(message, privacy: .public)")
         }
     }
 
     /// Drops everything.
     public static let silent: SkinCatalogLogger = { _, _ in }
+
+    /// Set once at launch. Used by every ``SkinCatalogService`` that wasn't given its own `log:`,
+    /// including ``SkinCatalogService/shared``.
+    public static var logger: SkinCatalogLogger {
+        get { lock.withLock { _logger } }
+        set { lock.withLock { _logger = newValue } }
+    }
+
+    static func log(_ level: SkinCatalogLogLevel, _ message: String) {
+        logger(level, message)
+    }
 }

@@ -19,13 +19,14 @@ public struct DeltaSkinSystem: Hashable, Identifiable, Sendable {
     public let fullName: String
     /// `DeltaSkinGameType(systemIdentifier:)`, or `nil` for systems that no Delta skin targets.
     public let gameType: DeltaSkinGameType?
-    /// `SystemIdentifier.skinCatalogSystemCode`.
-    public let skinCatalogSystemCode: String
+    /// `SystemIdentifier.skinCatalogSystemCode`, or `nil` for systems with no catalog code (CPS1-3, DOOM,
+    /// ZX Spectrum, ...). The picker's "Get More" link then opens the catalog with no system filter.
+    public let skinCatalogSystemCode: String?
     /// `SystemIdentifier.relatedSkinCatalogSystemCodes` (lowercased catalog codes of the system and its family).
     public let relatedSkinCatalogSystemCodes: Set<String>
 
     public init(id: SkinSystemID, fullName: String, gameType: DeltaSkinGameType?,
-                skinCatalogSystemCode: String, relatedSkinCatalogSystemCodes: Set<String> = []) {
+                skinCatalogSystemCode: String? = nil, relatedSkinCatalogSystemCodes: Set<String> = []) {
         self.id = id
         self.fullName = fullName
         self.gameType = gameType

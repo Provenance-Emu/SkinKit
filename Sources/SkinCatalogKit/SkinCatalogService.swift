@@ -1,6 +1,6 @@
 import Foundation
 
-/// Fetches and caches the provenance-emu.com skin catalog.
+/// Fetches and caches the emuskins.com skin catalog.
 ///
 /// Moved from iFly's `SkinCatalogService` (itself a port of Provenance's, with two behavioural fixes):
 ///
@@ -19,7 +19,7 @@ public actor SkinCatalogService {
     /// Primary first. The GitHub raw URL serves the same file from the
     /// repository the site is built from.
     public static let defaultCatalogURLs: [URL] = [
-        URL(string: "https://provenance-emu.com/skins/catalog.json"),
+        URL(string: "https://emuskins.com/catalog.json"),
         URL(string: "https://raw.githubusercontent.com/Provenance-Emu/skins/main/catalog.json"),
     ].compactMap(\.self)
 
@@ -46,21 +46,22 @@ public actor SkinCatalogService {
     ///   - session: used by the default `fetch`. Tests pass one whose configuration has a mock
     ///     `URLProtocol`.
     ///   - fetch: replaces the whole transport (and ignores `session`) when set.
-    ///   - log: receives one line per fetch attempt and per fallback.
+    ///   - log: receives one line per fetch attempt and per fallback. When `nil`, lines go to
+    ///     ``SkinCatalogLog/logger`` (looked up when each line is logged).
     public init(
         catalogURLs: [URL] = SkinCatalogService.defaultCatalogURLs,
         cacheURL: URL = SkinCatalogService.defaultCacheURL,
         ttl: TimeInterval = SkinCatalogService.defaultTTL,
         now: @escaping @Sendable () -> Date = { Date() },
         session: URLSession = .shared,
-        log: @escaping SkinCatalogLogger = SkinCatalogLog.osLog,
+        log: SkinCatalogLogger? = nil,
         fetch: Fetch? = nil
     ) {
         self.catalogURLs = catalogURLs
         self.cacheURL = cacheURL
         self.ttl = ttl
         self.now = now
-        self.log = log
+        self.log = log ?? { SkinCatalogLog.log($0, $1) }
         self.fetch = fetch ?? { url in
             var request = URLRequest(url: url)
             request.cachePolicy = .reloadIgnoringLocalCacheData

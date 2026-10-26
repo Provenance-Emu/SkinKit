@@ -95,6 +95,17 @@ extension UIKitSerial {
             }
         }
 
+        @Test("A system with no catalog code filters nothing; an empty code used to filter everything out")
+        func nilCatalogCodeIsUnfiltered() async throws {
+            let system = DeltaSkinSystem(id: SkinSystemID("DOOM"), fullName: "DOOM", gameType: nil)
+            #expect(system.skinCatalogSystemCode == nil)
+            #expect(SkinCatalogService.resolvedSystemFilterCodes(system.skinCatalogSystemCode) == nil)
+
+            let service = try Self.service()
+            let unfiltered = try await service.filterSkins(system: system.skinCatalogSystemCode, sortBy: .popular)
+            #expect(unfiltered.count == (try await service.catalog()).skins.count)
+        }
+
         @Test("Legacy placeholder system codes are hidden")
         func legacyCodes() {
             #expect(SkinCatalogService.isLegacySystemCode("Unofficial"))

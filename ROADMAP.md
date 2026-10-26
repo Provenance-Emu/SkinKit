@@ -26,7 +26,7 @@ Design: [`docs/specs/2026-10-23-skin-variants-design.md`](docs/specs/2026-10-23-
 - **Website**:
   - variant family cards, "Download all", and a "Has variants" filter
   - family-friendly defaults (mature skins hidden unless opted in)
-  - the emuskins.com domain move, keeping `provenance-emu.com/skins/catalog.json` working
+  - the emuskins.com domain move, keeping the old `provenance-emu.com/skins/catalog.json` redirecting for shipped builds
   - page speed (skins#13, Lighthouse 58 against a target of 70)
 - **Crawler politeness**: fewer requests to deltastyles, download each file once (thumbnails reuse it), and a User-Agent with a contact link.
 - **Apps** (after stage 1's `SkinCatalogKit`):
