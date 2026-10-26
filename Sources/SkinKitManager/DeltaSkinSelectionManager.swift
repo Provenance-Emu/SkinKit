@@ -196,10 +196,19 @@ public final class DeltaSkinSelectionManager: ObservableObject {
         orientation: SkinOrientation,
         order: SessionPickOrder
     ) -> String? {
-        func resolved(_ pick: String) -> String? {
-            pick == Self.builtInSkinPreferenceToken ? nil : pick
-        }
+        let raw = rawSelectionLocked(for: systemId, gameId: gameId, orientation: orientation, order: order)
+        return raw == Self.builtInSkinPreferenceToken ? nil : raw
+    }
 
+    /// The first stored pick in the priority chain, built-in token included. Must be called on `queue`.
+    /// The one place the chain's order lives: `effectiveSkinIdentifier` and `prefersBuiltInControllerSkin`
+    /// both read it, so they can't disagree.
+    private func rawSelectionLocked(
+        for systemId: SkinSystemID,
+        gameId: String?,
+        orientation: SkinOrientation,
+        order: SessionPickOrder
+    ) -> String? {
         // Priorities 1 and 2: the session picks, in the configured order.
         let gameSession: String? = gameId.flatMap { getSessionSkin(for: systemId, gameId: $0, orientation: orientation) }
         let systemSession = getSessionSkin(for: systemId, gameId: nil, orientation: orientation)
@@ -209,20 +218,17 @@ public final class DeltaSkinSelectionManager: ObservableObject {
         case .systemFirst: sessionPick = systemSession ?? gameSession
         }
         if let sessionPick {
-            return resolved(sessionPick)
+            return sessionPick
         }
 
         // Priority 3: Game preference
         if let gameId = gameId,
            let gamePref = preferences.selectedSkinIdentifier(for: gameId, orientation: orientation) {
-            return resolved(gamePref)
+            return gamePref
         }
 
         // Priority 4: System preference
-        if let systemPref = preferences.selectedSkinIdentifier(for: systemId, orientation: orientation) {
-            return resolved(systemPref)
-        }
-        return nil
+        return preferences.selectedSkinIdentifier(for: systemId, orientation: orientation)
     }
 
     /// Effective skin for one orientation, checking every key a game may be stored under.
@@ -300,25 +306,11 @@ public final class DeltaSkinSelectionManager: ObservableObject {
 
     /// `true` when the first non-empty selection in the same priority chain as ``effectiveSkinIdentifier(for:gameId:orientation:)`` is ``builtInSkinPreferenceToken``.
     /// Used to skip packaged `.deltaskin` fallbacks so the SwiftUI default controller stays active.
+    /// Follows `sessionPickOrder`, like `effectiveSkinIdentifier`; the multi-key variant stays game-first.
     public func prefersBuiltInControllerSkin(for systemId: SkinSystemID, gameId: String?, orientation: SkinOrientation) -> Bool {
         return queue.sync {
-            if let gameId = gameId {
-                if let v = getSessionSkin(for: systemId, gameId: gameId, orientation: orientation) {
-                    return v == Self.builtInSkinPreferenceToken
-                }
-            }
-            if let v = getSessionSkin(for: systemId, gameId: nil, orientation: orientation) {
-                return v == Self.builtInSkinPreferenceToken
-            }
-            if let gameId = gameId {
-                if let v = preferences.selectedSkinIdentifier(for: gameId, orientation: orientation) {
-                    return v == Self.builtInSkinPreferenceToken
-                }
-            }
-            if let v = preferences.selectedSkinIdentifier(for: systemId, orientation: orientation) {
-                return v == Self.builtInSkinPreferenceToken
-            }
-            return false
+            rawSelectionLocked(for: systemId, gameId: gameId, orientation: orientation, order: _sessionPickOrder)
+                == Self.builtInSkinPreferenceToken
         }
     }
 
