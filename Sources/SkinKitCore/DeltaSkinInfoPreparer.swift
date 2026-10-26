@@ -8,6 +8,7 @@ import Foundation
 enum DeltaSkinInfoPreparer {
     typealias Options = DeltaSkin.DecodingOptions
 
+    private static let knownDevices = Set(DeltaSkinDevice.allCases.map(\.rawValue))
     private static let displayKeys = ["standard", "edgeToEdge", "splitView", "stageManager", "externalDisplay", "mini", "pro13", "dedicated"]
     private static let directions = ["up", "down", "left", "right"]
     private static let extendedGameCubeAliases: Set<String> = ["gcn", "nintendogamecube"]
@@ -27,6 +28,16 @@ enum DeltaSkinInfoPreparer {
         if options.contains(.canonicalGameTypes) {
             try requireCanonicalGameType(root["gameTypeIdentifier"])
         }
+        // Per-game layouts hold the same trees as `representations`, so they get the same rules.
+        if let value = root["gameOverrides"], !(value is NSNull) {
+            if let games = value as? [String: Any] {
+                root["gameOverrides"] = try cleanOverrides(games, rules)
+            } else if rules.drops {
+                root["gameOverrides"] = nil
+            } else {
+                throw DeltaSkinError.invalidInfoFile
+            }
+        }
         if rules.drops {
             for (key, type) in rootExtras where root[key] != nil && !decodes(type, root[key]) {
                 root[key] = nil
@@ -35,8 +46,9 @@ enum DeltaSkinInfoPreparer {
 
         if let value = root["representations"], !(value is NSNull) {
             guard let devices = value as? [String: Any] else { throw DeltaSkinError.invalidInfoFile }
-            let cleaned = try cleanDevices(devices, rules)
-            if rules.drops, cleaned.isEmpty { throw DeltaSkinInfoError.noUsableRepresentation }
+            let cleaned = try cleanDevices(devices, rules, knownOnly: true)
+            // Count what the model will read: it ignores device keys it does not know.
+            if rules.drops, !cleaned.keys.contains(where: knownDevices.contains) { throw DeltaSkinInfoError.noUsableRepresentation }
             root["representations"] = cleaned
         } else if rules.drops {
             throw DeltaSkinInfoError.noUsableRepresentation
@@ -135,10 +147,9 @@ enum DeltaSkinInfoPreparer {
 
     /// `devices` → display types → orientations → representations. Anything that is not a dictionary where one is
     /// expected is invalid. Device and display keys the model does not read are left alone.
-    private static func cleanDevices(_ devices: [String: Any], _ rules: Rules) throws -> [String: Any] {
+    private static func cleanDevices(_ devices: [String: Any], _ rules: Rules, knownOnly: Bool) throws -> [String: Any] {
         var result = devices
-        let known = Set(DeltaSkinDevice.allCases.map(\.rawValue))
-        for (deviceKey, deviceValue) in devices where known.contains(deviceKey) {
+        for (deviceKey, deviceValue) in devices where !knownOnly || knownDevices.contains(deviceKey) {
             guard var device = deviceValue as? [String: Any] else {
                 if rules.drops { result[deviceKey] = nil; continue }
                 throw DeltaSkinError.invalidInfoFile
@@ -162,6 +173,21 @@ enum DeltaSkinInfoPreparer {
             }
             // A device left with no display type has nothing to offer.
             result[deviceKey] = device.keys.contains(where: displayKeys.contains) ? device : nil
+        }
+        return result
+    }
+
+    /// `gameOverrides`: game → device → display type → orientation → representation. The model reads any device key.
+    /// A game with nothing left is removed; an invalid shape is dropped, or an error without `dropsInvalidElements`.
+    private static func cleanOverrides(_ games: [String: Any], _ rules: Rules) throws -> [String: Any] {
+        var result: [String: Any] = [:]
+        for (game, value) in games {
+            guard let devices = value as? [String: Any] else {
+                if rules.drops { continue }
+                throw DeltaSkinError.invalidInfoFile
+            }
+            let cleaned = try cleanDevices(devices, rules, knownOnly: false)
+            if !cleaned.isEmpty { result[game] = cleaned }
         }
         return result
     }

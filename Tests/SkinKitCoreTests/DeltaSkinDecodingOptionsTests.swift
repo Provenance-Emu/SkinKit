@@ -320,6 +320,84 @@ struct DeltaSkinDecodingOptionsTests {
         #expect(try decode("com.example.game.game-cube", []) == .gamecube)
     }
 
+    // MARK: - Game overrides and unknown devices
+
+    /// A skin whose base layout is fine and whose per-game layout for "Crazy Taxi" holds the items in `overrideItems`.
+    static func skinWithOverride(_ overrideItems: String, rep: String = #""extendedEdges":{"left":7},"#) -> String {
+        #"""
+        {"name":"N","identifier":"x","gameTypeIdentifier":"public.aoshuang.game.ngc",
+         "representations":{"iphone":{"standard":{"portrait":{"mappingSize":{"width":10,"height":20},"items":[{"inputs":["a"],"frame":[0,0,1,1]}]}}}},
+         "gameOverrides":{"Crazy Taxi":{"iphone":{"standard":{"portrait":{\#(rep)"mappingSize":{"width":10,"height":20},"items":\#(overrideItems)}}}}}}
+        """#
+    }
+
+    static func overrideItems(_ json: String, _ options: Options) throws -> [DeltaSkin.ItemRepresentation] {
+        let info = try decode(json, options)
+        return info.gameOverrides?["Crazy Taxi"]?["iphone"]?.standard?["portrait"]?.items ?? []
+    }
+
+    @Test("Game overrides get the same rules as the base layout")
+    func overridesAreCleaned() throws {
+        let items = #"""
+        [{"inputs":["huge"],"frame":[0,0,1e308,1]},
+         {"inputs":{"up":"up","down":"down","left":"left"},"frame":[0,0,1,1]},
+         {"inputs":["art"],"frame":[0,0,1,1],"asset":{"normal":3}},
+         {"inputs":["a"],"frame":[1,2,3,4],"asset":{"normal":"a.pdf"}}]
+        """#
+        let json = Self.skinWithOverride(items)
+        // Lenient: the bad items go (limits, complete d-pads, a malformed asset), the good one keeps its art and
+        // inherits the override representation's edges.
+        let kept = try Self.overrideItems(json, .lenient)
+        #expect(Self.inputs(kept) == [["a"]])
+        #expect(kept[0].asset?.normal == "a.pdf")
+        #expect(kept[0].extendedEdges == DeltaSkinEdgeInsets(top: 0, left: 7, bottom: 0, right: 0))
+        // The cleaned override is what `representation(for:)` selects for that game.
+        let url = try Self.directory(json)
+        let skin = try DeltaSkin(fileURL: url, options: .lenient)
+        let traits = DeltaSkinTraits(device: .iphone, displayType: .standard, orientation: .portrait, gameIdentifier: "Crazy Taxi")
+        #expect(skin.representation(for: traits)?.items?.count == 1)
+        // The rules are the same individual options: without dropsInvalidElements a bad override item is an error.
+        #expect(throws: DeltaSkinError.self) { try Self.decode(json, .limitsFrames) }
+        // Default: untouched, as always (the huge frame and the partial d-pad are kept; the asset is not read).
+        let plain = try Self.overrideItems(Self.skinWithOverride(#"[{"inputs":["huge"],"frame":[0,0,1e308,1]},{"inputs":{"up":"up","down":"down","left":"left"},"frame":[0,0,1,1]},{"inputs":["a"],"frame":[1,2,3,4],"asset":{"normal":"a.pdf"}}]"#), [])
+        #expect(plain.count == 3 && plain[0].frame.width == 1e308 && plain[2].asset == nil)
+        #expect(plain[2].extendedEdges == nil)
+    }
+
+    @Test("Game overrides: wrong shapes are dropped, and an emptied game or device disappears")
+    func overrideShapes() throws {
+        func overrides(_ body: String, _ options: Options) throws -> [String: [String: DeltaSkin.DeviceRepresentations]]? {
+            let json = #"""
+            {"name":"N","identifier":"x","gameTypeIdentifier":"public.aoshuang.game.ngc",
+             "representations":{"iphone":{"standard":{"portrait":{"mappingSize":{"width":10,"height":20}}}}},
+             "gameOverrides":\#(body)}
+            """#
+            return try Self.decode(json, options).gameOverrides
+        }
+        #expect(try overrides(#"[1,2]"#, .dropsInvalidElements) == nil)
+        #expect(throws: DeltaSkinError.self) { try overrides(#"[1,2]"#, .limitsFrames) }
+        #expect(try overrides(#"{"G":"nope"}"#, .dropsInvalidElements)?.isEmpty == true)
+        #expect(try overrides(#"{"G":{"iphone":{"standard":{"portrait":{"items":[]}}}}}"#, .dropsInvalidElements)?.isEmpty == true,
+                "an override whose only representation is invalid leaves no game behind")
+        #expect(try overrides(#"{"G":{"iphone":{"standard":{"portrait":{"mappingSize":{"width":4,"height":5}}}}}}"#, .lenient)?["G"]?["iphone"] != nil)
+    }
+
+    @Test("dropsInvalidElements counts recognised devices: an unknown device cannot make an unusable skin look usable")
+    func unknownDevicesDoNotCount() throws {
+        let json = #"""
+        {"name":"N","identifier":"x","gameTypeIdentifier":"public.aoshuang.game.ngc",
+         "representations":{"iphone":{"standard":{"portrait":{"items":[]}}},
+                            "appletv9":{"standard":{"portrait":{"mappingSize":{"width":10,"height":20}}}}}}
+        """#
+        #expect(throws: DeltaSkinInfoError.noUsableRepresentation) { try Self.decode(json, .dropsInvalidElements) }
+        #expect(throws: DeltaSkinInfoError.noUsableRepresentation) { try Self.decode(json, .lenient) }
+        // A usable recognised device alongside the unknown one still loads.
+        let usable = json.replacingOccurrences(of: #""items":[]"#, with: #""mappingSize":{"width":1,"height":1}"#)
+        #expect(try Self.decode(usable, .lenient).representations[.iphone] != nil)
+        // Default: the unknown device is ignored and the skin decodes with whatever it can read (no representations here).
+        #expect(throws: (any Error).self) { try Self.decode(json, []) }
+    }
+
     // MARK: - The presets and the whole of it
 
     @Test("lenient is every option; the maximum magnitude is 100,000")
