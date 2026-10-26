@@ -1,6 +1,7 @@
 #if canImport(UIKit)
 import Foundation
 import SkinKitCore
+import SkinKitManager
 import Testing
 // Deliberately not `@testable`: these check what an app can see.
 import SkinKitUI
