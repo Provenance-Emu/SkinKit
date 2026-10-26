@@ -40,6 +40,10 @@ public final class StickyButtonManager: ObservableObject {
     /// Maximum interval between two taps to count as a double-tap.
     private let doubleTapInterval: TimeInterval = 0.35
 
+    // MARK: - Lifecycle
+
+    public init() {}
+
     // MARK: - Public API
 
     /// Process a button press touch event.

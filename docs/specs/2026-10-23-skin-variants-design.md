@@ -95,7 +95,7 @@ Per app:
 
 | | Provenance | iFly | iCube |
 |---|---|---|---|
-| Adopt `SkinCatalogKit` for catalog fetch + decode | Yes. This replaces the strict `SkinCatalog`/`SkinCatalogEntry`, and adds the `provenance-emu.com/skins` primary URL with raw GitHub as fallback | Yes (replaces its copy) | Yes (replaces its copy) |
+| Adopt `SkinCatalogKit` for catalog fetch + decode | Yes. This replaces the strict `SkinCatalog`/`SkinCatalogEntry`, and adds the `emuskins.com/catalog.json` primary URL (the old `provenance-emu.com/skins` URL now redirects there) with raw GitHub as fallback | Yes (replaces its copy) | Yes (replaces its copy) |
 | Store shows families; install one/some/all | Yes | Yes | Yes |
 | Store surfaces with families | Catalog browser and detail views on iOS and tvOS (`SkinCatalogBrowserView`, `SkinCatalogDetailView`) | `SkinStoreView` | `SkinStoreView` |
 | Installed skins grouped by family in the skin picker | Yes, in `SystemSkinSelectionView` (and `SystemSkinBrowserView` if it lists installed skins). Uses the `.skinmeta` sidecar, which gains `groupId`, `groupOrder` and `variantLabel` | Yes, in its picker. `SkinStoreInstalledRecord` gains the same fields | Yes, in `SkinPickerView`, same fields |

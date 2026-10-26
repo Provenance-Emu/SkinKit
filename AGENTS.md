@@ -33,7 +33,7 @@ Use `xcrun swift`, not bare `swift`. The owner's `PATH` has an old 5.3 toolchain
 ## Rules that bite
 
 - **Never break a skin that works in Delta or Manic today.** New `info.json` keys are additive; the base `representations` must stay a complete skin.
-- **The catalog stays one flat `catalog.json`** that old app builds can read. iFly and iCube fetch `https://provenance-emu.com/skins/catalog.json`, so that URL has to keep working through the emuskins.com move.
+- **The catalog stays one flat `catalog.json`** that old app builds can read. SkinCatalogKit fetches `https://emuskins.com/catalog.json` first and the GitHub raw file second. Shipped iFly and iCube builds still fetch `https://provenance-emu.com/skins/catalog.json`, which 301s to emuskins.com, so that redirect has to keep working.
 - **Stage 1 adds no features.** Move code, keep behavior. Put features in their own issues.
 - In the skins repo, never hand-edit generated files (`catalog.json`, `docs/systems/`, `docs/authors/`, `thumbnails/`, `link-health.json`, `variants.json`).
 - macOS is case-insensitive. Never create paths that differ only by case.

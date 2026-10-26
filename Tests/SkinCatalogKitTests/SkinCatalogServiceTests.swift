@@ -230,7 +230,7 @@ final class SkinCatalogServiceTests: XCTestCase {
 
     func testDefaultURLsArePrimaryThenRawGitHub() {
         XCTAssertEqual(SkinCatalogService.defaultCatalogURLs.map(\.absoluteString), [
-            "https://provenance-emu.com/skins/catalog.json",
+            "https://emuskins.com/catalog.json",
             "https://raw.githubusercontent.com/Provenance-Emu/skins/main/catalog.json",
         ])
     }
