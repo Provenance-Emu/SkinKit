@@ -1433,8 +1433,10 @@ public struct DeltaSkinView: View {
         // below on every move; a touch latched to a system control never moves on to anything else.
         let held = touchToButtonMap[touchId] ?? []
         let isLatched = systemLatchedTouches.contains(touchId)
+        // The same control means the same command set: with combos on, a standalone "a" button inside
+        // a held ["a", "b"] set is a different control, so sliding onto it must release "b".
         let stillOnHeld = !held.isEmpty && buttons.contains { button in
-            guard inputCommands(for: button).allSatisfy(held.contains) else { return false }
+            guard Set(inputCommands(for: button)) == held else { return false }
             return scaledHitFrame(for: buttonWithEffectiveFrame(button), buttonScaleX: buttonScaleX,
                                   buttonScaleY: buttonScaleY, xOffset: xOffset, yOffset: yOffset).contains(location)
         }

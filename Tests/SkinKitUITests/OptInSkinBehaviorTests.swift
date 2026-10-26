@@ -55,6 +55,7 @@ extension UIKitSerial {
               { "inputs": ["a", "b"], "frame": { "x": 20, "y": 600, "width": 60, "height": 60 } },
               { "inputs": ["x", "menu"], "frame": { "x": 140, "y": 600, "width": 60, "height": 60 } },
               { "inputs": ["start"], "frame": { "x": 260, "y": 600, "width": 60, "height": 60 } },
+              { "inputs": ["a"], "frame": { "x": 340, "y": 600, "width": 60, "height": 60 } },
               { "inputs": { "up": "up", "down": "down", "left": "left", "right": "right" },
                 "frame": { "x": 20, "y": 700, "width": 120, "height": 120 } }
             ]
@@ -126,6 +127,7 @@ extension UIKitSerial {
         private let comboCenter = CGPoint(x: 50, y: 630)
         private let systemComboCenter = CGPoint(x: 170, y: 630)
         private let startCenter = CGPoint(x: 290, y: 630)
+        private let soloACenter = CGPoint(x: 370, y: 630)
         private let emptyOnScreen = CGPoint(x: 200, y: 150)
         private let emptyOffScreen = CGPoint(x: 200, y: 400)
 
@@ -152,6 +154,21 @@ extension UIKitSerial {
             try await touch(view, .began, finger, at: comboCenter)
             #expect(handler.pressed == ["a", "b"])
             try await touch(view, .ended, finger, at: comboCenter)
+            #expect(handler.pressed.isEmpty)
+        }
+
+        @Test("On, single-button touch: sliding from a combo onto one of its inputs' own button releases the rest")
+        func comboSlideOntoConstituentReleasesOthers() async throws {
+            DeltaSkinInteractionSettings.current = DeltaSkinInteractionSettings(
+                isMultiButtonTouchEnabled: { false }, pressesComboInputs: { true })
+            let handler = Handler()
+            let view = try await host(handler)
+            let finger = UITouch()
+            try await touch(view, .began, finger, at: comboCenter)
+            #expect(handler.pressed == ["a", "b"])
+            try await touch(view, .moved, finger, at: soloACenter)
+            #expect(handler.pressed == ["a"], "the finger left the combo, so b must be released")
+            try await touch(view, .ended, finger, at: soloACenter)
             #expect(handler.pressed.isEmpty)
         }
 

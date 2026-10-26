@@ -208,6 +208,8 @@ struct DeltaSkinButtonHighlight: View {
                     width: highlightFrame.width * 1.2,
                     height: highlightFrame.height * 1.2
                 ))
+                // The resizable image would otherwise take the whole GeometryReader (skin-sized) proposal.
+                .frame(width: highlightFrame.width * 1.2, height: highlightFrame.height * 1.2)
                 .mask {
                     highlightShape(
                         for: buttonId,
