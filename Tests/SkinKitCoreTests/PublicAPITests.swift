@@ -148,4 +148,21 @@ struct PublicAPITests {
         #expect(!DeltaSkinCompanionSkinDetection.matcher("com.example"))
         #expect(DeltaSkinThemeSelection.keyPrefix == "com.provenance.deltaskin.theme.")
     }
+
+    @Test("Decoding options and what they need are public")
+    func decodingOptions() throws {
+        let options: DeltaSkin.DecodingOptions = [.stripsComments, .dropsInvalidElements, .limitsFrames, .inheritsEdges,
+                                                  .requiresCompleteDirections, .keepsItemAssets, .canonicalGameTypes]
+        #expect(options == .lenient)
+        #expect(DeltaSkin.DecodingOptions.maxFrameMagnitude > 0)
+        let info = try DeltaSkin.Info.decode(Data(Self.infoJSON.utf8), options: .lenient)
+        #expect(info.representations.isEmpty == false)
+        _ = DeltaSkin.ItemAsset(normal: "a.pdf")
+        #expect(DeltaSkinInfoError.noUsableRepresentation != .unsupportedGameType("x"))
+        #expect(try DeltaSkin.stripComments(Data("{} // x".utf8)).isEmpty == false)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("api-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        try Data(Self.infoJSON.utf8).write(to: url.appendingPathComponent("info.json"))
+        _ = try DeltaSkin(fileURL: url, options: .lenient)
+    }
 }

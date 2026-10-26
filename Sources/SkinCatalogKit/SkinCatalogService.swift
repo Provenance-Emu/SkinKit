@@ -106,7 +106,7 @@ public actor SkinCatalogService {
             log(.warning,
                 "Skin catalog fetch failed (\(networkError.localizedDescription)); "
                     + "using in-memory copy (\(memoryCatalog.skins.count) skins)")
-            return SkinCatalogLoad(catalog: memoryCatalog, networkError: networkError.localizedDescription)
+            return SkinCatalogLoad(catalog: memoryCatalog, error: networkError)
         }
         if let disk = loadDiskCache() {
             log(.warning,
@@ -115,7 +115,7 @@ public actor SkinCatalogService {
                     + "\(Int(now().timeIntervalSince(disk.modified)))s old)")
             memoryCatalog = disk.catalog
             memoryFetchedAt = disk.modified
-            return SkinCatalogLoad(catalog: disk.catalog, networkError: networkError.localizedDescription)
+            return SkinCatalogLoad(catalog: disk.catalog, error: networkError)
         }
         throw networkError
     }
