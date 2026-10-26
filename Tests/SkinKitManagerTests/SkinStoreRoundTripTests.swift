@@ -182,7 +182,7 @@ final class SkinStoreRoundTripTests {
         defer { cleanup() }
         let installer = SkinStoreInstaller(
             policy: preset.policy,
-            downloader: FakeDownloader(source: try archive("N64-Test", as: "download.manicskin")),
+            downloader: FakeDownloader(source: try archive("GameCube-Test", as: "download.manicskin")),
             record: record, appName: "iCube",
             installStep: installStep(policy: preset.policy, accepted: [.gamecube])
         )
@@ -191,17 +191,18 @@ final class SkinStoreRoundTripTests {
         await installer.install(entry)
         #expect(installer.state(for: entry) == .installed)
         // The GameCube shelf installs as-is: no retarget, so the identifier is the skin's own.
-        #expect(reopen().load() == ["6f1c7b2a9d3e4f50": "com.provenance.test.n64"])
+        #expect(reopen().load() == ["6f1c7b2a9d3e4f50": "com.provenance.test.gamecube"])
 
         let listed = try await manager.availableSkins(forceRescan: true)
-        #expect(listed.map(\.identifier) == ["com.provenance.test.n64"])
+        #expect(listed.map(\.identifier) == ["com.provenance.test.gamecube"])
+        #expect(listed.map(\.gameType) == [.gamecube])
 
         let system = SkinSystemID("com.provenance.gamecube")
-        selection.setSkin("com.provenance.test.n64", for: system, orientation: .portrait, scope: .system)
+        selection.setSkin("com.provenance.test.gamecube", for: system, orientation: .portrait, scope: .system)
         #expect(selection.hasExplicitPackagedSkinSelection(for: system, gameIds: ["any-game"]))
-        #expect(selection.effectiveSkinIdentifier(for: system, gameId: "any-game", orientation: .portrait) == "com.provenance.test.n64")
+        #expect(selection.effectiveSkinIdentifier(for: system, gameId: "any-game", orientation: .portrait) == "com.provenance.test.gamecube")
 
-        try await manager.deleteSkin("com.provenance.test.n64")
+        try await manager.deleteSkin("com.provenance.test.gamecube")
         installer.reconcileInstalled(with: Set(try await manager.availableSkins().map(\.identifier)))
         #expect(installer.state(for: entry) == .idle)
         #expect(reopen().load().isEmpty)
