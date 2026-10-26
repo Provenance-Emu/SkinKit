@@ -51,6 +51,25 @@ public final class DeltaSkinSelectionManager: ObservableObject {
         #endif
     }
 
+    /// Which in-memory pick wins when both a system pick and a game pick exist for the same
+    /// system. Persisted picks always rank game over system; this only orders the two session levels.
+    public enum SessionPickOrder: Sendable, Equatable {
+        /// Game session pick, then system session pick. Provenance's order, and the default.
+        case gameFirst
+        /// System session pick, then game session pick. iFly's `effectiveSkinIdentifier` order
+        /// before it adopted SkinKit.
+        case systemFirst
+    }
+
+    /// The order `effectiveSkinIdentifier(for:gameId:orientation:)` checks the two session levels in.
+    /// `effectiveGameSkinIdentifier` and the multi-key variants always check the game pick first, as
+    /// they did in Provenance and iFly.
+    public var sessionPickOrder: SessionPickOrder {
+        get { queue.sync { _sessionPickOrder } }
+        set { queue.sync { _sessionPickOrder = newValue } }
+    }
+    private var _sessionPickOrder: SessionPickOrder = .gameFirst
+
     /// Queue for thread-safe operations
     private let queue = DispatchQueue(label: "com.provenance.deltaskin.selection-manager")
 
@@ -153,7 +172,8 @@ public final class DeltaSkinSelectionManager: ObservableObject {
     // MARK: - Public API: Getting Effective Skin
 
     /// Get the effective skin identifier for a system/game combination
-    /// Priority order: Session (game-specific) > Session (system) > Game preference > System preference
+    /// Priority order: Session (game-specific) > Session (system) > Game preference > System preference.
+    /// `sessionPickOrder` swaps the first two.
     /// - Parameters:
     ///   - systemId: The system identifier
     ///   - gameId: Optional game identifier
@@ -165,43 +185,44 @@ public final class DeltaSkinSelectionManager: ObservableObject {
         orientation: SkinOrientation
     ) -> String? {
         return queue.sync {
-            // Priority 1: Game-specific session skin
-            if let gameId = gameId {
-                if let gameSessionSkin = getSessionSkin(for: systemId, gameId: gameId, orientation: orientation) {
-                    if gameSessionSkin == Self.builtInSkinPreferenceToken {
-                        return nil
-                    }
-                    return gameSessionSkin
-                }
-            }
-
-            // Priority 2: System-level session skin
-            if let systemSessionSkin = getSessionSkin(for: systemId, gameId: nil, orientation: orientation) {
-                if systemSessionSkin == Self.builtInSkinPreferenceToken {
-                    return nil
-                }
-                return systemSessionSkin
-            }
-
-            // Priority 3: Game preference
-            if let gameId = gameId {
-                if let gamePref = preferences.selectedSkinIdentifier(for: gameId, orientation: orientation) {
-                    if gamePref == Self.builtInSkinPreferenceToken {
-                        return nil
-                    }
-                    return gamePref
-                }
-            }
-
-            // Priority 4: System preference
-            if let systemPref = preferences.selectedSkinIdentifier(for: systemId, orientation: orientation) {
-                if systemPref == Self.builtInSkinPreferenceToken {
-                    return nil
-                }
-                return systemPref
-            }
-            return nil
+            effectiveSkinIdentifierLocked(for: systemId, gameId: gameId, orientation: orientation, order: _sessionPickOrder)
         }
+    }
+
+    /// Must be called on `queue`.
+    private func effectiveSkinIdentifierLocked(
+        for systemId: SkinSystemID,
+        gameId: String?,
+        orientation: SkinOrientation,
+        order: SessionPickOrder
+    ) -> String? {
+        func resolved(_ pick: String) -> String? {
+            pick == Self.builtInSkinPreferenceToken ? nil : pick
+        }
+
+        // Priorities 1 and 2: the session picks, in the configured order.
+        let gameSession: String? = gameId.flatMap { getSessionSkin(for: systemId, gameId: $0, orientation: orientation) }
+        let systemSession = getSessionSkin(for: systemId, gameId: nil, orientation: orientation)
+        let sessionPick: String?
+        switch order {
+        case .gameFirst: sessionPick = gameSession ?? systemSession
+        case .systemFirst: sessionPick = systemSession ?? gameSession
+        }
+        if let sessionPick {
+            return resolved(sessionPick)
+        }
+
+        // Priority 3: Game preference
+        if let gameId = gameId,
+           let gamePref = preferences.selectedSkinIdentifier(for: gameId, orientation: orientation) {
+            return resolved(gamePref)
+        }
+
+        // Priority 4: System preference
+        if let systemPref = preferences.selectedSkinIdentifier(for: systemId, orientation: orientation) {
+            return resolved(systemPref)
+        }
+        return nil
     }
 
     /// Effective skin for one orientation, checking every key a game may be stored under.
@@ -240,7 +261,9 @@ public final class DeltaSkinSelectionManager: ObservableObject {
         gameId: String,
         orientation: SkinOrientation
     ) -> String? {
-        return effectiveSkinIdentifier(for: systemId, gameId: gameId, orientation: orientation)
+        return queue.sync {
+            effectiveSkinIdentifierLocked(for: systemId, gameId: gameId, orientation: orientation, order: .gameFirst)
+        }
     }
 
     /// `true` when the user has picked a packaged `.deltaskin` (not the built-in controller)
