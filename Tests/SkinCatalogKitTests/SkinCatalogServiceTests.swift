@@ -164,6 +164,17 @@ final class SkinCatalogServiceTests: XCTestCase {
         XCTAssertEqual(load.catalog.skins.count, SkinCatalogFixture.entryCount)
         XCTAssertTrue(load.isFallback)
         XCTAssertNotNil(load.networkError)
+        // The error itself comes back too, so an app can localize it; the text is still there.
+        let error = try XCTUnwrap(load.error as? SkinCatalogError)
+        XCTAssertEqual(load.networkError, error.localizedDescription)
+        XCTAssertTrue(error.message(localizing: { "<\($0)>" }).hasPrefix("<The skin catalog"), "the format string goes through the app's lookup")
+    }
+
+    func testLoadBuiltFromTextAloneStillWorks() {
+        let load = SkinCatalogLoad(catalog: SkinCatalog(skins: []), networkError: "offline")
+        XCTAssertTrue(load.isFallback)
+        XCTAssertEqual(load.networkError, "offline")
+        XCTAssertNil(load.error)
     }
 
     func testHTTPErrorFallsBackToCacheOrThrows() async throws {
@@ -189,6 +200,7 @@ final class SkinCatalogServiceTests: XCTestCase {
         let load = try await makeService().load()
         XCTAssertFalse(load.isFallback)
         XCTAssertNil(load.networkError)
+        XCTAssertNil(load.error)
     }
 
     func testCachedCatalogNeverTouchesNetwork() async throws {

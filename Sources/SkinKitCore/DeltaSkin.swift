@@ -16,30 +16,27 @@ public struct DeltaSkin: DeltaSkinProtocol {
 
     /// Initialize from either a .deltaskin file or directory
     public init(fileURL: URL) throws {
+        try self.init(fileURL: fileURL, options: [])
+    }
+
+    /// Initialize from either a .deltaskin file or directory, reading `info.json` under `options`.
+    ///
+    /// With no options this is exactly `init(fileURL:)`. See `DecodingOptions`; `.lenient` is iCube's reading.
+    public init(fileURL: URL, options: DecodingOptions) throws {
         self.fileURL = fileURL
 
         let isDirectory = (try? fileURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
         DLOG("Loading DeltaSkin from \(fileURL.lastPathComponent) (isDirectory: \(isDirectory))")
 
+        let infoData: Data
         if isDirectory {
             // Load from directory
             let infoURL = fileURL.appendingPathComponent("info.json")
-            guard let infoData = try? Data(contentsOf: infoURL) else {
+            guard let data = try? Data(contentsOf: infoURL) else {
                 ELOG("Missing info.json in directory: \(fileURL.path)")
                 throw DeltaSkinError.missingInfoFile
             }
-
-            // Store raw dictionary
-            guard let jsonObject = try? JSONSerialization.jsonObject(with: infoData),
-                  let rawDict = jsonObject as? [String: Any] else {
-                throw DeltaSkinError.invalidInfoFile
-            }
-            self.rawDictionary = rawDict
-
-            let decoder = JSONDecoder()
-            let sanitizedData = try sanitizeJSON(infoData)
-            self.info = try decoder.decode(Info.self, from: sanitizedData)
-
+            infoData = data
         } else {
             // Load from .deltaskin archive
             guard let archive = try? Archive(url: fileURL, accessMode: .read, pathEncoding: nil) else {
@@ -48,22 +45,14 @@ public struct DeltaSkin: DeltaSkinProtocol {
             }
 
             guard let infoEntry = archive["info.json"],
-                  let infoData = archive.extractData(infoEntry) else {
+                  let data = archive.extractData(infoEntry) else {
                 ELOG("Failed to extract info.json from archive: \(fileURL.path)")
                 throw DeltaSkinError.missingInfoFile
             }
-
-            // Store raw dictionary
-            guard let jsonObject = try? JSONSerialization.jsonObject(with: infoData),
-                  let rawDict = jsonObject as? [String: Any] else {
-                throw DeltaSkinError.invalidInfoFile
-            }
-            self.rawDictionary = rawDict
-
-            let decoder = JSONDecoder()
-            let sanitizedData = try sanitizeJSON(infoData)
-            self.info = try decoder.decode(Info.self, from: sanitizedData)
+            infoData = data
         }
+
+        (self.info, self.rawDictionary) = try Info.decodeWithRawDictionary(infoData, options: options)
 
         DLOG("Successfully loaded skin info: \(info.name)")
     }
@@ -424,6 +413,27 @@ public struct DeltaSkin: DeltaSkinProtocol {
             case name, identifier, gameTypeIdentifier, debug, representations, keyboardOverlay, themes, gameOverrides, caseController
         }
 
+        /// Decodes an `info.json` body under `options` (none: the strict reading every app has always had).
+        public static func decode(_ data: Data, options: DecodingOptions = []) throws -> Info {
+            try decodeWithRawDictionary(data, options: options).info
+        }
+
+        /// The decoded `Info` and the JSON dictionary it came from (after the options rewrote it).
+        static func decodeWithRawDictionary(_ data: Data, options: DecodingOptions) throws -> (info: Info, raw: [String: Any]) {
+            let prepared = options.isEmpty ? data : try DeltaSkinInfoPreparer.prepare(data, options: options)
+
+            // Store raw dictionary
+            guard let jsonObject = try? JSONSerialization.jsonObject(with: prepared),
+                  let rawDict = jsonObject as? [String: Any] else {
+                throw DeltaSkinError.invalidInfoFile
+            }
+
+            let decoder = JSONDecoder()
+            decoder.userInfo[DecodingOptions.userInfoKey] = options
+            let sanitizedData = options.isEmpty ? try sanitizeJSON(data) : prepared
+            return (try decoder.decode(Info.self, from: sanitizedData), rawDict)
+        }
+
         public init(from decoder: Decoder) throws {
             let container = try decoder.container(keyedBy: CodingKeys.self)
 
@@ -732,8 +742,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
         /// Optional per-button visual states (normal/pressed images, animated frames)
         public let states: DeltaSkinButtonStates?
 
+        /// Manic's per-item art (`"asset": {"normal": ...}`). Read only with `DecodingOptions.keepsItemAssets`;
+        /// nil otherwise.
+        public let asset: ItemAsset?
+
         private enum CodingKeys: String, CodingKey {
-            case inputs, frame, extendedEdges, thumbstick, haptic, states
+            case inputs, frame, extendedEdges, thumbstick, haptic, states, asset
         }
 
         public init(from decoder: Decoder) throws {
@@ -757,6 +771,9 @@ public struct DeltaSkin: DeltaSkinProtocol {
             thumbstick = try container.decodeIfPresent(ThumbstickConfig.self, forKey: .thumbstick)
             haptic = try container.decodeIfPresent(DeltaSkinHaptic.self, forKey: .haptic)
             states = try container.decodeIfPresent(DeltaSkinButtonStates.self, forKey: .states)
+
+            let options = decoder.userInfo[DecodingOptions.userInfoKey] as? DecodingOptions ?? []
+            asset = options.contains(.keepsItemAssets) ? try container.decodeIfPresent(ItemAsset.self, forKey: .asset) : nil
         }
 
         public func encode(to encoder: Encoder) throws {
@@ -772,6 +789,7 @@ public struct DeltaSkin: DeltaSkinProtocol {
             try container.encodeIfPresent(thumbstick, forKey: .thumbstick)
             try container.encodeIfPresent(haptic, forKey: .haptic)
             try container.encodeIfPresent(states, forKey: .states)
+            try container.encodeIfPresent(asset, forKey: .asset)
         }
     }
 
@@ -963,6 +981,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
             self.extendedEdges = extendedEdges
             self.gameScreenFrame = gameScreenFrame
         }
+    }
+
+    /// Removes `//` comments (whole-line or trailing) from an `info.json` body without touching `//` inside a
+    /// string, such as a URL. This is what `DecodingOptions.stripsComments` applies.
+    public static func stripComments(_ data: Data) throws -> Data {
+        try DeltaSkinInfoPreparer.stripComments(data)
     }
 
     public var jsonRepresentation: [String: Any] {
