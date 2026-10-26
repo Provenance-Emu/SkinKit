@@ -30,10 +30,14 @@ public protocol DeltaSkinInputHandling: AnyObject {
     /// The role must agree with what ``buttonPressed(_:)`` does with the token, so it lives with the
     /// handler. The default treats every token as gameplay.
     func touchRole(forToken token: String) -> TouchInputRole
+    /// What a press-and-hold on an empty area does, for a view created with `allowsEmptyAreaHold`.
+    /// `nil` (the default): nothing; see ``DeltaSkinHoldHandling``.
+    var holdHandler: (any DeltaSkinHoldHandling)? { get }
 }
 
 public extension DeltaSkinInputHandling {
     func touchRole(forToken token: String) -> TouchInputRole { .gameplay }
+    var holdHandler: (any DeltaSkinHoldHandling)? { nil }
 }
 
 /// An input handler that forwards nothing to an emulator: it records state, so the skin views are

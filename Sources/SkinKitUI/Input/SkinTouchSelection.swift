@@ -6,8 +6,11 @@ import CoreGraphics
 public struct SkinTouchCandidate: Equatable, Sendable {
     /// Caller-defined identity (the skin button id).
     public let id: String
-    /// The input token this control presses.
+    /// The input token this control presses (the first one, for a combo hotspot).
     public let command: String
+    /// The rest of a combo hotspot's inputs (`DeltaSkinButton.comboInputs` after the first), pressed
+    /// together with `command`. Empty for an ordinary control.
+    public let additionalCommands: [String]
     /// Distance from the touch to the control's centre, in view points.
     public let distance: CGFloat
     /// Directional group (d-pad style).
@@ -15,15 +18,19 @@ public struct SkinTouchCandidate: Equatable, Sendable {
     public let isThumbstick: Bool
     public let role: TouchInputRole
 
-    public init(id: String, command: String, distance: CGFloat, isDPad: Bool, isThumbstick: Bool,
-                role: TouchInputRole) {
+    public init(id: String, command: String, additionalCommands: [String] = [], distance: CGFloat,
+                isDPad: Bool, isThumbstick: Bool, role: TouchInputRole) {
         self.id = id
         self.command = command
+        self.additionalCommands = additionalCommands
         self.distance = distance
         self.isDPad = isDPad
         self.isThumbstick = isThumbstick
         self.role = role
     }
+
+    /// Every input this control presses: `command`, then `additionalCommands`.
+    public var commands: [String] { [command] + additionalCommands }
 
     /// D-pads and sticks are gameplay whatever their token says.
     public var allowsSlideIn: Bool { isDPad || isThumbstick || role.isGameplay }
@@ -42,7 +49,7 @@ public struct SkinTouchResolution: Equatable, Sendable {
     /// True when the touch went down on a system control: it is latched to that control from now on.
     public let latchesToSystem: Bool
 
-    public var commands: Set<String> { Set(pressed.map(\.command)) }
+    public var commands: Set<String> { Set(pressed.flatMap(\.commands)) }
 }
 
 /// What to do with a touch that is already down when it reports a new location.
