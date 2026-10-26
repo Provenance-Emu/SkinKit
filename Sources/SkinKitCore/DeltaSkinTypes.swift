@@ -380,6 +380,9 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
     case threeDS            // 3DS
     case pokemonMini
     case dreamcast
+    case naomi              // Sega NAOMI arcade
+    case naomi2             // Sega NAOMI 2 arcade
+    case atomiswave         // Sammy Atomiswave arcade
 
     // NEC
     case pce
@@ -452,6 +455,7 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
             .n64,                   // Nintendo 3D
             .nds,                   // Nintendo DS
             .dreamcast,             // Sega Dreamcast
+            .naomi, .naomi2, .atomiswave, // Sega/Sammy arcade (Dreamcast-derived)
             .genesis, .gamegear, .masterSystem, .segaCD, .sega32X, .sg1000, // Sega
             .psx, .psp,             // Sony
             .saturn,                // Sega Saturn
@@ -525,6 +529,9 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
         case "sg1000": return .sg1000
         case "ss", "saturn": return .saturn
         case "dc", "dreamcast": return .dreamcast
+        case "naomi": return .naomi
+        case "naomi2": return .naomi2
+        case "aw", "atomiswave": return .atomiswave
 
         // Sony
         case "psx", "ps1", "ps2", "ps3": return .psx
@@ -699,7 +706,7 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
         case .masterSystem: return "com.rileytestut.delta.game.ms"
         case .psx: return "com.rileytestut.delta.game.psx"
         // Not present in Delta's identifiers
-        case .dreamcast, .segaCD, .sega32X, .sg1000, .saturn, .virtualBoy, .psp, .threeDS, .pokemonMini, .pce, .pcecd, .pcfx, .sgfx, .vectrex, .atari2600, .atari5200, .atari7800, .jaguar, .jaguarcd, .lynx, .atari8bit, .atarist, .neogeo, .ngp, .ngpc, .wonderswan, .wonderswancolor, .gamecube, .wii, ._3do, .appleII, .c64, .cdi, .colecovision, .cps1, .cps2, .cps3, .doom, .dos, .ep128, .intellivision, .macintosh, .mame, .megaduck, .msx, .msx2, .music, .odyssey2, .palmos, .pc98, .quake, .quake2, .retroarch, .supervision, .tic80, .wolf3d, .zxspectrum:
+        case .dreamcast, .naomi, .naomi2, .atomiswave, .segaCD, .sega32X, .sg1000, .saturn, .virtualBoy, .psp, .threeDS, .pokemonMini, .pce, .pcecd, .pcfx, .sgfx, .vectrex, .atari2600, .atari5200, .atari7800, .jaguar, .jaguarcd, .lynx, .atari8bit, .atarist, .neogeo, .ngp, .ngpc, .wonderswan, .wonderswancolor, .gamecube, .wii, ._3do, .appleII, .c64, .cdi, .colecovision, .cps1, .cps2, .cps3, .doom, .dos, .ep128, .intellivision, .macintosh, .mame, .megaduck, .msx, .msx2, .music, .odyssey2, .palmos, .pc98, .quake, .quake2, .retroarch, .supervision, .tic80, .wolf3d, .zxspectrum:
             return nil
         }
     }
@@ -728,6 +735,9 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
         case .threeDS: return prefix + "3ds"
         case .pokemonMini: return prefix + "pm"
         case .dreamcast: return prefix + "dc"
+        case .naomi: return prefix + "naomi"
+        case .naomi2: return prefix + "naomi2"
+        case .atomiswave: return prefix + "aw"
         case .gamecube: return prefix + "ngc"
         case .wii: return prefix + "wii"
         // Not present in Manic's identifiers
@@ -762,6 +772,9 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
              (.sg1000, "sg1000"),
              (.saturn, "ss"), (.saturn, "saturn"),
              (.dreamcast, "dc"), (.dreamcast, "dreamcast"),
+             (.naomi, "naomi"),
+             (.naomi2, "naomi2"),
+             (.atomiswave, "aw"), (.atomiswave, "atomiswave"),
              (.psx, "psx"), (.psx, "ps1"), (.psx, "ps2"), (.psx, "ps3"),
              (.psp, "psp"),
              (.pokemonMini, "pm"), (.pokemonMini, "pokemonmini"),

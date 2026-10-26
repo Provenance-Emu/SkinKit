@@ -162,9 +162,11 @@ public struct DeltaSkin: DeltaSkinProtocol {
 
         return items.enumerated().map { index, item in
             let input: DeltaSkinInput
+            var comboInputs: [String] = []
             switch item.inputs {
             case .single(let inputs):
                 input = .single(inputs.first ?? "")
+                comboInputs = inputs
             case .directional(let mapping):
                 input = .directional(mapping)
             }
@@ -175,7 +177,8 @@ public struct DeltaSkin: DeltaSkinProtocol {
                 frame: item.frame,
                 extendedEdges: item.extendedEdges,
                 haptic: item.haptic,
-                states: item.states
+                states: item.states,
+                comboInputs: comboInputs
             )
         }
     }
@@ -974,10 +977,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
         let buttons = rep.items?.map { item -> DeltaSkinButton in
             // Convert input type
             let input: DeltaSkinInput
+            var comboInputs: [String] = []
             switch item.inputs {
             case .single(let inputs):
                 // Use first input as primary if multiple exist
                 input = .single(inputs[0])
+                comboInputs = inputs
             case .directional(let mapping):
                 input = .directional(mapping)
             }
@@ -995,7 +1000,8 @@ public struct DeltaSkin: DeltaSkinProtocol {
                 frame: item.frame,
                 extendedEdges: item.extendedEdges,
                 haptic: item.haptic,
-                states: item.states
+                states: item.states,
+                comboInputs: comboInputs
             )
         } ?? []
 

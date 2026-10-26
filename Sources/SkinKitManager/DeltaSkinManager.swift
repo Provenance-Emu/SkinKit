@@ -44,13 +44,21 @@ public final class DeltaSkinManager: ObservableObject, DeltaSkinManagerProtocol 
         /// allows everything.
         public var isAllowedInAutomaticSelection: @Sendable (_ skinIdentifier: String) -> Bool
 
+        /// Whether `availableSkins()` reads the skin folders again on every call instead of scanning
+        /// once and serving the cached list. Default `false` (Provenance's behavior: one scan, then
+        /// `reloadSkins()` or `forceRescan` when something changed). iFly's manager rescanned on every
+        /// call, so a file dropped into the folder was always seen by the next read; `.iFly()` sets this.
+        /// Costs a directory listing and an `info.json` read per skin per call.
+        public var rescansOnEveryRead: Bool
+
         public init(
             skinsDirectory: URL,
             bundledSkinLocations: @escaping @Sendable () -> [URL] = Configuration.mainBundleSkins,
             skinExtensions: Set<String> = Configuration.defaultSkinExtensions,
             directoryScanExtensions: Set<String> = Configuration.defaultSkinExtensions.union(["zip"]),
             pathIndexFileName: String = "skin_path_index.json",
-            isAllowedInAutomaticSelection: @escaping @Sendable (String) -> Bool = { _ in true }
+            isAllowedInAutomaticSelection: @escaping @Sendable (String) -> Bool = { _ in true },
+            rescansOnEveryRead: Bool = false
         ) {
             self.skinsDirectory = skinsDirectory
             self.bundledSkinLocations = bundledSkinLocations
@@ -58,6 +66,7 @@ public final class DeltaSkinManager: ObservableObject, DeltaSkinManagerProtocol 
             self.directoryScanExtensions = Set(directoryScanExtensions.map { $0.lowercased() })
             self.pathIndexFileName = pathIndexFileName
             self.isAllowedInAutomaticSelection = isAllowedInAutomaticSelection
+            self.rescansOnEveryRead = rescansOnEveryRead
         }
 
         public static let defaultSkinExtensions: Set<String> = ["deltaskin", "manicskin"]
@@ -94,7 +103,8 @@ public final class DeltaSkinManager: ObservableObject, DeltaSkinManagerProtocol 
         }
 
         /// iFly: `<documents>/Skins`, and the bundle's `Skins/` folder. Its scan reads
-        /// `.deltaskin` and `.manicskin` only, not `.zip`.
+        /// `.deltaskin` and `.manicskin` only, not `.zip`, and every `availableSkins()` rescans
+        /// (`rescansOnEveryRead`).
         public static func iFly(
             documents: URL = Configuration.defaultDocumentsURL,
             bundle: Bundle = .main
@@ -106,7 +116,8 @@ public final class DeltaSkinManager: ObservableObject, DeltaSkinManagerProtocol 
                     let manicSkins = bundle.urls(forResourcesWithExtension: "manicskin", subdirectory: "Skins") ?? []
                     return deltaSkins + manicSkins
                 },
-                directoryScanExtensions: defaultSkinExtensions
+                directoryScanExtensions: defaultSkinExtensions,
+                rescansOnEveryRead: true
             )
         }
     }
@@ -191,7 +202,7 @@ public final class DeltaSkinManager: ObservableObject, DeltaSkinManagerProtocol 
         ILOG("skins: availableSkins(forceRescan: \(forceRescan)) called")
         let skins = try await queue.asyncResult {
             // Only scan if we haven't scanned yet, or if forceRescan is true
-            if !self.hasScanned || forceRescan {
+            if !self.hasScanned || forceRescan || self.configuration.rescansOnEveryRead {
                 ILOG("skins: Scanning for skins (hasScanned: \(self.hasScanned), forceRescan: \(forceRescan))")
                 try self.scanForSkins()
             } else {
