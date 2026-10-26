@@ -73,3 +73,15 @@ struct DeltaSkinArcadeGameTypeTests {
         #expect(try JSONDecoder().decode(Wrapper.self, from: json).gameTypeIdentifier == .naomi)
     }
 }
+
+@Suite("Display type lookup chain")
+struct DeltaSkinDisplayTypeLookupChainTests {
+    @Test("The full-screen types fall back to each other; the special ones only match themselves")
+    func chains() {
+        #expect(DeltaSkinDisplayType.standard.lookupChain == [.standard, .edgeToEdge])
+        #expect(DeltaSkinDisplayType.edgeToEdge.lookupChain == [.edgeToEdge, .standard])
+        for special in [DeltaSkinDisplayType.splitView, .stageManager, .externalDisplay] {
+            #expect(special.lookupChain == [special])
+        }
+    }
+}
