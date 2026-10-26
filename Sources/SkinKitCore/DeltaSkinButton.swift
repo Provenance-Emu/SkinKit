@@ -85,6 +85,12 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
     /// Visual and interaction style of this button (internal; not serialized to JSON).
     public let buttonKind: DeltaSkinButtonKind
 
+    /// Every input a combo hotspot presses together, in `info.json` order (`"inputs": ["a", "b"]`).
+    /// Empty for an ordinary button. `input` is still `.single(first)` for a combo, so a consumer
+    /// that knows nothing about combos presses the first input only, as before; a consumer that does
+    /// (iFly) presses all of these. Never has exactly one element.
+    public let comboInputs: [String]
+
     /// Initialize a new button mapping
     /// - Parameters:
     ///   - id: Unique identifier for this button
@@ -94,6 +100,7 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
     ///   - haptic: Optional per-button haptic feedback configuration
     ///   - states: Optional per-button visual states
     ///   - selfRetracting: When true, the button auto-retracts on release (momentary toggle)
+    ///   - comboInputs: All inputs of a combo hotspot (2 or more), or empty. See `comboInputs`.
     public init(
         id: String,
         input: DeltaSkinInput,
@@ -101,7 +108,8 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         extendedEdges: DeltaSkinEdgeInsets? = nil,
         haptic: DeltaSkinHaptic? = nil,
         states: DeltaSkinButtonStates? = nil,
-        selfRetracting: Bool = false
+        selfRetracting: Bool = false,
+        comboInputs: [String] = []
     ) {
         self.id = id
         self.input = input
@@ -111,6 +119,7 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         self.states = states
         self.selfRetracting = selfRetracting
         self.buttonKind = .normal
+        self.comboInputs = comboInputs.count > 1 ? comboInputs : []
     }
 
     /// Returns a copy of this button with a different frame, preserving all other fields
@@ -124,7 +133,8 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
             haptic: haptic,
             states: states,
             selfRetracting: selfRetracting,
-            buttonKind: buttonKind
+            buttonKind: buttonKind,
+            comboInputs: comboInputs
         )
     }
 
@@ -137,7 +147,8 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         haptic: DeltaSkinHaptic? = nil,
         states: DeltaSkinButtonStates? = nil,
         selfRetracting: Bool = false,
-        buttonKind: DeltaSkinButtonKind
+        buttonKind: DeltaSkinButtonKind,
+        comboInputs: [String] = []
     ) {
         self.id = id
         self.input = input
@@ -147,6 +158,7 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         self.states = states
         self.selfRetracting = selfRetracting
         self.buttonKind = buttonKind
+        self.comboInputs = comboInputs.count > 1 ? comboInputs : []
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -157,6 +169,7 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         case haptic
         case states
         case selfRetracting
+        case comboInputs
     }
 
     public init(from decoder: Decoder) throws {
@@ -169,6 +182,8 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         states = try container.decodeIfPresent(DeltaSkinButtonStates.self, forKey: .states)
         selfRetracting = (try container.decodeIfPresent(Bool.self, forKey: .selfRetracting)) ?? false
         buttonKind = .normal
+        let combo = (try container.decodeIfPresent([String].self, forKey: .comboInputs)) ?? []
+        comboInputs = combo.count > 1 ? combo : []
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -180,6 +195,7 @@ public struct DeltaSkinButton: Identifiable, Codable, Equatable {
         try container.encodeIfPresent(haptic, forKey: .haptic)
         try container.encodeIfPresent(states, forKey: .states)
         if selfRetracting { try container.encode(selfRetracting, forKey: .selfRetracting) }
+        if !comboInputs.isEmpty { try container.encode(comboInputs, forKey: .comboInputs) }
     }
 }
 
