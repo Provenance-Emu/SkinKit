@@ -33,11 +33,19 @@ struct DeltaSkinThumbstick: View {
         guard distanceDelta >= hapticDistanceThreshold else { return }
 
         #if !os(tvOS)
+        // The app's scaled haptics preference (`scaledHapticIntensity`), when it supplies one, gates and
+        // scales these; without it they play at their fixed intensity.
+        let scaled = DeltaSkinInteractionSettings.current.scaledHapticIntensity
         if isEdge {
-            edgeGenerator.impactOccurred(intensity: 0.7)
+            if let intensity = scaled.map({ $0(0.7) }) ?? 0.7 {
+                edgeGenerator.impactOccurred(intensity: CGFloat(intensity))
+            }
         } else {
             // Softer feedback during normal movement
-            impactGenerator.impactOccurred(intensity: min(distance/maxDistance * 0.5, 0.5))
+            let base = Double(min(distance/maxDistance * 0.5, 0.5))
+            if let intensity = scaled.map({ $0(base) }) ?? base {
+                impactGenerator.impactOccurred(intensity: CGFloat(intensity))
+            }
         }
         #endif
         lastHapticDistance = distance

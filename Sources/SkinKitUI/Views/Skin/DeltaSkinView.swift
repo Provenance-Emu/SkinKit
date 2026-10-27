@@ -66,6 +66,9 @@ public struct DeltaSkinView: View {
     let inputHandler: any DeltaSkinInputHandling
     /// Called when the skin's game-screen frame changes (Provenance: `core?.viewportLayoutDelegate?.viewportFrameDidUpdate`).
     let onViewportFrameChange: ((CGRect) -> Void)?
+    /// When `true` (and the input handler supplies a `holdHandler`), a finger that rests on an empty part
+    /// of the game screen fires the handler's hold. Off by default; see ``DeltaSkinHoldHandling``.
+    let allowsEmptyAreaHold: Bool
 
     /// When `true`, button input is suspended and each button shows a drag handle.
     @Binding var isEditMode: Bool
@@ -92,6 +95,16 @@ public struct DeltaSkinView: View {
     @State private var thumbstickImage: UIImage?
 
     @State private var activeThumbsticks: [ActiveThumbstickInfo] = []
+
+    /// Press feedback (`DeltaSkinInteractionSettings.showsTouchFeedback`): highlights that decay after 0.2 s.
+    @State private var feedbackHighlights: [(frame: CGRect, mappingSize: CGSize, buttonId: String, timestamp: Date)] = []
+
+    /// Empty-area hold (`allowsEmptyAreaHold`): pending timers and the fingers whose hold has fired.
+    @State private var holdWorkItems: [ObjectIdentifier: DispatchWorkItem] = [:]
+    @State private var holdActiveTouches: Set<ObjectIdentifier> = []
+    /// The first holder owns the slide; `holdAnchorX` is where it was when its hold fired.
+    @State private var holdSlideOwner: ObjectIdentifier?
+    @State private var holdAnchorX: CGFloat = 0
 
     // Add feedback generator
     #if !os(tvOS)
@@ -335,8 +348,10 @@ public struct DeltaSkinView: View {
         inputHandler: any DeltaSkinInputHandling,
         onViewportFrameChange: ((CGRect) -> Void)? = nil,
         isEditMode: Binding<Bool> = .constant(false),
-        buttonOffsets: DeltaSkinButtonOffsets = .shared
+        buttonOffsets: DeltaSkinButtonOffsets = .shared,
+        allowsEmptyAreaHold: Bool = false
     ) {
+        self.allowsEmptyAreaHold = allowsEmptyAreaHold
         self.skin = skin
         self.traits = traits
         self.filters = filters
@@ -749,6 +764,18 @@ public struct DeltaSkinView: View {
                             }
                         }
 
+                        // Press highlights (opt-in)
+                        ForEach(feedbackHighlights, id: \.timestamp) { highlight in
+                            DeltaSkinButtonHighlight(
+                                frame: highlight.frame,
+                                mappingSize: highlight.mappingSize,
+                                previewSize: geometry.size,
+                                buttonId: highlight.buttonId
+                            )
+                            .zIndex(3)
+                            .allowsHitTesting(false)
+                        }
+
                         // Thumbstick layer - should be on top
                         ForEach(activeThumbsticks) { thumbstick in
                             DeltaSkinThumbstick(
@@ -760,6 +787,18 @@ public struct DeltaSkinView: View {
                                 inputHandler: inputHandler
                             )
                             .zIndex(4)
+                        }
+
+                        // A circle under each finger (opt-in): one per ACTIVE touch, so it follows the finger
+                        // instead of leaving a trail of every point visited.
+                        if DeltaSkinInteractionSettings.current.showsTouchFeedback() {
+                            ForEach(Array(touchLocationsMap.keys), id: \.self) { touchId in
+                                if let location = touchLocationsMap[touchId] {
+                                    DeltaSkinTouchIndicator(at: location)
+                                        .zIndex(5)
+                                        .allowsHitTesting(false)
+                                }
+                            }
                         }
 
                         // Edit mode overlay — drag handles for repositioning buttons
@@ -891,6 +930,14 @@ public struct DeltaSkinView: View {
                                 // Handle this touch location (touch-down: system controls may fire)
                                 handleTouchAtLocation(location, in: geometry.size, touchId: touch.id, isTouchBegin: true)
 
+                                // Empty-area hold: a touch that hit nothing it could press, over the game screen,
+                                // arms the hold. Additive: the button work above has already run.
+                                if allowsEmptyAreaHold, let holdHandler = inputHandler.holdHandler,
+                                   !touchHitsAnyControl(location, in: geometry.size),
+                                   touchIsInGameScreen(location, in: geometry.size) {
+                                    scheduleHold(for: touch.id, handler: holdHandler)
+                                }
+
                                 // Start a long-press timer for turbo toggle (0.6s hold)
                                 if DeltaSkinInteractionSettings.current.isTurboEnabled() {
                                     let touchId = touch.id
@@ -961,6 +1008,19 @@ public struct DeltaSkinView: View {
 
                                     // Handle this touch location
                                     handleTouchAtLocation(location, in: geometry.size, touchId: touch.id)
+
+                                    if allowsEmptyAreaHold, let holdHandler = inputHandler.holdHandler {
+                                        // A pending hold is cancelled only by drifting ONTO a control; drifting
+                                        // within the empty area keeps it. One that has fired stays.
+                                        if holdWorkItems[touch.id] != nil,
+                                           touchHitsAnyControl(location, in: geometry.size) {
+                                            cancelPendingHold(for: touch.id)
+                                        }
+                                        // The holder that owns the slide reports how far it has moved.
+                                        if touch.id == holdSlideOwner, holdActiveTouches.contains(touch.id) {
+                                            holdHandler.holdDidSlide(dx: location.x - holdAnchorX)
+                                        }
+                                    }
                                 } else {
                                     DLOG("Skipping touch \(touch.id) - hasn't moved significantly and not D-pad")
                                 }
@@ -975,6 +1035,8 @@ public struct DeltaSkinView: View {
                                 turboLongPressTimers[touch.id]?.invalidate()
                                 turboLongPressTimers.removeValue(forKey: touch.id)
                                 turboToggledThisTouch.remove(touch.id)
+
+                                endHold(for: touch.id, handler: inputHandler.holdHandler)
 
                                 // Remove this touch point from visualization
                                 touchLocations.remove(HashableTouchPoint(touch.location))
@@ -1012,6 +1074,7 @@ public struct DeltaSkinView: View {
                                 DLOG("All touches ended, cleaning up")
 
                                 // Reset state
+                                feedbackHighlights.removeAll()
                                 touchLocations.removeAll()
                                 processedTouches.removeAll()
                                 currentlyPressedButton = nil
@@ -1370,8 +1433,10 @@ public struct DeltaSkinView: View {
         // below on every move; a touch latched to a system control never moves on to anything else.
         let held = touchToButtonMap[touchId] ?? []
         let isLatched = systemLatchedTouches.contains(touchId)
+        // The same control means the same command set: with combos on, a standalone "a" button inside
+        // a held ["a", "b"] set is a different control, so sliding onto it must release "b".
         let stillOnHeld = !held.isEmpty && buttons.contains { button in
-            guard held.contains(extractInputCommand(from: button)) else { return false }
+            guard Set(inputCommands(for: button)) == held else { return false }
             return scaledHitFrame(for: buttonWithEffectiveFrame(button), buttonScaleX: buttonScaleX,
                                   buttonScaleY: buttonScaleY, xOffset: xOffset, yOffset: yOffset).contains(location)
         }
@@ -1414,7 +1479,9 @@ public struct DeltaSkinView: View {
             guard isHit else { continue }
 
             let distance = distanceToButtonCenter(location, button: effective, buttonScaleX: buttonScaleX, buttonScaleY: buttonScaleY, xOffset: xOffset, yOffset: yOffset)
-            candidates.append(SkinTouchCandidate(id: button.id, command: extractInputCommand(from: button),
+            let commands = inputCommands(for: button)
+            candidates.append(SkinTouchCandidate(id: button.id, command: commands.first ?? extractInputCommand(from: button),
+                                                 additionalCommands: Array(commands.dropFirst()),
                                                  distance: distance, isDPad: isDPad,
                                                  isThumbstick: isThumbstick(button), role: touchRole(of: button)))
             buttonsById[button.id] = button
@@ -1474,6 +1541,14 @@ public struct DeltaSkinView: View {
                 }
                 DLOG("Associated touch \(touchId) with \(desired)")
 
+                if DeltaSkinInteractionSettings.current.showsTouchFeedback() {
+                    for pressedCandidate in resolution.pressed {
+                        guard let pressedButton = buttonsById[pressedCandidate.id] else { continue }
+                        showPressHighlight(for: buttonWithEffectiveFrame(pressedButton).frame,
+                                           mappingSize: mappingSize, buttonId: pressedButton.id)
+                    }
+                }
+
                 // Don't update currentlyPressedButton - it's legacy and causes issues with multi-touch
                 // Each touch is tracked independently via touchToButtonMap and touchToDPadMap
             }
@@ -1503,14 +1578,119 @@ public struct DeltaSkinView: View {
         }
     }
 
+    // MARK: - Empty-area hold (opt-in: `allowsEmptyAreaHold`, `DeltaSkinInputHandling.holdHandler`)
+
+    /// Whether `location` hits any control a touch could press (a button, a D-pad direction or a
+    /// thumbstick), using the same hit areas as `handleTouchAtLocation`. Synchronous and geometry-only:
+    /// the thumbstick path fills its tracking maps asynchronously, so a map lookup would briefly see a
+    /// thumbstick touch as "on nothing".
+    private func touchHitsAnyControl(_ location: CGPoint, in size: CGSize) -> Bool {
+        guard let buttons = skin.buttons(for: traits),
+              let mappingSize = skin.mappingSize(for: traits) else { return false }
+        let (scaleX, scaleY, xOffset, yOffset) = calculateButtonTransform(
+            in: size, mappingSize: mappingSize, safeAreaInsets: viewSafeAreaInsets
+        )
+        return buttons.contains { button in
+            let effective = buttonWithEffectiveFrame(button)
+            if case .directional = button.input {
+                return isLocationInDPadDirection(location, button: effective, buttonScaleX: scaleX,
+                                                 buttonScaleY: scaleY, xOffset: xOffset, yOffset: yOffset)
+            }
+            return scaledHitFrame(for: effective, buttonScaleX: scaleX, buttonScaleY: scaleY,
+                                  xOffset: xOffset, yOffset: yOffset).contains(location)
+        }
+    }
+
+    /// Whether `location` is inside the skin's game-screen rect, so a hold arms only over the screen and
+    /// not on the bezel or empty space around it. Fails open (`true`) when the skin declares no screen or
+    /// mapping size, so such skins hold anywhere.
+    private func touchIsInGameScreen(_ location: CGPoint, in size: CGSize) -> Bool {
+        guard let outputFrame = skin.screens(for: traits)?.first?.outputFrame,
+              let mappingSize = skin.mappingSize(for: traits) else { return true }
+        // `outputFrame` is in mapping space (pixels) for most skins, normalized 0-1 for some.
+        let inMapping = outputFrame.maxX > 1 || outputFrame.maxY > 1
+            ? outputFrame
+            : CGRect(x: outputFrame.minX * mappingSize.width, y: outputFrame.minY * mappingSize.height,
+                     width: outputFrame.width * mappingSize.width, height: outputFrame.height * mappingSize.height)
+        let (scaleX, scaleY, xOffset, yOffset) = calculateButtonTransform(
+            in: size, mappingSize: mappingSize, safeAreaInsets: viewSafeAreaInsets
+        )
+        let screenRect = CGRect(x: inMapping.minX * scaleX + xOffset, y: inMapping.minY * scaleY + yOffset,
+                                width: inMapping.width * scaleX, height: inMapping.height * scaleY)
+        return screenRect.contains(location)
+    }
+
+    /// A touch landed on an empty part of the screen: fire the hold after the handler's delay.
+    private func scheduleHold(for touchId: ObjectIdentifier, handler: any DeltaSkinHoldHandling) {
+        holdWorkItems[touchId]?.cancel()
+        let work = DispatchWorkItem {
+            // Still pending? (cancelling removes the item from the map.)
+            guard holdWorkItems[touchId] != nil else { return }
+            holdWorkItems.removeValue(forKey: touchId)
+            // Only the first finger starts the hold and owns the slide; later ones join the count.
+            if holdActiveTouches.isEmpty {
+                // Measured from where the finger is when the hold fires, not where it went down.
+                holdAnchorX = touchLocationsMap[touchId]?.x ?? 0
+                holdSlideOwner = touchId
+                handler.holdDidBegin()
+            }
+            holdActiveTouches.insert(touchId)
+        }
+        holdWorkItems[touchId] = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + handler.holdDelay, execute: work)
+    }
+
+    /// Cancels a hold that has not fired yet. A hold that has fired stays until its finger lifts.
+    private func cancelPendingHold(for touchId: ObjectIdentifier) {
+        holdWorkItems.removeValue(forKey: touchId)?.cancel()
+    }
+
+    /// A finger lifted: drop its pending timer and, if its hold fired, its share of the hold.
+    private func endHold(for touchId: ObjectIdentifier, handler: (any DeltaSkinHoldHandling)?) {
+        cancelPendingHold(for: touchId)
+        if holdSlideOwner == touchId { holdSlideOwner = nil }
+        if holdActiveTouches.remove(touchId) != nil, holdActiveTouches.isEmpty {
+            handler?.holdDidEnd()
+        }
+    }
+
+    /// The intensity a haptic of `base` strength plays at, or `nil` for none: the app's scaled preference
+    /// when it supplies one (`scaledHapticIntensity`), else `base` while button vibration is on.
+    private func hapticIntensity(_ base: Double) -> CGFloat? {
+        DeltaSkinInteractionSettings.current.hapticIntensity(base).map { CGFloat($0) }
+    }
+
+    /// Adds a press highlight that decays after 0.2 s.
+    private func showPressHighlight(for frame: CGRect, mappingSize: CGSize, buttonId: String) {
+        let highlight = (frame: frame, mappingSize: mappingSize, buttonId: buttonId, timestamp: Date())
+        feedbackHighlights.append(highlight)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            feedbackHighlights.removeAll { $0.timestamp <= highlight.timestamp }
+        }
+    }
+
     /// The role of a skin button for touch: D-pads are gameplay, console switches are system controls,
     /// and a single input goes by its token (see `DeltaSkinInputHandling.touchRole(forToken:)`).
     private func touchRole(of button: DeltaSkinButton) -> TouchInputRole {
         if button.buttonKind == .hardwareSwitch { return .system }
         switch button.input {
         case .directional: return .gameplay
-        case .single(let command): return inputHandler.touchRole(forToken: command)
+        case .single(let command):
+            // A combo is a gameplay chord only if every member is.
+            let commands = inputCommands(for: button)
+            guard commands.count > 1 else { return inputHandler.touchRole(forToken: command) }
+            return commands.allSatisfy { inputHandler.touchRole(forToken: $0).isGameplay } ? .gameplay : .system
         }
+    }
+
+    /// The inputs a control presses: every input of a combo hotspot when
+    /// `DeltaSkinInteractionSettings.pressesComboInputs` is on, otherwise the one input
+    /// (`extractInputCommand`, which is the first input of a combo).
+    private func inputCommands(for button: DeltaSkinButton) -> [String] {
+        if !button.comboInputs.isEmpty, DeltaSkinInteractionSettings.current.pressesComboInputs() {
+            return button.comboInputs
+        }
+        return [extractInputCommand(from: button)]
     }
 
     /// A button's hit-test frame (`hitTestFrame(for:)`) scaled into view space.
@@ -2003,19 +2183,30 @@ public struct DeltaSkinView: View {
             currentlyPressedButton = button
         }
 
-        if !allResolvedDirections.isEmpty {
+        // Feedback fires on every move while a direction is held (Provenance), or only for directions
+        // that just engaged (`dpadFeedbackOnChangeOnly`: a detent, as on a real D-pad).
+        let settings = DeltaSkinInteractionSettings.current
+        let newlyEngaged = allResolvedDirections.subtracting(currentDirections)
+        let givesFeedback = settings.dpadFeedbackOnChangeOnly() ? !newlyEngaged.isEmpty : !allResolvedDirections.isEmpty
+        if givesFeedback {
             #if canImport(UIKit) && !os(tvOS)
             if !ProcessInfo.processInfo.isiOSAppOnMac {
                 if let haptic = button.haptic {
                     haptic.play()
-                } else if DeltaSkinInteractionSettings.current.isButtonVibrationEnabled() {
-                    buttonGenerator.impactOccurred(intensity: 0.6)
+                } else if let intensity = hapticIntensity(0.6) {
+                    buttonGenerator.impactOccurred(intensity: intensity)
                 }
             }
             #endif
 
             // Play sound with current position (only once)
             playClickSound(for: button)
+
+            if settings.showsTouchFeedback() {
+                for direction in newlyEngaged {
+                    showPressHighlight(for: button.frame, mappingSize: mappingSize, buttonId: direction)
+                }
+            }
         }
     }
 
@@ -2446,6 +2637,10 @@ public struct DeltaSkinView: View {
             if !ProcessInfo.processInfo.isiOSAppOnMac {
                 if let haptic = button.haptic {
                     haptic.play()
+                } else if DeltaSkinInteractionSettings.current.scaledHapticIntensity != nil {
+                    if let intensity = hapticIntensity(1.0) {
+                        impactGenerator.impactOccurred(intensity: intensity)
+                    }
                 } else if DeltaSkinInteractionSettings.current.isButtonVibrationEnabled() {
                     impactGenerator.impactOccurred()
                 }
