@@ -79,12 +79,12 @@ extension DeltaSkin: DeltaSkinRenderable {
         return dir.appendingPathComponent(Self.stableHash(raw)).appendingPathExtension("png")
     }
 
-    /// Load a rasterized image from disk at UIScreen scale (pngData stored pixels = points×scale).
+    /// Load a rasterized image at its logical scale; full-size artwork uses the display scale.
     ///
     /// Fully transparent rasters are treated as misses and deleted. Those were written when a PDF
     /// page's media box origin pushed the artwork off the canvas.
-    private func loadFromDiskCache(_ url: URL?) -> UIImage? {
-        guard let url, let data = try? Data(contentsOf: url), let image = UIImage(data: data, scale: UIScreen.main.scale) else { return nil }
+    private func loadFromDiskCache(_ url: URL?, scale: CGFloat? = nil) -> UIImage? {
+        guard let url, let data = try? Data(contentsOf: url), let image = UIImage(data: data, scale: scale ?? UIScreen.main.scale) else { return nil }
         guard image.hasVisibleContent else {
             try? FileManager.default.removeItem(at: url)
             return nil
@@ -162,7 +162,7 @@ extension DeltaSkin: DeltaSkinRenderable {
         for name in candidates {
             try Task.checkCancellation()
             let diskURL = diskCacheURL(assetName: "thumbnail-\(name)", traits: traits, renderSize: thumbSize)
-            if let cached = loadFromDiskCache(diskURL) { return cached }
+            if let cached = loadFromDiskCache(diskURL, scale: Self.thumbnailPixelScale) { return cached }
             do {
                 let data = try loadAssetData(name)
                 let lower = name.lowercased()
@@ -180,12 +180,15 @@ extension DeltaSkin: DeltaSkinRenderable {
                 } else {
                     rendered = nil
                 }
-                guard let rendered, rendered.hasVisibleContent else {
+                guard let rendered, rendered.hasVisibleContent, let pixels = rendered.cgImage else {
                     lastError = DeltaSkinError.invalidPNG
                     continue
                 }
-                Self.writeToDiskCache(rendered, to: diskURL)
-                return rendered
+                // The rasterizers use the display scale, but thumbnail pixels always
+                // represent two pixels per logical point, including on 1× TVs and 3× phones.
+                let thumbnail = UIImage(cgImage: pixels, scale: Self.thumbnailPixelScale, orientation: rendered.imageOrientation)
+                Self.writeToDiskCache(thumbnail, to: diskURL)
+                return thumbnail
             } catch {
                 lastError = error
             }
