@@ -52,6 +52,43 @@ extension UIKitSerial {
             #expect(thumbnail.hasVisibleContent, "\(name) thumbnail rendered blank")
         }
 
+        @MainActor
+        @Test("Fresh and disk-cached thumbnails preserve point bounds and two-pixel density", arguments: ["pdf", "png", "svg"])
+        func thumbnailPointSizeAndDiskCache(assetType: String) async throws {
+            let scratch = try TestSupport.makeScratch()
+            defer { try? FileManager.default.removeItem(at: scratch) }
+            let name = "art.\(assetType)"
+            let data: Data
+            switch assetType {
+            case "pdf": data = TestSupport.makePDFData(size: CGSize(width: 100, height: 200))
+            case "png": data = TestSupport.makeOpaquePNG(size: CGSize(width: 100, height: 200))
+            default:
+                data = Data("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"100\" height=\"200\" viewBox=\"0 0 100 200\"><rect width=\"100\" height=\"200\" fill=\"red\"/></svg>".utf8)
+            }
+            let url = try TestSupport.writeSkin(
+                info: TestSupport.gbaInfo(identifier: "com.test.thumbnail-\(assetType)-\(UUID())", asset: name),
+                files: [name: data], in: scratch
+            )
+            let skin = try DeltaSkin(fileURL: url)
+            let fresh = try await skin.thumbnail(for: TestSupport.portrait, maxDimension: 120)
+            #expect(fresh.size == CGSize(width: 60, height: 120))
+            #expect(fresh.scale == 2)
+            #expect(fresh.cgImage?.width == 120)
+            #expect(fresh.cgImage?.height == 240)
+            #expect(fresh.hasVisibleContent)
+
+            // Corrupt the existing asset without replacing its directory. A successful
+            // second load must use the persisted raster, not render the source again.
+            try Data("invalid artwork".utf8).write(to: url.appendingPathComponent(name))
+            let reopened = try DeltaSkin(fileURL: url)
+            let cached = try await reopened.thumbnail(for: TestSupport.portrait, maxDimension: 120)
+            #expect(cached.size == CGSize(width: 60, height: 120))
+            #expect(cached.scale == 2)
+            #expect(cached.cgImage?.width == 120)
+            #expect(cached.cgImage?.height == 240)
+            #expect(cached.hasVisibleContent)
+        }
+
         @Test("A second render of the same traits is served from the cache")
         func secondRenderIsCached() async throws {
             // A small synthetic skin: a real 750x1334pt skin is ~36 MB at 3x, over the 32 MB budget of the
