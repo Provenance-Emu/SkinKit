@@ -1196,23 +1196,7 @@ public struct DeltaSkinView: View {
 
     /// Find `asset.normal` and optional `asset.pressed` for the JSON item matching this button
     private func parseButtonAssetNames(for button: DeltaSkinButton) -> (String, String?)? {
-        guard let reps = skin.jsonRepresentation["representations"] as? [String: Any],
-              let deviceRep = reps[traits.device.rawValue] as? [String: Any],
-              let displayRep = deviceRep[traits.displayType.rawValue] as? [String: Any],
-              let orientationRep = displayRep[traits.orientation.rawValue] as? [String: Any],
-              let items = orientationRep["items"] as? [[String: Any]] else {
-            return nil
-        }
-
-        // Match by exact frame to locate the correct item
-        guard let item = items.first(where: { item in
-            guard let frame = item["frame"] as? [String: Any],
-                  let x = frame["x"] as? CGFloat,
-                  let y = frame["y"] as? CGFloat,
-                  let w = frame["width"] as? CGFloat,
-                  let h = frame["height"] as? CGFloat else { return false }
-            return CGRect(x: x, y: y, width: w, height: h) == button.frame
-        }) else { return nil }
+        guard let item = rawItem(matching: button) else { return nil }
 
         guard let asset = item["asset"] as? [String: Any],
               let normal = asset["normal"] as? String else { return nil }
@@ -1221,25 +1205,7 @@ public struct DeltaSkinView: View {
     }
 
     private func loadThumbstickImage(for button: DeltaSkinButton) async -> (UIImage, CGSize)? {
-        guard let items = skin.jsonRepresentation["representations"] as? [String: Any],
-              let deviceItems = items[traits.device.rawValue] as? [String: Any],
-              let displayItems = deviceItems[traits.displayType.rawValue] as? [String: Any],
-              let orientationItems = displayItems[traits.orientation.rawValue] as? [String: Any],
-              let buttonItems = orientationItems["items"] as? [[String: Any]] else {
-            return nil
-        }
-
-        // Find matching button item
-        guard let item = buttonItems.first(where: { item in
-            guard let frame = item["frame"] as? [String: Any],
-                  let x = frame["x"] as? CGFloat,
-                  let y = frame["y"] as? CGFloat,
-                  let width = frame["width"] as? CGFloat,
-                  let height = frame["height"] as? CGFloat else {
-                return false
-            }
-            return CGRect(x: x, y: y, width: width, height: height) == button.frame
-        }),
+        guard let item = rawItem(matching: button),
         let thumbstick = item["thumbstick"] as? [String: Any],
         let imageName = thumbstick["name"] as? String,
         let width = thumbstick["width"] as? CGFloat,
@@ -2207,28 +2173,7 @@ public struct DeltaSkinView: View {
     }
 
     private func isThumbstick(_ button: DeltaSkinButton) -> Bool {
-        // Check if button has thumbstick configuration in skin JSON
-        guard let items = skin.jsonRepresentation["representations"] as? [String: Any],
-              let deviceItems = items[traits.device.rawValue] as? [String: Any],
-              let displayItems = deviceItems[traits.displayType.rawValue] as? [String: Any],
-              let orientationItems = displayItems[traits.orientation.rawValue] as? [String: Any],
-              let buttonItems = orientationItems["items"] as? [[String: Any]] else {
-            return false
-        }
-
-        return buttonItems.contains { item in
-            guard let frame = item["frame"] as? [String: Any],
-                  let x = frame["x"] as? CGFloat,
-                  let y = frame["y"] as? CGFloat,
-                  let width = frame["width"] as? CGFloat,
-                  let height = frame["height"] as? CGFloat,
-                  let thumbstick = item["thumbstick"] as? [String: Any] else {
-                return false
-            }
-
-            let buttonFrame = CGRect(x: x, y: y, width: width, height: height)
-            return buttonFrame == button.frame
-        }
+        rawItem(matching: button)?["thumbstick"] is [String: Any]
     }
 
     private func loadThumbsticks() async {
