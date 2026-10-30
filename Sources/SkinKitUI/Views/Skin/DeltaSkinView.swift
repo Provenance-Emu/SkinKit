@@ -93,6 +93,8 @@ public struct DeltaSkinView: View {
     /// State for skin loading
     @State private var skinImage: UIImage?
     @State private var thumbstickImage: UIImage?
+    @State private var resourceLoadTask: Task<Void, Never>?
+    @State private var resourceLoadID = UUID()
 
     @State private var activeThumbsticks: [ActiveThumbstickInfo] = []
 
@@ -813,9 +815,7 @@ public struct DeltaSkinView: View {
                             ILOG("skins: Rendering skin image: \(skinImage.size) at layout size: \(layout.width)x\(layout.height)")
                         }
                         logLayoutInfo(geometry: geometry, layout: layout)
-                        loadSkinResources()
-                        // Preload thumbstick caps so they render immediately
-                        Task { await loadThumbsticks() }
+                        reloadSkinResources()
                     }
                 }
 
@@ -875,13 +875,17 @@ public struct DeltaSkinView: View {
                     ELOG("skins: ERROR - calculateLayout() returned nil after size change")
                 }
             }
-            .onChange(of: traits) { newTraits in
+            .onChange(of: traits) { _, newTraits in
+                reloadSkinResources()
                 ILOG("skins: Traits changed to: device=\(newTraits.device.rawValue), displayType=\(newTraits.displayType.rawValue), orientation=\(newTraits.orientation.rawValue), iPadModel=\(newTraits.iPadModel?.rawValue ?? "nil")")
                 if let layout = calculateLayout(for: geometry) {
                     logLayoutInfo(geometry: geometry, layout: layout)
                 } else {
                     ELOG("skins: ERROR - calculateLayout() returned nil after traits change")
                 }
+            }
+            .onDisappear {
+                invalidateSkinResources()
             }
             #if !os(tvOS)
             .overlay(
@@ -948,6 +952,9 @@ public struct DeltaSkinView: View {
                             // D-pad touches need continuous processing for direction updates
                             // Regular button touches should only process if moved significantly
                             for touch in touches {
+                                // A layout change ends existing contacts. Only a new .began
+                                // may start input against the replacement representation.
+                                guard processedTouches.contains(touch.id) else { continue }
                                 let location = touch.location
                                 let previousLocation = touchLocationsMap[touch.id]
 
@@ -1099,71 +1106,88 @@ public struct DeltaSkinView: View {
         }
     }
 
-    /// Loads raster assets asynchronously so PDF/PNG decode can run off the immediate layout pass; `@State` updates occur when this task resumes on the main actor.
-    private func loadSkinResources() {
-        ILOG("skins: loadSkinResources() called - device: \(traits.device.rawValue), displayType: \(traits.displayType.rawValue), orientation: \(traits.orientation.rawValue)")
-        ILOG("skins: Checking if skin supports traits: \(traits.description)")
-
-        let supportsTraits = skin.supports(traits)
-        ILOG("skins: Skin supports traits: \(supportsTraits)")
-
-        if let mappingSize = skin.mappingSize(for: traits) {
-            ILOG("skins: Skin mapping size: \(mappingSize)")
-        } else {
-            ELOG("skins: ERROR - Skin has no mapping size for traits: \(traits.description)")
-        }
-
-        Task(priority: .userInitiated) {
-            // Load skin image
-            ILOG("skins: Attempting to load skin image for traits: \(traits.description)")
-            do {
-                skinImage = try await skin.image(for: traits)
-                if let image = skinImage {
-                    ILOG("skins: Successfully loaded skin image: \(image.size)")
-                } else {
-                    ELOG("skins: ERROR - Skin image is nil after loading")
-                }
-            } catch {
-                loadingError = error
-                ELOG("skins: ERROR loading skin image: \(error)")
-                ELOG("skins: Error details - device: \(traits.device.rawValue), displayType: \(traits.displayType.rawValue), orientation: \(traits.orientation.rawValue)")
+    /// One owned load per representation. The view value captures its skin and traits;
+    /// the generation also fences decoders that finish despite cancellation.
+    @MainActor
+    private func reloadSkinResources() {
+        invalidateSkinResources()
+        let loadID = resourceLoadID
+        resourceLoadTask = Task(priority: .userInitiated) { @MainActor in
+            defer {
+                if resourceLoadID == loadID { resourceLoadTask = nil }
             }
-
-            // Load screen groups
-            screenGroups = skin.screenGroups(for: traits)
-            ILOG("skins: Loaded screen groups: \(screenGroups?.count ?? 0)")
-
-            // Load button mappings
-            buttonMappings = skin.buttonMappings(for: traits)
-            ILOG("skins: Loaded button mappings: \(buttonMappings?.count ?? 0)")
-
-            // Load per-button asset images (if any)
-            await loadButtonAssets()
+            await loadSkinResources(loadID: loadID)
+            guard isCurrentResourceLoad(loadID) else { return }
+            await loadThumbsticks(loadID: loadID)
         }
     }
 
+    @MainActor
+    private func invalidateSkinResources() {
+        resourceLoadTask?.cancel()
+        resourceLoadTask = nil
+        resourceLoadID = UUID()
+        resetTouchState()
+        skinImage = nil
+        thumbstickImage = nil
+        screenGroups = nil
+        buttonMappings = nil
+        buttonAssetImages.removeAll()
+        loadingError = nil
+    }
+
+    @MainActor
+    private func isCurrentResourceLoad(_ loadID: UUID) -> Bool {
+        !Task.isCancelled && resourceLoadID == loadID
+    }
+
+    @MainActor
+    private func loadSkinResources(loadID: UUID) async {
+        guard isCurrentResourceLoad(loadID) else { return }
+        ILOG("skins: Loading resources for \(traits.description)")
+        do {
+            let image = try await skin.image(for: traits)
+            guard isCurrentResourceLoad(loadID) else { return }
+            skinImage = image
+        } catch {
+            guard isCurrentResourceLoad(loadID) else { return }
+            loadingError = error
+            ELOG("skins: ERROR loading skin image for \(traits.description): \(error)")
+        }
+        guard isCurrentResourceLoad(loadID) else { return }
+        screenGroups = skin.screenGroups(for: traits)
+        buttonMappings = skin.buttonMappings(for: traits)
+        await loadButtonAssets(loadID: loadID)
+    }
+
     /// Load and cache per-button images defined in the skin JSON under each item's `asset` or `states` key
-    private func loadButtonAssets() async {
-        guard let buttons = skin.buttons(for: traits) else { return }
+    @MainActor
+    private func loadButtonAssets(loadID: UUID) async {
+        guard isCurrentResourceLoad(loadID), let buttons = skin.buttons(for: traits) else { return }
         var cache: [String: (normal: UIImage, pressed: UIImage?)] = [:]
 
         for button in buttons {
+            guard isCurrentResourceLoad(loadID) else { return }
             // Prefer typed `states` from decoded model (Manic EMU format)
             if let states = button.states {
                 if let normalName = states.normal?.image {
                     do {
                         let normal = try await skin.loadThumbstickImage(named: normalName)
+                        guard isCurrentResourceLoad(loadID) else { return }
                         var pressedImage: UIImage? = nil
                         if let pressedName = states.pressed?.image {
                             do {
                                 pressedImage = try await skin.loadThumbstickImage(named: pressedName)
                             } catch {
+                                guard isCurrentResourceLoad(loadID) else { return }
                                 ELOG("Failed to load pressed state image '\(pressedName)' for button \(button.id): \(error)")
                             }
                         }
+                        guard isCurrentResourceLoad(loadID) else { return }
                         cache[button.id] = (normal: normal, pressed: pressedImage)
                         continue // Successfully loaded from typed states; skip legacy path
                     } catch {
+                        guard isCurrentResourceLoad(loadID) else { return }
                         ELOG("Failed to load button state image(s) for \(button.id): \(error)")
                         // Fall through to legacy asset path
                     }
@@ -1175,23 +1199,26 @@ public struct DeltaSkinView: View {
             guard let (normalName, pressedName) = parseButtonAssetNames(for: button) else { continue }
             do {
                 let normal = try await skin.loadThumbstickImage(named: normalName)
+                guard isCurrentResourceLoad(loadID) else { return }
                 var pressedImage: UIImage? = nil
                 if let pn = pressedName {
                     do {
                         pressedImage = try await skin.loadThumbstickImage(named: pn)
                     } catch {
+                        guard isCurrentResourceLoad(loadID) else { return }
                         ELOG("Failed to load pressed asset image '\(pn)' for button \(button.id): \(error)")
                     }
                 }
+                guard isCurrentResourceLoad(loadID) else { return }
                 cache[button.id] = (normal: normal, pressed: pressedImage)
             } catch {
+                guard isCurrentResourceLoad(loadID) else { return }
                 ELOG("Failed to load button asset image(s) for \(button.id): \(error)")
             }
         }
 
-        await MainActor.run {
-            self.buttonAssetImages = cache
-        }
+        guard isCurrentResourceLoad(loadID) else { return }
+        buttonAssetImages = cache
     }
 
     /// Find `asset.normal` and optional `asset.pressed` for the JSON item matching this button
@@ -1204,6 +1231,7 @@ public struct DeltaSkinView: View {
         return (normal, pressed)
     }
 
+    @MainActor
     private func loadThumbstickImage(for button: DeltaSkinButton) async -> (UIImage, CGSize)? {
         guard let item = rawItem(matching: button),
         let thumbstick = item["thumbstick"] as? [String: Any],
@@ -1441,11 +1469,14 @@ public struct DeltaSkinView: View {
             if primary.isThumbstick {
                 // Handle thumbstick
                 releaseHeldInputs(for: touchId)
-                Task {
-                    if let (image, size) = await loadThumbstickImage(for: button) {
+                let loadID = resourceLoadID
+                Task { @MainActor in
+                    if let (image, size) = await loadThumbstickImage(for: button),
+                       isCurrentResourceLoad(loadID), processedTouches.contains(touchId) {
                         // Determine stick ID based on button ID (check for "left" or "right" in button ID)
                         let stickId = DeltaSkinThumbstickSide.resolve(for: button.input, buttonId: button.id).analogStickId
                         let effectiveThumbstick = buttonWithEffectiveFrame(button)
+                        guard !activeThumbsticks.contains(where: { $0.buttonId == stickId && $0.frame == effectiveThumbstick.frame }) else { return }
                         activeThumbsticks.append(ActiveThumbstickInfo(frame: effectiveThumbstick.frame, image: image, size: size, buttonId: stickId))
                     }
                 }
@@ -2176,17 +2207,22 @@ public struct DeltaSkinView: View {
         rawItem(matching: button)?["thumbstick"] is [String: Any]
     }
 
-    private func loadThumbsticks() async {
-        guard let buttons = skin.buttons(for: traits) else { return }
+    @MainActor
+    private func loadThumbsticks(loadID: UUID) async {
+        guard isCurrentResourceLoad(loadID), let buttons = skin.buttons(for: traits) else { return }
+        var loaded: [ActiveThumbstickInfo] = []
 
         for button in buttons {
             if isThumbstick(button),
                let (image, size) = await loadThumbstickImage(for: button) {
                 // Determine stick ID based on button ID (check for "right" or "right" in button ID)
                 let stickId = DeltaSkinThumbstickSide.resolve(for: button.input, buttonId: button.id).analogStickId
-                activeThumbsticks.append(ActiveThumbstickInfo(frame: buttonWithEffectiveFrame(button).frame, image: image, size: size, buttonId: stickId))
+                guard isCurrentResourceLoad(loadID) else { return }
+                loaded.append(ActiveThumbstickInfo(frame: buttonWithEffectiveFrame(button).frame, image: image, size: size, buttonId: stickId))
             }
         }
+        guard isCurrentResourceLoad(loadID) else { return }
+        activeThumbsticks = loaded
     }
 
     // Add this helper function to format CGRect as a string
@@ -2772,41 +2808,51 @@ public struct DeltaSkinView: View {
         return button.id
     }
 
-    /// Reset touch state completely
+    /// A representation change/disappearance ends contacts, rather than retargeting
+    /// held fingers to new controls or leaving an analog/hold input active.
+    @MainActor
     private func resetTouchState() {
         DLOG("Resetting DeltaSkinView touch state")
+        for timer in turboLongPressTimers.values { timer.invalidate() }
+        turboLongPressTimers.removeAll()
+        turboToggledThisTouch.removeAll()
+        for work in holdWorkItems.values { work.cancel() }
+        holdWorkItems.removeAll()
+        if !holdActiveTouches.isEmpty { inputHandler.holdHandler?.holdDidEnd() }
+        holdActiveTouches.removeAll()
+        holdSlideOwner = nil
+        holdAnchorX = 0
+        if !ndsScreenTouches.isEmpty { inputHandler.ndsBottomScreenTouchReleased() }
+        ndsScreenTouches.removeAll()
+        for stickID in Set(activeThumbsticks.map(\.buttonId)) {
+            inputHandler.analogStickMoved(stickID, x: 0, y: 0)
+        }
+        releaseAllButtons()
         touchLocations.removeAll()
+        touchPoints.removeAll()
         touchToButtonMap.removeAll()
+        touchToDPadMap.removeAll()
+        touchLocationsMap.removeAll()
+        processedTouches.removeAll()
         systemLatchedTouches.removeAll()
         currentlyPressedButton = nil
+        activeButton = nil
+        lastButtonPressed = nil
+        feedbackHighlights.removeAll()
         activeThumbsticks.removeAll()
     }
 
-    /// Release all pressed buttons
+    /// Force-release the view's inputs without normal per-finger/sticky suppression.
+    @MainActor
     private func releaseAllButtons() {
         DLOG("Releasing all pressed buttons in DeltaSkinView: \(pressedButtons)")
 
-        // Release any sticky buttons first so their releases are not suppressed
         let releasedSticky = inputHandler.stickyManager.releaseAll()
+        let allButtons = pressedButtons.union(releasedSticky)
         stickyButtonIds.removeAll()
-        for buttonId in releasedSticky {
-            if !pressedButtons.contains(buttonId) {
-                // Sticky button that was not physically pressed — send release to core
-                inputHandler.buttonReleased(buttonId)
-            }
-        }
-
-        // Ensure all D-pad buttons are released
-        for direction in ["up", "down", "left", "right", "upleft", "upright", "downleft", "downright"] {
-            if pressedButtons.contains(direction) {
-                handleButtonRelease(direction)
-            }
-        }
-
-        // Release all other buttons
-        let allButtons = pressedButtons
+        pressedButtons.removeAll()
         for buttonId in allButtons {
-            handleButtonRelease(buttonId)
+            inputHandler.buttonReleased(buttonId)
         }
     }
 }
