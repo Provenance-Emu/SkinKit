@@ -171,28 +171,9 @@ public struct DeltaSkinView: View {
     // Track the safe area insets for accurate touch-to-button coordinate mapping
     @State private var viewSafeAreaInsets: EdgeInsets = EdgeInsets()
 
-    /// Get the smallest screen (the actual game screen) from screens array
-    /// Larger screens are typically effect screens (blurred backgrounds), smaller screens are the game screen
+    /// The game screen from a screens array (see `DeltaSkinScreen.gameScreen(in:mappingSize:)`).
     private func getSmallestScreen(from screens: [DeltaSkinScreen], mappingSize: CGSize) -> DeltaSkinScreen? {
-        // Filter out screens that are too small (likely buttons or UI elements)
-        let validScreens = screens.compactMap { screen -> (screen: DeltaSkinScreen, frame: CGRect, area: CGFloat)? in
-            guard let frame = screen.outputFrame else { return nil }
-            let area = frame.width * frame.height
-            // Minimum reasonable screen size: at least 100x100 pixels or normalized equivalent
-            let minSize: CGFloat = 100.0
-            let isAbsolutePixels = frame.width > mappingSize.width || frame.height > mappingSize.height ||
-                                   (frame.width > 1.0 && frame.height > 1.0 &&
-                                    frame.width < mappingSize.width && frame.height < mappingSize.height)
-            let actualMinSize = isAbsolutePixels ? minSize : (minSize / max(mappingSize.width, mappingSize.height))
-
-            if frame.width >= actualMinSize && frame.height >= actualMinSize {
-                return (screen, frame, area)
-            }
-            return nil
-        }
-
-        // Return the smallest screen (the actual game screen)
-        return validScreens.min(by: { $0.area < $1.area })?.screen
+        DeltaSkinScreen.gameScreen(in: screens, mappingSize: mappingSize)
     }
 
     /// A screen's `outputFrame` in 0–1 space. Some skins give it normalized, others in mapping-space

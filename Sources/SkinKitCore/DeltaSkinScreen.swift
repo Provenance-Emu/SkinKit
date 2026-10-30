@@ -208,6 +208,45 @@ public struct DeltaSkinScreen: Identifiable, Codable {
 
 }
 
+// MARK: - Game screen selection
+
+extension DeltaSkinScreen {
+    /// Smallest width and height, in mapping pixels, a screen needs to show the game.
+    public static let minimumGameScreenPixels: CGFloat = 100
+
+    /// Whether `outputFrame` is large enough to be the game screen rather than a strip
+    /// or button-sized element.
+    ///
+    /// A frame with any component above 1 is in pixels relative to `mappingSize`; one with
+    /// every component at or below 1 is normalised. This is the same rule used when the frame
+    /// is normalised for layout. Comparing against `mappingSize` instead misreads a frame that
+    /// spans exactly the skin's width (a reflective bezel edge of 1290×60 on a 1290-wide skin)
+    /// as normalised, and lets it through.
+    public func isLargeEnoughForGameScreen(mappingSize: CGSize) -> Bool {
+        guard let frame = outputFrame else { return false }
+        let isPixels = frame.origin.x > 1.0 || frame.origin.y > 1.0 ||
+                       frame.width > 1.0 || frame.height > 1.0
+        let minSize = isPixels
+            ? Self.minimumGameScreenPixels
+            : Self.minimumGameScreenPixels / max(mappingSize.width, mappingSize.height, 1)
+        return frame.width >= minSize && frame.height >= minSize
+    }
+
+    /// The screen that shows the game picture: the smallest screen large enough to be one.
+    /// Larger screens are effect backdrops (a blurred copy of the game); smaller ones are
+    /// effect strips or button-sized elements.
+    public static func gameScreen(in screens: [DeltaSkinScreen], mappingSize: CGSize) -> DeltaSkinScreen? {
+        screens
+            .filter { $0.isLargeEnoughForGameScreen(mappingSize: mappingSize) }
+            .min { area(of: $0) < area(of: $1) }
+    }
+
+    private static func area(of screen: DeltaSkinScreen) -> CGFloat {
+        guard let frame = screen.outputFrame else { return .greatestFiniteMagnitude }
+        return frame.width * frame.height
+    }
+}
+
 public enum DeltaSkinScreenPlacement: String, Codable {
     case controller // Screen is part of the controller layout
     case app       // Screen is positioned by the app

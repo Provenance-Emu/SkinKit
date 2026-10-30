@@ -67,34 +67,19 @@ struct DeltaSkinScreenPositionWrapper: View {
                 }
             }
 
-            // Find the screen with the smallest area (the actual game screen)
-            // Larger screens are typically effect screens (blurred backgrounds), smaller screens are the game screen
-            // Filter out screens that are too small (likely buttons or UI elements)
-            let validScreens = screens.compactMap { screen -> (screen: DeltaSkinScreen, frame: CGRect, area: CGFloat)? in
-                guard let frame = screen.outputFrame else { return nil }
-                let area = frame.width * frame.height
-                // Minimum reasonable screen size: at least 100x100 pixels or normalized equivalent
-                let minSize: CGFloat = 100.0
-                let isAbsolutePixels = frame.width > mappingSize.width || frame.height > mappingSize.height ||
-                                       (frame.width > 1.0 && frame.height > 1.0 &&
-                                        frame.width < mappingSize.width && frame.height < mappingSize.height)
-                let actualMinSize = isAbsolutePixels ? minSize : (minSize / max(mappingSize.width, mappingSize.height))
-
-                if frame.width >= actualMinSize && frame.height >= actualMinSize {
-                    return (screen, frame, area)
-                } else {
-                    ILOG("skins:   Rejecting screen \(screen.id) - too small: \(frame)")
-                    return nil
-                }
+            // The game screen is the smallest screen large enough to be one: larger screens are
+            // effect backdrops (blurred backgrounds), smaller ones effect strips or buttons.
+            for screen in screens where !screen.isLargeEnoughForGameScreen(mappingSize: mappingSize) {
+                ILOG("skins:   Rejecting screen \(screen.id) - too small: \(screen.outputFrame.map { "\($0)" } ?? "nil")")
             }
 
-            guard let smallestScreen = validScreens.min(by: { $0.area < $1.area }),
-                  let outputFrame = smallestScreen.screen.outputFrame else {
+            guard let gameScreen = DeltaSkinScreen.gameScreen(in: screens, mappingSize: mappingSize),
+                  let outputFrame = gameScreen.outputFrame else {
                 ELOG("skins: ERROR - No valid screens found after filtering")
                 return nil
             }
 
-            ILOG("skins: Using screens array path - selected screen: \(smallestScreen.screen.id), outputFrame: \(outputFrame), area: \(smallestScreen.area), layout: \(layout.width)x\(layout.height)")
+            ILOG("skins: Using screens array path - selected screen: \(gameScreen.id), outputFrame: \(outputFrame), area: \(outputFrame.width * outputFrame.height), layout: \(layout.width)x\(layout.height)")
             DLOG("🎮 SKIN: Using screens array path")
             DLOG("🎮 SKIN:   outputFrame: \(outputFrame)")
             DLOG("🎮 SKIN:   layout.width: \(layout.width), layout.height: \(layout.height)")
@@ -156,8 +141,8 @@ struct DeltaSkinScreenPositionWrapper: View {
                     return nativeAR
                 }
 
-                if smallestScreen.screen.maintainAspectRatio {
-                    let nativeAR = resolvedNativeAspectRatio(for: smallestScreen.screen)
+                if gameScreen.maintainAspectRatio {
+                    let nativeAR = resolvedNativeAspectRatio(for: gameScreen)
                     fallbackFrame = fallbackFrame.fitting(aspectRatio: nativeAR)
                     DLOG("🎮 SKIN: Applied native AR (\(nativeAR)) to fallback-normed frame → \(fallbackFrame)")
                 }
@@ -178,8 +163,8 @@ struct DeltaSkinScreenPositionWrapper: View {
 
                 // Enforce native aspect ratio for systems that require it (e.g. GameGear 10:9).
                 // Priority: emulator-core AR → per-screen JSON override → system JSON registry → 4:3.
-                if smallestScreen.screen.maintainAspectRatio {
-                    let skinScreenAR: CGFloat? = smallestScreen.screen.nativeResolution.flatMap { res in
+                if gameScreen.maintainAspectRatio {
+                    let skinScreenAR: CGFloat? = gameScreen.nativeResolution.flatMap { res in
                         guard res.height > 0, res.width > 0 else { return nil }
                         let ar = res.width / res.height
                         return ar.isFinite ? ar : nil
