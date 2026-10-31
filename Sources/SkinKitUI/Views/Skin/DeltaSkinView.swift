@@ -1057,8 +1057,9 @@ public struct DeltaSkinView: View {
                                 }
                             }
 
-                            // If all touches are gone, ensure everything is reset
-                            if touchToButtonMap.isEmpty && touchToDPadMap.isEmpty && ndsScreenTouches.isEmpty {
+                            // Empty-area contacts may still slide onto a control or own a hold.
+                            // Control maps alone cannot tell whether every finger has lifted.
+                            if processedTouches.isEmpty && touchToButtonMap.isEmpty && touchToDPadMap.isEmpty && ndsScreenTouches.isEmpty {
                                 DLOG("All touches ended, cleaning up")
 
                                 // Reset state
