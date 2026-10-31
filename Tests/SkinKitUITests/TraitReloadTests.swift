@@ -120,6 +120,41 @@ extension UIKitSerial {
         }
 
         #if !os(tvOS)
+        @Test("Ending another finger preserves an empty-area contact", arguments: [false, true])
+        func keepsOtherContacts(holding: Bool) async throws {
+            let oldSettings = DeltaSkinInteractionSettings.current
+            defer { DeltaSkinInteractionSettings.current = oldSettings }
+            prepare()
+            let (skin, scratch) = try makeSkin()
+            defer { try? FileManager.default.removeItem(at: scratch) }
+            let handler = Handler()
+            let host = Host(skin: skin, handler: handler)
+            defer { host.close() }
+            try #require(await host.wait { $0.red > 0.5 && $0.magenta > 0.002 })
+            let touchView = try #require(Host.find(MultiTouchView.TouchDetectingView.self, in: host.controller.view))
+            let resting = UITouch()
+            let start = CGPoint(x: 200, y: holding ? 150 : 500)
+            touchView.touchHandler?(.began, [TouchPoint(touch: resting, location: start)])
+            if holding { try #require(await Host.waitUntil { handler.holdBegins == 1 }) }
+            let pressing = UITouch()
+            let button = CGPoint(x: 50, y: 630)
+            touchView.touchHandler?(.began, [TouchPoint(touch: pressing, location: button)])
+            #expect(handler.preview.pressedButtons == ["a"])
+            touchView.touchHandler?(.ended, [TouchPoint(touch: pressing, location: button)])
+            #expect(handler.preview.pressedButtons.isEmpty)
+            let destination = holding ? CGPoint(x: 220, y: 150) : button
+            touchView.touchHandler?(.moved, [TouchPoint(touch: resting, location: destination)])
+            if holding {
+                #expect(handler.holdSlides == [20])
+                #expect(handler.holdEnds == 0)
+            } else {
+                #expect(handler.preview.pressedButtons == ["a"])
+            }
+            touchView.touchHandler?(.ended, [TouchPoint(touch: resting, location: destination)])
+            #expect(handler.preview.pressedButtons.isEmpty)
+            #expect(handler.holdEnds == (holding ? 1 : 0))
+        }
+
         @Test("Changing layout releases held inputs and ignores old fingers until a new touch begins")
         func releasesHeldInputs() async throws {
             let oldSettings = DeltaSkinInteractionSettings.current
@@ -184,8 +219,10 @@ extension UIKitSerial {
             var holdDelay: TimeInterval { 0.03 }
             var holdBegins = 0
             var holdEnds = 0
+            var holdSlides: [CGFloat] = []
             func holdDidBegin() { holdBegins += 1 }
             func holdDidEnd() { holdEnds += 1 }
+            func holdDidSlide(dx: CGFloat) { holdSlides.append(dx) }
             func buttonPressed(_ id: String) { preview.buttonPressed(id) }
             func buttonReleased(_ id: String) { preview.buttonReleased(id) }
             func analogStickMoved(_ id: String, x: Float, y: Float) { preview.analogStickMoved(id, x: x, y: y) }
