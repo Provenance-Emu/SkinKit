@@ -56,11 +56,9 @@ struct DeltaSkinDecodingOptionsTests {
 
     @Test("Default options: the ten iCube cases behave as SkinKitCore always has")
     func defaultIsToday() throws {
-        // A leading comment fails the up-front parse; `//` inside a string is cut by sanitizeJSON.
+        // A leading comment fails the up-front parse; a `//` inside a string, such as a URL, is not a comment.
         #expect(throws: DeltaSkinError.self) { try Self.decode("// hdr\n" + Self.portrait(#""items":[]"#), []) }
-        #expect(throws: (any Error).self) {
-            try Self.decode(#"{"name":"https://example.com/s","identifier":"x","gameTypeIdentifier":"public.aoshuang.game.ngc","representations":{}}"#, [])
-        }
+        #expect(try Self.decode(#"{"name":"https://example.com/s","identifier":"x","gameTypeIdentifier":"public.aoshuang.game.ngc","representations":{}}"#, []).name == "https://example.com/s")
         // One bad item, or one bad representation, rejects the skin.
         #expect(throws: (any Error).self) { try Self.decode(Self.portrait(#""items":[{"inputs":["b"],"frame":"nope"},{"inputs":["a"],"frame":[1,2,3,4]}]"#), []) }
         #expect(throws: (any Error).self) { try Self.decode(Self.skin(#"{"iphone":{"standard":{"portrait":{"items":[]}}}}"#), []) }

@@ -1130,37 +1130,64 @@ public extension Archive {
     }
 }
 
-private func sanitizeJSON(_ data: Data) throws -> Data {
-    guard let jsonString = String(data: data, encoding: .utf8) else {
+/// Removes `//` line comments from an `info.json`, leaving string literals alone.
+///
+/// A `//` only starts a comment outside a string, so `"https://example.com"` and `"//"` survive. Quotes are
+/// tracked with backslash escapes, so `"a \" // b"` stays one string. Lines are not trimmed or dropped: the
+/// output keeps every newline, which keeps decode error positions meaningful.
+func sanitizeJSON(_ data: Data) throws -> Data {
+    guard String(data: data, encoding: .utf8) != nil else {
         throw DeltaSkinError.invalidInfoFile
     }
 
-    // Remove single line comments and handle special fields
-    var lines = jsonString.components(separatedBy: .newlines)
-    lines = lines.map { line in
-        var line = line
+    let slash = UInt8(ascii: "/"), quote = UInt8(ascii: "\""), backslash = UInt8(ascii: "\\")
+    let newline = UInt8(ascii: "\n"), carriageReturn = UInt8(ascii: "\r")
 
-        // Handle special comment fields that are valid JSON
-        if line.contains("\"_comment\"") {
-            return line
+    var output = [UInt8]()
+    output.reserveCapacity(data.count)
+    var inString = false
+    var escaped = false
+    var inComment = false
+    var previous: UInt8?
+
+    for byte in data {
+        if inComment {
+            // A comment runs to the end of its line; the line break itself is kept.
+            if byte == newline || byte == carriageReturn {
+                inComment = false
+                output.append(byte)
+            }
+            previous = nil
+            continue
         }
-
-        // Remove standard comments
-        if let commentIndex = line.range(of: "//")?.lowerBound {
-            line = String(line[..<commentIndex])
+        if inString {
+            output.append(byte)
+            if escaped {
+                escaped = false
+            } else if byte == backslash {
+                escaped = true
+            } else if byte == quote {
+                inString = false
+            }
+            previous = nil
+            continue
         }
-
-        return line.trimmingCharacters(in: .whitespaces)
+        if byte == quote {
+            inString = true
+            output.append(byte)
+        } else if byte == slash, previous == slash {
+            // The first `/` was already written; take it back and drop the rest of the line.
+            output.removeLast()
+            inComment = true
+            previous = nil
+            continue
+        } else {
+            output.append(byte)
+        }
+        previous = byte
     }
-    .filter { !$0.isEmpty }
 
-    // Rejoin and convert back to data
-    let sanitized = lines.joined(separator: "\n")
-    guard let sanitizedData = sanitized.data(using: .utf8) else {
-        throw DeltaSkinError.invalidInfoFile
-    }
-
-    return sanitizedData
+    return Data(output)
 }
 
 /// Asset size options for Delta skins
