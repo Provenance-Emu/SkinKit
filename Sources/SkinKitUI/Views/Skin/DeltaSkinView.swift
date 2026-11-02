@@ -1386,22 +1386,12 @@ public struct DeltaSkinView: View {
         // Use the same transformation logic as transformFrame
         let (buttonScaleX, buttonScaleY, xOffset, yOffset) = calculateButtonTransform(in: size, mappingSize: mappingSize, safeAreaInsets: viewSafeAreaInsets)
 
-        // Check if THIS specific touch is already associated with a D-pad button
-        // Only check and update if this touch was previously on a D-pad
+        // A touch on a D-pad steers it until it lifts, wherever the finger drifts (`SkinDPadDirections`),
+        // so moving around the pad never needs precision and never drops the held direction.
         if let existingDPadButton = touchToDPadMap[touchId], case .directional = existingDPadButton.input {
-            let effectiveDPad = buttonWithEffectiveFrame(existingDPadButton)
-            // This touch is already on a D-pad - check if it's still within the hit area
-            if isLocationInDPadDirection(location, button: effectiveDPad, buttonScaleX: buttonScaleX, buttonScaleY: buttonScaleY, xOffset: xOffset, yOffset: yOffset) {
-                // Still within D-pad hit area, update D-pad input for this touch
-                handleDPadInput(effectiveDPad, scale: buttonScaleX, xOffset: xOffset, yOffset: yOffset, mappingSize: mappingSize, touchId: touchId)
-                return
-            } else {
-                // This touch moved outside the D-pad hit area, release directions for THIS touch only
-                DLOG("Touch \(touchId) moved outside D-pad area - releasing directions for this touch")
-                releaseDPadDirectionsForTouch(touchId)
-                touchToDPadMap.removeValue(forKey: touchId)
-                // Continue to check if touch is now on another button
-            }
+            handleDPadInput(buttonWithEffectiveFrame(existingDPadButton), scale: buttonScaleX, xOffset: xOffset,
+                            yOffset: yOffset, mappingSize: mappingSize, touchId: touchId)
+            return
         }
 
         // Plain-button continuation (rules in `SkinTouchSelection.continuation`). Single-button mode
@@ -1941,27 +1931,11 @@ public struct DeltaSkinView: View {
                 let relativeX = location.x - buttonCenterX
                 let relativeY = location.y - buttonCenterY
 
-                let buttonWidth = dpadButton.frame.width * buttonScaleX
-                let buttonHeight = dpadButton.frame.height * buttonScaleY
-                let thresholdX = buttonWidth * 0.3
-                let thresholdY = buttonHeight * 0.3
-
-                // Compute cardinal directions for this remaining touch
-                var touchDirections: Set<String> = []
-                var addedFromThisTouch = false
-                if relativeY < -thresholdY { touchDirections.insert("up"); addedFromThisTouch = true }
-                if relativeY > thresholdY { touchDirections.insert("down"); addedFromThisTouch = true }
-                if relativeX > thresholdX { touchDirections.insert("right"); addedFromThisTouch = true }
-                if relativeX < -thresholdX { touchDirections.insert("left"); addedFromThisTouch = true }
-
-                // If nothing crossed thresholds, resolve to nearest direction for this touch
-                if !addedFromThisTouch {
-                    if abs(relativeX) >= abs(relativeY) {
-                        touchDirections.insert(relativeX >= 0 ? "right" : "left")
-                    } else {
-                        touchDirections.insert(relativeY >= 0 ? "down" : "up")
-                    }
-                }
+                let touchDirections = SkinDPadDirections.directions(
+                    offset: CGVector(dx: relativeX, dy: relativeY),
+                    padSize: CGSize(width: dpadButton.frame.width * buttonScaleX,
+                                    height: dpadButton.frame.height * buttonScaleY)
+                )
 
                 // Resolve diagonals for this touch's button and merge into remaining
                 remainingDirections.formUnion(resolveDiagonalDirections(touchDirections, forButton: dpadButton))
@@ -2004,89 +1978,12 @@ public struct DeltaSkinView: View {
         let relativeX = touchLocation.x - buttonCenterX
         let relativeY = touchLocation.y - buttonCenterY
 
-        // Define the center dead zone (very small to avoid a noticeable dead area)
         let buttonWidth = button.frame.width * buttonScaleXActual
         let buttonHeight = button.frame.height * buttonScaleYActual
-        let deadZoneRadius = min(buttonWidth, buttonHeight) * 0.02
-
-        // Add debug logging to help diagnose direction issues
-        DLOG("D-pad highlight: relativeX=\(relativeX), relativeY=\(relativeY)")
-
-        // Track currently active directions for D-pad
-        var activeDirections: Set<String> = []
-
-        // Determine which directions to activate based on touch position
-        if sqrt(relativeX * relativeX + relativeY * relativeY) < deadZoneRadius {
-            // Near center; we'll resolve to nearest direction via fallback below
-            DLOG("skins: D-pad highlight: Near center - using nearest-direction fallback")
-        } else {
-            // Use threshold-based detection instead of angle to properly support diagonals
-            // Calculate thresholds as a percentage of button size
-            let thresholdX = buttonWidth * 0.3
-            let thresholdY = buttonHeight * 0.3
-
-            ILOG("skins: D-pad input - relativeX=\(relativeX), relativeY=\(relativeY), thresholdX=\(thresholdX), thresholdY=\(thresholdY)")
-
-            // Determine vertical component - check if touch is above or below center
-            if relativeY < -thresholdY {
-                activeDirections.insert("up")
-                ILOG("skins: D-pad detected UP")
-            } else if relativeY > thresholdY {
-                activeDirections.insert("down")
-                ILOG("skins: D-pad detected DOWN")
-            }
-
-            // Determine horizontal component - check if touch is left or right of center
-            if relativeX > thresholdX {
-                activeDirections.insert("right")
-                ILOG("skins: D-pad detected RIGHT")
-            } else if relativeX < -thresholdX {
-                activeDirections.insert("left")
-                ILOG("skins: D-pad detected LEFT")
-            }
-
-            // Prevent opposite directions on the same axis from being active simultaneously
-            // This should never happen with threshold-based detection, but add safety check
-            if activeDirections.contains("up") && activeDirections.contains("down") {
-                // If both vertical directions detected, choose the stronger one
-                if abs(relativeY) > abs(relativeX) {
-                    if relativeY < 0 {
-                        activeDirections.remove("down")
-                    } else {
-                        activeDirections.remove("up")
-                    }
-                } else {
-                    // If horizontal component is stronger, remove both vertical directions
-                    activeDirections.remove("up")
-                    activeDirections.remove("down")
-                }
-            }
-
-            if activeDirections.contains("left") && activeDirections.contains("right") {
-                // If both horizontal directions detected, choose the stronger one
-                if abs(relativeX) > abs(relativeY) {
-                    if relativeX < 0 {
-                        activeDirections.remove("right")
-                    } else {
-                        activeDirections.remove("left")
-                    }
-                } else {
-                    // If vertical component is stronger, remove both horizontal directions
-                    activeDirections.remove("left")
-                    activeDirections.remove("right")
-                }
-            }
-        }
-
-        // If no direction was activated (near center or below thresholds), resolve to the nearest single direction
-        if activeDirections.isEmpty {
-            if abs(relativeX) >= abs(relativeY) {
-                activeDirections.insert(relativeX >= 0 ? "right" : "left")
-            } else {
-                activeDirections.insert(relativeY >= 0 ? "down" : "up")
-            }
-            ILOG("skins: D-pad fallback to nearest direction: \(activeDirections)")
-        }
+        let activeDirections = SkinDPadDirections.directions(
+            offset: CGVector(dx: relativeX, dy: relativeY), padSize: CGSize(width: buttonWidth, height: buttonHeight)
+        )
+        DLOG("skins: D-pad relativeX=\(relativeX), relativeY=\(relativeY) -> \(activeDirections)")
 
         // Build resolved directions set from active directions
         var resolvedDirections: Set<String> = activeDirections
@@ -2114,27 +2011,11 @@ public struct DeltaSkinView: View {
                 let otherRelativeX = otherLocation.x - otherButtonCenterX
                 let otherRelativeY = otherLocation.y - otherButtonCenterY
 
-                let otherButtonWidth = otherDPadButton.frame.width * otherButtonScaleX
-                let otherButtonHeight = otherDPadButton.frame.height * otherButtonScaleY
-                let otherThresholdX = otherButtonWidth * 0.3
-                let otherThresholdY = otherButtonHeight * 0.3
-
-                // Compute cardinal directions for this other touch
-                var otherTouchDirections: Set<String> = []
-                var addedFromThisTouch = false
-                if otherRelativeY < -otherThresholdY { otherTouchDirections.insert("up"); addedFromThisTouch = true }
-                if otherRelativeY > otherThresholdY { otherTouchDirections.insert("down"); addedFromThisTouch = true }
-                if otherRelativeX > otherThresholdX { otherTouchDirections.insert("right"); addedFromThisTouch = true }
-                if otherRelativeX < -otherThresholdX { otherTouchDirections.insert("left"); addedFromThisTouch = true }
-
-                // If nothing crossed thresholds (center touch), resolve to nearest direction for this touch
-                if !addedFromThisTouch {
-                    if abs(otherRelativeX) >= abs(otherRelativeY) {
-                        otherTouchDirections.insert(otherRelativeX >= 0 ? "right" : "left")
-                    } else {
-                        otherTouchDirections.insert(otherRelativeY >= 0 ? "down" : "up")
-                    }
-                }
+                let otherTouchDirections = SkinDPadDirections.directions(
+                    offset: CGVector(dx: otherRelativeX, dy: otherRelativeY),
+                    padSize: CGSize(width: otherDPadButton.frame.width * otherButtonScaleX,
+                                    height: otherDPadButton.frame.height * otherButtonScaleY)
+                )
 
                 // Resolve diagonals for this touch's button too, then merge
                 allResolvedDirections.formUnion(resolveDiagonalDirections(otherTouchDirections, forButton: otherDPadButton))

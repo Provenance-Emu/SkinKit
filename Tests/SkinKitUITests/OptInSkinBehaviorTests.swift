@@ -8,7 +8,7 @@ import UIKit
 
 /// iFly's skin behavior that SkinKitUI offers as opt-ins: combo hotspots, the empty-area hold, scaled
 /// haptics, press feedback and D-pad feedback on change only. Each is tested off (the default, which is
-/// Provenance's behavior) and on.
+/// Provenance's behavior) and on. The same hosted skin also covers D-pad touch retention, which is always on.
 extension UIKitSerial {
     @Suite("Opt-in skin behavior", .serialized)
     @MainActor
@@ -313,7 +313,6 @@ extension UIKitSerial {
                 let handler = Handler()
                 let view = try await host(handler)
                 let finger = UITouch()
-                let dpadCenter = CGPoint(x: 80, y: 760)
                 try await touch(view, .began, finger, at: CGPoint(x: dpadCenter.x + 50, y: dpadCenter.y))
                 let afterPress = clicks.count
                 #expect(afterPress >= 1, "changeOnly \(changeOnly)")
@@ -330,6 +329,41 @@ extension UIKitSerial {
                 try await touch(view, .moved, finger, at: CGPoint(x: dpadCenter.x - 50, y: dpadCenter.y))
                 #expect(clicks.count > before, "a new direction always clicks")
                 try await touch(view, .ended, finger, at: dpadCenter)
+            }
+        }
+
+        // MARK: - D-pad touch retention (always on)
+
+        private let dpadCenter = CGPoint(x: 80, y: 760)
+
+        @Test("A D-pad touch keeps steering past the pad's edge and over a neighbouring button, which it never presses")
+        func dpadTouchStaysOnPad() async throws {
+            let handler = Handler()
+            let view = try await host(handler)
+            let finger = UITouch()
+            try await touch(view, .began, finger, at: CGPoint(x: dpadCenter.x + 50, y: dpadCenter.y))
+            #expect(handler.pressed == ["right"])
+            try await touch(view, .moved, finger, at: CGPoint(x: 330, y: dpadCenter.y + 5))
+            #expect(handler.pressed == ["right"], "far past the right edge still holds right")
+            try await touch(view, .moved, finger, at: comboCenter)
+            #expect(handler.pressed == ["up"], "over the button above the pad: steers up, does not press a")
+            try await touch(view, .moved, finger, at: CGPoint(x: 5, y: dpadCenter.y))
+            #expect(handler.pressed == ["left"])
+            try await touch(view, .ended, finger, at: CGPoint(x: 5, y: dpadCenter.y))
+            #expect(handler.pressed.isEmpty)
+        }
+
+        @Test("A D-pad touch that lifts or is cancelled off the pad releases its directions")
+        func dpadTouchReleasesOffPad() async throws {
+            for phase in [MultiTouchPhase.ended, .cancelled] {
+                let handler = Handler()
+                let view = try await host(handler)
+                let finger = UITouch()
+                try await touch(view, .began, finger, at: CGPoint(x: dpadCenter.x, y: dpadCenter.y - 50))
+                try await touch(view, .moved, finger, at: comboCenter)
+                #expect(handler.pressed == ["up"], "\(phase)")
+                try await touch(view, phase, finger, at: comboCenter)
+                #expect(handler.pressed.isEmpty, "\(phase)")
             }
         }
 
