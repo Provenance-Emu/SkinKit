@@ -270,31 +270,34 @@ public struct DeltaSkin: DeltaSkinProtocol {
     }
 
     /// Try to find a game-specific override representation for the given traits.
-    /// Matches against game title, ROM filename (without extension), and MD5 hash
-    /// stored in `traits.gameIdentifier`.
+    ///
+    /// Candidates are `traits.gameIdentifiers`, in order (MD5, CRC, ROM filename, title when built with
+    /// `DeltaSkinTraits.gameOverrideKeys`). The first candidate with an override that resolves for this device
+    /// and display wins, so an MD5 entry beats a title entry for the same game. Each candidate is compared
+    /// exactly, then case-insensitively. An override replaces the whole representation, with no merge.
     private func gameOverrideRepresentation(for traits: DeltaSkinTraits) -> OrientationRepresentations? {
-        guard let gameId = traits.gameIdentifier,
+        guard !traits.gameIdentifiers.isEmpty,
               let overrides = info.gameOverrides else {
             return nil
         }
 
-        // Try exact match first (game title, filename, or MD5)
-        if let deviceMap = overrides[gameId],
-           let deviceReps = deviceMap[traits.device.rawValue] {
-            if let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
+        for gameId in traits.gameIdentifiers {
+            // Try exact match first
+            if let deviceMap = overrides[gameId],
+               let deviceReps = deviceMap[traits.device.rawValue],
+               let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
                 DLOG("skins: Found game override for '\(gameId)' (exact match)")
                 return reps
             }
-        }
 
-        // Try case-insensitive match
-        let lowerId = gameId.lowercased()
-        for (key, deviceMap) in overrides {
-            if key.lowercased() == lowerId,
-               let deviceReps = deviceMap[traits.device.rawValue],
-               let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
-                DLOG("skins: Found game override for '\(gameId)' (case-insensitive match on '\(key)')")
-                return reps
+            // Then a case-insensitive match
+            let lowerId = gameId.lowercased()
+            for (key, deviceMap) in overrides where key.lowercased() == lowerId {
+                if let deviceReps = deviceMap[traits.device.rawValue],
+                   let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
+                    DLOG("skins: Found game override for '\(gameId)' (case-insensitive match on '\(key)')")
+                    return reps
+                }
             }
         }
 
@@ -305,13 +308,13 @@ public struct DeltaSkin: DeltaSkinProtocol {
         // Fast-path cache: same skin + traits + game → return cached value without logging.
         // The skin's identity is part of the key: without it, a lookup on one skin returned the
         // representation another skin had just resolved for the same traits (its items and mappingSize).
-        let gameKey = traits.gameIdentifier ?? ""
+        let gameKey = traits.gameIdentifiers.joined(separator: "\u{1F}")
         let cacheKey = "\(identifier)|\(fileURL.path)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)"
         if let cached = Self.cachedRepresentation(forKey: cacheKey) {
             return cached
         }
 
-        let gameName = traits.gameIdentifier ?? "none"
+        let gameName = traits.gameIdentifiers.isEmpty ? "none" : traits.gameIdentifiers.joined(separator: ", ")
         VLOG("skins: representation(for:) device=\(traits.device.rawValue) display=\(traits.displayType.rawValue) orient=\(traits.orientation.rawValue) game=\(gameName)")
         VLOG("skins: Available device reps: \(info.representations.keys.map { $0.rawValue })")
 
@@ -393,8 +396,9 @@ public struct DeltaSkin: DeltaSkinProtocol {
         /// Legacy skins that omit this key have no themes (empty array).
         public let themes: [Theme]?
 
-        /// Per-game layout overrides. Keys are game identifiers (title, ROM filename without
-        /// extension, or MD5 hash). Values map device rawValue to orientation representations,
+        /// Per-game layout overrides. Keys are game identifiers: MD5, CRC, ROM filename (with or without
+        /// extension) or title, tried in that order (see `DeltaSkinTraits.gameOverrideKeys`) and compared
+        /// case-insensitively. Values map device rawValue to orientation representations,
         /// mirroring the structure of `DeviceRepresentations`.
         ///
         /// Example JSON:
