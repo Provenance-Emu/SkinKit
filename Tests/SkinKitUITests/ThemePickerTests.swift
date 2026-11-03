@@ -157,6 +157,17 @@ extension UIKitSerial {
             #expect(SkinPreviewThumbnailCache.key(for: skin.identifier, traits: traits) == base)
         }
 
+        @Test("No theme and a theme whose id is \"default\" get different thumbnail keys")
+        func thumbnailKeyDistinguishesNoThemeFromDefaultId() {
+            let id = "com.skinkit.test.keycollision"
+            defer { DeltaSkinThemeSelection.setSelectedThemeId(nil, for: id) }
+            DeltaSkinThemeSelection.setSelectedThemeId(nil, for: id)
+            let none = SkinPreviewThumbnailCache.key(for: id, traits: traits)
+            DeltaSkinThemeSelection.setSelectedThemeId("default", for: id)
+            let literalDefault = SkinPreviewThumbnailCache.key(for: id, traits: traits)
+            #expect(none != literalDefault)
+        }
+
         @Test("A theme choice changes the preview thumbnail's artwork")
         func selectingAThemeChangesTheThumbnail() async throws {
             let skin = try themedSkin()
