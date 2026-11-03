@@ -55,6 +55,10 @@ public protocol DeltaSkinProtocol: Identifiable, Equatable {
     /// Whether this skin is designed for a physical phone-case controller (GameSir, Soolra, Buppin, etc.).
     /// Determined by the `"caseController"` key in info.json, or by identifier heuristics.
     var isCaseControllerSkin: Bool { get }
+
+    /// Whether the skin has an alternate layout set (Ignited's `altRepresentations`) that its
+    /// `toggleAltRepresentations` button switches to. Lookups pick the set from `DeltaSkinTraits.usesAltRepresentations`.
+    var hasAltRepresentations: Bool { get }
 }
 
 public extension DeltaSkinProtocol {
@@ -77,6 +81,9 @@ public extension DeltaSkinProtocol {
 
     /// Default implementation — skins that do not override this return `nil`.
     func backgroundAnimation(for traits: DeltaSkinTraits) -> DeltaSkinBackgroundAnimation? { nil }
+
+    /// Default: no alternate set, so the toggle button does nothing.
+    var hasAltRepresentations: Bool { false }
 }
 
 public extension Identifiable where  Self: DeltaSkinProtocol  {

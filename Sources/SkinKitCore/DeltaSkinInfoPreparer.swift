@@ -44,6 +44,19 @@ enum DeltaSkinInfoPreparer {
             }
         }
 
+        // Ignited's alternate set has the same shape as `representations` and gets the same rules. It is optional:
+        // under `dropsInvalidElements` a bad or empty one is removed and the skin keeps its normal set.
+        if let value = root["altRepresentations"], !(value is NSNull) {
+            if let devices = value as? [String: Any] {
+                let cleaned = try cleanDevices(devices, rules, knownOnly: true)
+                root["altRepresentations"] = rules.drops && !cleaned.keys.contains(where: knownDevices.contains) ? nil : cleaned
+            } else if rules.drops {
+                root["altRepresentations"] = nil
+            } else {
+                throw DeltaSkinError.invalidInfoFile
+            }
+        }
+
         if let value = root["representations"], !(value is NSNull) {
             guard let devices = value as? [String: Any] else { throw DeltaSkinError.invalidInfoFile }
             let cleaned = try cleanDevices(devices, rules, knownOnly: true)

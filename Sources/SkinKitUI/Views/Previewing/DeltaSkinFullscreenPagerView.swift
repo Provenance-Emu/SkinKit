@@ -17,6 +17,9 @@ public struct DeltaSkinFullscreenPagerView: View {
     @State private var showHitTestOverlay = false
     @State private var selectedFilters: Set<TestPatternEffect> = []
     @State private var showControls = true
+    /// Shared by the pages, kept and observed, so a skin's `toggleAltRepresentations` button switches layouts.
+    /// Reset when the page changes.
+    @StateObject private var inputHandler = DeltaSkinPreviewInputHandler()
     @GestureState private var dragOffset: CGFloat = 0
 
     public init(
@@ -141,19 +144,20 @@ public struct DeltaSkinFullscreenPagerView: View {
             ForEach(0..<skins.count, id: \.self) { index in
                 DeltaSkinView(
                     skin: skins[index],
-                    traits: currentTraits,
+                    traits: currentTraits.withAltRepresentations(index == currentPage && inputHandler.usesAltRepresentations),
                     filters: selectedFilters,
                     showDebugOverlay: showDebugOverlay,
                     showHitTestOverlay: showHitTestOverlay,
                     screenAspectRatio: nil,
                     isInEmulator: false,
-                    inputHandler: DeltaSkinPreviewInputHandler()
+                    inputHandler: inputHandler
                 )
                 .id("\(index)-\(currentTraits.orientation)")
                 .frame(width: geometry.size.width)
             }
         }
         .offset(x: -CGFloat(currentPage) * geometry.size.width + dragOffset)
+        .onChange(of: currentPage) { _, _ in inputHandler.usesAltRepresentations = false }
         #if !os(tvOS)
         .gesture(pagingGesture(geometry: geometry))
         #endif

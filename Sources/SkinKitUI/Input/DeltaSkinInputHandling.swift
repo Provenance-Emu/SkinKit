@@ -1,4 +1,5 @@
 #if canImport(UIKit)
+import SkinKitCore
 import SwiftUI
 import UIKit
 
@@ -33,11 +34,32 @@ public protocol DeltaSkinInputHandling: AnyObject {
     /// What a press-and-hold on an empty area does, for a view created with `allowsEmptyAreaHold`.
     /// `nil` (the default): nothing; see ``DeltaSkinHoldHandling``.
     var holdHandler: (any DeltaSkinHoldHandling)? { get }
+    /// The skin's `toggleAltRepresentations` button was pressed (Ignited's alternate layout).
+    ///
+    /// Called once per press, never for the release, and never through ``buttonPressed(_:)``. The host flips
+    /// `DeltaSkinTraits.usesAltRepresentations` for the skin views it shows (and persists it per game with
+    /// `DeltaSkinSelectionManager.setUsesAltRepresentations`), then re-runs any layout it derives from the skin's
+    /// screens, such as a dual-screen or external-display viewport. The default posts
+    /// ``DeltaSkinAltRepresentationsToggle/requestedNotification`` with the handler as the object.
+    func toggleAltRepresentations()
 }
 
 public extension DeltaSkinInputHandling {
     func touchRole(forToken token: String) -> TouchInputRole { .gameplay }
     var holdHandler: (any DeltaSkinHoldHandling)? { nil }
+    func toggleAltRepresentations() {
+        NotificationCenter.default.post(name: DeltaSkinAltRepresentationsToggle.requestedNotification, object: self)
+    }
+}
+
+/// The `toggleAltRepresentations` skin input.
+public enum DeltaSkinAltRepresentationsToggle {
+    /// Posted by the default ``DeltaSkinInputHandling/toggleAltRepresentations()`` when the skin's toggle button
+    /// is pressed. The object is the input handler.
+    public static let requestedNotification = Notification.Name("DeltaSkinAltRepresentationsToggleRequested")
+
+    /// The input token, `"toggleAltRepresentations"`.
+    public static var input: String { DeltaSkin.toggleAltRepresentationsInput }
 }
 
 /// An input handler that forwards nothing to an emulator: it records state, so the skin views are
@@ -53,6 +75,11 @@ public final class DeltaSkinPreviewInputHandler: DeltaSkinInputHandling, Observa
     public private(set) var stickPositions: [String: CGPoint] = [:]
     /// The last DS bottom-screen touch (nil once released), for tests.
     public private(set) var ndsTouch: CGPoint?
+    /// Whether the previewed skin shows its alternate layout. Flipped by the skin's `toggleAltRepresentations` button;
+    /// a preview builds its traits with `usesAltRepresentations: usesAltRepresentations`.
+    @Published public var usesAltRepresentations = false
+    /// How many times the toggle button was pressed, for tests.
+    public private(set) var altRepresentationsToggleCount = 0
 
     public init() {}
 
@@ -63,6 +90,10 @@ public final class DeltaSkinPreviewInputHandler: DeltaSkinInputHandling, Observa
     }
     public func ndsBottomScreenTouched(at normalizedPoint: CGPoint) { ndsTouch = normalizedPoint }
     public func ndsBottomScreenTouchReleased() { ndsTouch = nil }
+    public func toggleAltRepresentations() {
+        altRepresentationsToggleCount += 1
+        usesAltRepresentations.toggle()
+    }
 }
 
 // MARK: - Environment

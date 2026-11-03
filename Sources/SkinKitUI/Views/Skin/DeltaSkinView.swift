@@ -1647,6 +1647,10 @@ public struct DeltaSkinView: View {
         case .single(let command):
             // A combo is a gameplay chord only if every member is.
             let commands = inputCommands(for: button)
+            // The layout toggle is a frontend control whatever the host's classifier says, alone or in a combo
+            // (`pressesComboInputs` presses every member): it must not be slid onto.
+            if command == DeltaSkin.toggleAltRepresentationsInput
+                || commands.contains(DeltaSkin.toggleAltRepresentationsInput) { return .system }
             guard commands.count > 1 else { return inputHandler.touchRole(forToken: command) }
             return commands.allSatisfy { inputHandler.touchRole(forToken: $0).isGameplay } ? .gameplay : .system
         }
@@ -1843,18 +1847,11 @@ public struct DeltaSkinView: View {
         let allScreens = groups.flatMap { $0.screens }
         guard allScreens.count >= 2 else { return nil }
 
-        // Prefer explicit id; fall back to the screen with the largest minY (portrait-stacked bottom),
-        // and when minY ties (e.g., side-by-side landscape), choose the one with the largest minX.
-        let bottomSkinScreen: DeltaSkinScreen? = allScreens.first { $0.id == "nds_bottom" }
-            ?? allScreens.compactMap { screen -> (DeltaSkinScreen, CGRect)? in
-                guard let frame = screen.outputFrame else { return nil }
-                return (screen, frame)
-            }.max(by: { lhs, rhs in
-                if lhs.1.minY == rhs.1.minY {
-                    return lhs.1.minX < rhs.1.minX
-                }
-                return lhs.1.minY < rhs.1.minY
-            })?.0
+        // Prefer explicit id; then, with the alternate layout set, the screen whose inputFrame is the DS
+        // bottom screen (Ignited's alternate layouts draw the touchscreen above the top screen); otherwise the
+        // screen with the largest minY (portrait-stacked bottom), largest minX on a tie (side-by-side landscape).
+        let bottomSkinScreen = DeltaSkinScreen.ndsBottomScreen(in: allScreens,
+                                                               byInputIdentity: traits.usesAltRepresentations)
 
         // When the renderer swaps the screens, the DS touchscreen is drawn in the
         // other skin screen, so the stylus area moves with it.
@@ -2444,6 +2441,19 @@ public struct DeltaSkinView: View {
     private func handleButtonPress(_ buttonId: String) {
         DLOG("🔴 handleButtonPress called with buttonId: \(buttonId)")
 
+        // `toggleAltRepresentations` flips the skin's layout set once per press. It is not a held input: it skips
+        // sticky and turbo, is never added to `pressedButtons`, and its release is dropped. The host flips
+        // `DeltaSkinTraits.usesAltRepresentations`; the trait change reloads this view and releases the contact.
+        if buttonId == DeltaSkin.toggleAltRepresentationsInput {
+            #if canImport(UIKit) && !os(tvOS)
+            if !ProcessInfo.processInfo.isiOSAppOnMac, DeltaSkinInteractionSettings.current.isButtonVibrationEnabled() {
+                impactGenerator.impactOccurred()
+            }
+            #endif
+            inputHandler.toggleAltRepresentations()
+            return
+        }
+
         // --- Sticky button logic ---
         #if canImport(UIKit)
         if DeltaSkinInteractionSettings.current.isStickyButtonsEnabled() {
@@ -2502,6 +2512,9 @@ public struct DeltaSkinView: View {
 
     private func handleButtonRelease(_ buttonId: String) {
         DLOG("🔵 handleButtonRelease called with buttonId: \(buttonId)")
+
+        // The layout toggle acted on press; there is nothing to release.
+        if buttonId == DeltaSkin.toggleAltRepresentationsInput { return }
 
         // --- Sticky button logic ---
         #if canImport(UIKit)

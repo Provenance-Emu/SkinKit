@@ -3,18 +3,10 @@ import CoreGraphics
 import SkinKitCore
 
 extension DeltaSkinView {
-    /// Raw items must use the same representation as the decoded controls and artwork.
+    /// Raw items must use the same representation as the decoded controls and artwork, including the
+    /// alternate layout set when the traits select it (see `DeltaSkin.rawItems(in:for:)`).
     func rawButtonItems() -> [[String: Any]]? {
-        guard let representations = skin.jsonRepresentation["representations"] as? [String: Any],
-              let device = representations[traits.device.rawValue] as? [String: Any] else { return nil }
-        // Match DeltaSkin's decoded representation lookup, including an absent orientation.
-        // Some skins declare only edgeToEdge even when the host requests standard traits.
-        for displayType in traits.displayType.lookupChain {
-            guard let display = device[displayType.rawValue] as? [String: Any],
-                  let orientation = display[traits.orientation.rawValue] as? [String: Any] else { continue }
-            return orientation["items"] as? [[String: Any]]
-        }
-        return nil
+        DeltaSkin.rawItems(in: skin.jsonRepresentation, for: traits)
     }
 
     /// Join decoded controls to their raw per-item artwork and thumbstick metadata.

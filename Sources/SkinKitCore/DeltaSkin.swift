@@ -73,6 +73,13 @@ public struct DeltaSkin: DeltaSkinProtocol {
     /// Returns `nil` for skins that do not declare a keyboard overlay.
     public var keyboardOverlay: KeyboardOverlayConfig? { info.keyboardOverlay }
 
+    /// The input token of the skin button that flips between `representations` and `altRepresentations`.
+    public static let toggleAltRepresentationsInput = "toggleAltRepresentations"
+
+    /// Whether `info.json` has an `altRepresentations` tree. Without one, the alternate set is the normal set
+    /// (as in Ignited), so `DeltaSkinTraits.usesAltRepresentations` changes nothing.
+    public var hasAltRepresentations: Bool { !(info.altRepresentations?.isEmpty ?? true) }
+
     /// All theme variants bundled in this skin. Empty for legacy skins without themes.
     public var availableThemes: [DeltaSkin.Theme] { info.themes ?? [] }
 
@@ -208,7 +215,20 @@ public struct DeltaSkin: DeltaSkinProtocol {
         if let gameOverride = gameOverrideRepresentation(for: traits) {
             return gameOverride
         }
+        if let alt = altOrientationRepresentations(for: traits) {
+            return alt
+        }
         guard let deviceReps = info.representations[traits.device] else { return nil }
+        return resolveOrientationReps(from: deviceReps, traits: traits)
+    }
+
+    /// The alternate set's representation for these traits, when the traits ask for it and the skin has one.
+    ///
+    /// Only the alternate tree is searched here (with the usual standard/edgeToEdge fallback inside it). A nil
+    /// result sends the caller to the normal `representations`, so a trait the alternate set lacks keeps working.
+    private func altOrientationRepresentations(for traits: DeltaSkinTraits) -> OrientationRepresentations? {
+        guard traits.usesAltRepresentations,
+              let deviceReps = info.altRepresentations?[traits.device] else { return nil }
         return resolveOrientationReps(from: deviceReps, traits: traits)
     }
 
@@ -269,6 +289,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
         return orientationReps
     }
 
+    /// The normal `representations` entry for these traits, ignoring overrides and the alternate set.
+    private func normalOrientationRepresentations(for traits: DeltaSkinTraits) -> OrientationRepresentations? {
+        guard let deviceReps = info.representations[traits.device] else { return nil }
+        return resolveOrientationReps(from: deviceReps, traits: traits)
+    }
+
     /// Try to find a game-specific override representation for the given traits.
     ///
     /// Candidates are `traits.gameIdentifiers`, in order (MD5, CRC, ROM filename, title when built with
@@ -310,7 +336,10 @@ public struct DeltaSkin: DeltaSkinProtocol {
         // representation another skin had just resolved for the same traits (its items and mappingSize).
         // Length-prefixed, so no key text (a separator character included) can make two lists collide.
         let gameKey = traits.gameIdentifiers.map { "\($0.utf8.count):\($0)" }.joined()
-        let cacheKey = "\(identifier)|\(fileURL.path)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)"
+        // The alternate-set flag only matters when the skin has an alternate set; keeping it out otherwise lets
+        // both flag values share one entry.
+        let altKey = traits.usesAltRepresentations && hasAltRepresentations ? "|alt" : ""
+        let cacheKey = "\(identifier)|\(fileURL.path)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)\(altKey)"
         if let cached = Self.cachedRepresentation(forKey: cacheKey) {
             return cached
         }
@@ -322,6 +351,19 @@ public struct DeltaSkin: DeltaSkinProtocol {
         // Check per-game overrides first
         if let gameOverride = gameOverrideRepresentation(for: traits) {
             let result = gameOverride.toRepresentationInfo()
+            Self.storeRepresentation(result, forKey: cacheKey)
+            return result
+        }
+
+        // Then the alternate set, when the traits ask for it. Fields the alternate representation leaves out
+        // are not merged in, except `screens`: an alternate layout without screens keeps the normal screens.
+        if let alt = altOrientationRepresentations(for: traits) {
+            VLOG("skins: Using altRepresentations for \(traits.description)")
+            var result = alt.toRepresentationInfo()
+            if result.screens == nil,
+               let normalScreens = normalOrientationRepresentations(for: traits)?.screens {
+                result = result.replacingScreens(normalScreens)
+            }
             Self.storeRepresentation(result, forKey: cacheKey)
             return result
         }
@@ -388,6 +430,14 @@ public struct DeltaSkin: DeltaSkinProtocol {
         /// Device-specific skin representations
         public let representations: Dictionary<DeltaSkinDevice, DeviceRepresentations>
 
+        /// Ignited's alternate layout set: a second tree with the same shape as `representations`.
+        ///
+        /// `nil` when `info.json` has no `altRepresentations` key, which means the alternate set is the normal set.
+        /// The skin's `toggleAltRepresentations` button switches between the two during play; lookups pick the set
+        /// from `DeltaSkinTraits.usesAltRepresentations`. Device keys the model does not know are ignored, as in
+        /// `representations`.
+        public let altRepresentations: Dictionary<DeltaSkinDevice, DeviceRepresentations>?
+
         /// Optional keyboard overlay configuration. When present, a virtual keyboard
         /// overlay will be available for this skin. Old skins that omit this key
         /// fall back gracefully with no keyboard shown.
@@ -418,7 +468,7 @@ public struct DeltaSkin: DeltaSkinProtocol {
         public let caseController: Bool
 
         private enum CodingKeys: String, CodingKey {
-            case name, identifier, gameTypeIdentifier, debug, representations, keyboardOverlay, themes, gameOverrides, caseController
+            case name, identifier, gameTypeIdentifier, debug, representations, altRepresentations, keyboardOverlay, themes, gameOverrides, caseController
         }
 
         /// Decodes an `info.json` body under `options` (none: the strict reading every app has always had).
@@ -451,17 +501,26 @@ public struct DeltaSkin: DeltaSkinProtocol {
             debug = try container.decodeIfPresent(Bool.self, forKey: .debug) ?? false
 
             // Manually decode the dictionary with string keys
-            let repContainer = try container.nestedContainer(keyedBy: StringCodingKey.self, forKey: .representations)
-            var reps: [DeltaSkinDevice: DeviceRepresentations] = [:]
+            func decodeDevices(_ key: CodingKeys) throws -> [DeltaSkinDevice: DeviceRepresentations] {
+                let repContainer = try container.nestedContainer(keyedBy: StringCodingKey.self, forKey: key)
+                var reps: [DeltaSkinDevice: DeviceRepresentations] = [:]
 
-            for key in repContainer.allKeys {
-                if let device = DeltaSkinDevice(rawValue: key.stringValue) {
-                    let value = try repContainer.decode(DeviceRepresentations.self, forKey: key)
-                    reps[device] = value
+                for key in repContainer.allKeys {
+                    if let device = DeltaSkinDevice(rawValue: key.stringValue) {
+                        let value = try repContainer.decode(DeviceRepresentations.self, forKey: key)
+                        reps[device] = value
+                    }
                 }
+                return reps
             }
 
-            representations = reps
+            representations = try decodeDevices(.representations)
+            // Same shape and rules as `representations`. Absent (or null) means the alternate set is the normal set.
+            if try !container.contains(.altRepresentations) || container.decodeNil(forKey: .altRepresentations) {
+                altRepresentations = nil
+            } else {
+                altRepresentations = try decodeDevices(.altRepresentations)
+            }
             keyboardOverlay = try container.decodeIfPresent(KeyboardOverlayConfig.self, forKey: .keyboardOverlay)
             themes = try container.decodeIfPresent([Theme].self, forKey: .themes)
 
@@ -989,6 +1048,12 @@ public struct DeltaSkin: DeltaSkinProtocol {
             self.extendedEdges = extendedEdges
             self.gameScreenFrame = gameScreenFrame
         }
+
+        /// The same representation with other screens (the alternate set's per-field screens fallback).
+        func replacingScreens(_ screens: [ScreenInfo]?) -> RepresentationInfo {
+            RepresentationInfo(assets: assets, mappingSize: mappingSize, translucent: translucent, screens: screens,
+                               items: items, extendedEdges: extendedEdges, gameScreenFrame: gameScreenFrame)
+        }
     }
 
     /// Removes `//` comments (whole-line or trailing) from an `info.json` body without touching `//` inside a
@@ -999,6 +1064,29 @@ public struct DeltaSkin: DeltaSkinProtocol {
 
     public var jsonRepresentation: [String: Any] {
         return rawDictionary
+    }
+
+    /// The raw `items` array of `info.json` for these traits, from the same tree `representation(for:)` uses for
+    /// the decoded controls: the alternate set when `traits.usesAltRepresentations` is on and it has these traits
+    /// (with the standard/edgeToEdge lookup chain), otherwise the normal `representations`. Callers that join
+    /// decoded buttons to their raw per-item metadata (thumbsticks, per-item artwork) read through this so the
+    /// two can't come from different trees. `gameOverrides` are not consulted, as before.
+    public static func rawItems(in json: [String: Any], for traits: DeltaSkinTraits) -> [[String: Any]]? {
+        func orientationNode(inTree key: String) -> [String: Any]? {
+            guard let tree = json[key] as? [String: Any],
+                  let device = tree[traits.device.rawValue] as? [String: Any] else { return nil }
+            for displayType in traits.displayType.lookupChain {
+                if let display = device[displayType.rawValue] as? [String: Any],
+                   let orientation = display[traits.orientation.rawValue] as? [String: Any] {
+                    return orientation
+                }
+            }
+            return nil
+        }
+        if traits.usesAltRepresentations, let alt = orientationNode(inTree: "altRepresentations") {
+            return alt["items"] as? [[String: Any]]
+        }
+        return orientationNode(inTree: "representations")?["items"] as? [[String: Any]]
     }
 
     /// Convert representation info into button group

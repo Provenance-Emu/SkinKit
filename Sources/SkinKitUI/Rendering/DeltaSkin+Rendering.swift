@@ -212,7 +212,11 @@ extension DeltaSkin: DeltaSkinRenderable {
         var lastError: Error?
         for name in candidates {
             // Check cache first
-            let cacheKey = "\(identifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(name)"
+            // Each layout set gets its own entries (the alternate set may reuse an asset name at another mapping
+            // size). Both sets carry an explicit marker in a field of their own, so no asset name can make a key
+            // of one set equal a key of the other.
+            let setKey = traits.usesAltRepresentations && hasAltRepresentations ? "set=alt" : "set=main"
+            let cacheKey = "\(identifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)|\(setKey)|\(name)"
             // Only renders with visible content are stored, so a hit needs no second full-size sample.
             if let cachedImage = Self.imageCache.image(forKey: cacheKey) {
                 DLOG("skins: Found cached image: \(name)")

@@ -245,6 +245,41 @@ extension DeltaSkinScreen {
         guard let frame = screen.outputFrame else { return .greatestFiniteMagnitude }
         return frame.width * frame.height
     }
+
+    /// The skin screen that shows the DS touchscreen (bottom screen), where stylus input maps.
+    ///
+    /// Order: a screen with id `nds_bottom`; then, with `byInputIdentity`, the screen whose `inputFrame` is the
+    /// DS bottom screen (see ``ndsTouchScreenByInput(in:)``); then the screen drawn lowest (largest output `minY`,
+    /// then largest `minX` for side-by-side layouts), which was the only rule before alternate layouts.
+    ///
+    /// Pass `byInputIdentity: true` when the alternate layout set is active: Ignited's alternate DS layouts draw
+    /// the touchscreen above the top screen, so the output position no longer says which screen it is.
+    public static func ndsBottomScreen(in screens: [DeltaSkinScreen], byInputIdentity: Bool) -> DeltaSkinScreen? {
+        if let explicit = screens.first(where: { $0.id == "nds_bottom" }) { return explicit }
+        if byInputIdentity, let byInput = ndsTouchScreenByInput(in: screens) { return byInput }
+        return screens.compactMap { screen -> (DeltaSkinScreen, CGRect)? in
+            guard let frame = screen.outputFrame else { return nil }
+            return (screen, frame)
+        }.max(by: { lhs, rhs in
+            if lhs.1.minY == rhs.1.minY {
+                return lhs.1.minX < rhs.1.minX
+            }
+            return lhs.1.minY < rhs.1.minY
+        })?.0
+    }
+
+    /// The screen whose `inputFrame` is the DS bottom screen: in the stacked 256×384 convention it is the one
+    /// input region below the others (largest input `minY`). `nil` unless exactly one drawn screen has that
+    /// largest input `minY` and some other drawn screen's input is above it, so skins without input frames, or with
+    /// both screens reading the same region, keep the output-position rule.
+    public static func ndsTouchScreenByInput(in screens: [DeltaSkinScreen]) -> DeltaSkinScreen? {
+        let drawn = screens.filter { $0.outputFrame != nil && $0.inputFrame != nil }
+        guard drawn.count >= 2,
+              let lowest = drawn.map({ $0.inputFrame!.minY }).max(),
+              drawn.contains(where: { $0.inputFrame!.minY < lowest }) else { return nil }
+        let candidates = drawn.filter { $0.inputFrame!.minY == lowest }
+        return candidates.count == 1 ? candidates[0] : nil
+    }
 }
 
 public enum DeltaSkinScreenPlacement: String, Codable {
