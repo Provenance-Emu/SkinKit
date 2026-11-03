@@ -166,6 +166,10 @@ public struct DeltaSkinValidator {
         if let representations = json["representations"] as? [String: Any] {
             checkAssetReferences(in: representations, entryNames: entryNames, findings: &findings)
         }
+        // and inside Ignited's alternate set, which names its own artwork
+        if let altRepresentations = json["altRepresentations"] as? [String: Any] {
+            checkAssetReferences(in: altRepresentations, entryNames: entryNames, findings: &findings)
+        }
 
         // All good
         if findings.isEmpty {

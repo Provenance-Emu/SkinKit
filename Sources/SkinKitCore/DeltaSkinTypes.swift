@@ -79,19 +79,37 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
         set { gameIdentifiers = Self.cleanedKeys(newValue.map { [$0] } ?? []) }
     }
 
+    /// Whether lookups use the skin's alternate layout set (Ignited's `altRepresentations`).
+    ///
+    /// The skin's `toggleAltRepresentations` button flips this. Every lookup that takes traits honors it:
+    /// representation, screens, screen groups, buttons, mapping size, artwork and background animation.
+    /// A skin without `altRepresentations` ignores it, so `true` on such a skin behaves exactly like `false`.
+    /// Where the alternate set lacks this device, display type or orientation, the normal set is used; see
+    /// `DeltaSkin.representation(for:)`.
+    public var usesAltRepresentations: Bool
+
     public init(device: DeltaSkinDevice = .iphone,
                 displayType: DeltaSkinDisplayType = .standard,
                 orientation: DeltaSkinOrientation = .portrait,
                 iPadModel: DeltaSkinIPadModel? = nil,
                 externalDisplay: DeltaSkinExternalDisplay = .none,
                 gameIdentifier: String? = nil,
-                gameIdentifiers: [String] = []) {
+                gameIdentifiers: [String] = [],
+                usesAltRepresentations: Bool = false) {
         self.device = device
         self.displayType = displayType
         self.orientation = orientation
         self.iPadModel = iPadModel
         self.externalDisplay = externalDisplay
         self.gameIdentifiers = Self.cleanedKeys((gameIdentifier.map { [$0] } ?? []) + gameIdentifiers)
+        self.usesAltRepresentations = usesAltRepresentations
+    }
+
+    /// A copy of these traits with `usesAltRepresentations` set.
+    public func withAltRepresentations(_ usesAlt: Bool) -> DeltaSkinTraits {
+        var copy = self
+        copy.usesAltRepresentations = usesAlt
+        return copy
     }
 
     /// Builds the ordered candidate keys for a game: MD5, CRC, ROM filename (as given, then without its
@@ -122,7 +140,7 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case device, displayType, orientation, iPadModel, externalDisplay, gameIdentifiers
+        case device, displayType, orientation, iPadModel, externalDisplay, gameIdentifiers, usesAltRepresentations
         case legacyGameIdentifier = "gameIdentifier"
     }
 
@@ -137,6 +155,7 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
         let single = try container.decodeIfPresent(String.self, forKey: .legacyGameIdentifier)
         let list = try container.decodeIfPresent([String].self, forKey: .gameIdentifiers) ?? []
         gameIdentifiers = Self.cleanedKeys((single.map { [$0] } ?? []) + list)
+        usesAltRepresentations = try container.decodeIfPresent(Bool.self, forKey: .usesAltRepresentations) ?? false
     }
 
     public func encode(to encoder: Encoder) throws {
@@ -147,6 +166,7 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
         try container.encodeIfPresent(iPadModel, forKey: .iPadModel)
         try container.encode(externalDisplay, forKey: .externalDisplay)
         if !gameIdentifiers.isEmpty { try container.encode(gameIdentifiers, forKey: .gameIdentifiers) }
+        if usesAltRepresentations { try container.encode(true, forKey: .usesAltRepresentations) }
     }
 
     public var description: String {
@@ -159,6 +179,9 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
         }
         if !gameIdentifiers.isEmpty {
             desc += "-game:\(gameIdentifiers.joined(separator: "|"))"
+        }
+        if usesAltRepresentations {
+            desc += "-alt"
         }
         return desc
     }
