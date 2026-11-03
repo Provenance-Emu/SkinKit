@@ -1642,6 +1642,8 @@ public struct DeltaSkinView: View {
     /// and a single input goes by its token (see `DeltaSkinInputHandling.touchRole(forToken:)`).
     private func touchRole(of button: DeltaSkinButton) -> TouchInputRole {
         if button.buttonKind == .hardwareSwitch { return .system }
+        // The layout toggle is a frontend control whatever the host's classifier says: it must not be slid onto.
+        if case .single(let command) = button.input, command == DeltaSkin.toggleAltRepresentationsInput { return .system }
         switch button.input {
         case .directional: return .gameplay
         case .single(let command):
@@ -2444,6 +2446,19 @@ public struct DeltaSkinView: View {
     private func handleButtonPress(_ buttonId: String) {
         DLOG("🔴 handleButtonPress called with buttonId: \(buttonId)")
 
+        // `toggleAltRepresentations` flips the skin's layout set once per press. It is not a held input: it skips
+        // sticky and turbo, is never added to `pressedButtons`, and its release is dropped. The host flips
+        // `DeltaSkinTraits.usesAltRepresentations`; the trait change reloads this view and releases the contact.
+        if buttonId == DeltaSkin.toggleAltRepresentationsInput {
+            #if canImport(UIKit) && !os(tvOS)
+            if !ProcessInfo.processInfo.isiOSAppOnMac, DeltaSkinInteractionSettings.current.isButtonVibrationEnabled() {
+                impactGenerator.impactOccurred()
+            }
+            #endif
+            inputHandler.toggleAltRepresentations()
+            return
+        }
+
         // --- Sticky button logic ---
         #if canImport(UIKit)
         if DeltaSkinInteractionSettings.current.isStickyButtonsEnabled() {
@@ -2502,6 +2517,9 @@ public struct DeltaSkinView: View {
 
     private func handleButtonRelease(_ buttonId: String) {
         DLOG("🔵 handleButtonRelease called with buttonId: \(buttonId)")
+
+        // The layout toggle acted on press; there is nothing to release.
+        if buttonId == DeltaSkin.toggleAltRepresentationsInput { return }
 
         // --- Sticky button logic ---
         #if canImport(UIKit)

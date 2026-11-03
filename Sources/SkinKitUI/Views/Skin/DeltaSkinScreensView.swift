@@ -398,12 +398,18 @@ public struct DeltaSkinScreensView: View {
 
     // Handle button press
     private func handleButtonPress(_ buttonId: String) {
+        // The layout toggle flips once per press; see DeltaSkinView.handleButtonPress.
+        if buttonId == DeltaSkin.toggleAltRepresentationsInput {
+            inputHandler.toggleAltRepresentations()
+            return
+        }
         // Send button press to input handler
         inputHandler.buttonPressed(buttonId)
     }
 
     // Handle button release
     private func handleButtonRelease(_ buttonId: String) {
+        if buttonId == DeltaSkin.toggleAltRepresentationsInput { return }
         // Send button release to input handler
         inputHandler.buttonReleased(buttonId)
     }
