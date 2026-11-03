@@ -26,6 +26,9 @@ struct SkinPreviewCell: View {
     @State private var thumbnailImage: UIImage?
     @State private var isLoadingThumbnail = true
     @State private var thumbnailFailed = false
+    /// The render in flight. A newer load (a theme change) cancels it so a late, superseded render
+    /// cannot overwrite the thumbnail or the shared cache with stale artwork.
+    @State private var thumbnailTask: Task<Void, Never>?
     #if !os(tvOS)
     @State private var showingShareSheet = false
     @State private var showingEditSheet = false
@@ -152,6 +155,9 @@ struct SkinPreviewCell: View {
         .onAppear {
             loadThumbnail()
         }
+        .onThemeSelectionChange(of: skin.identifier) {
+            loadThumbnail()
+        }
     }
 
     // MARK: - Thumbnail preview
@@ -185,28 +191,41 @@ struct SkinPreviewCell: View {
     }
 
     private func loadThumbnail() {
+        thumbnailTask?.cancel()
+        thumbnailTask = nil
+
         let traits = previewTraits
-        let cacheKey = "\(skin.identifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)"
+        let cacheKey = SkinPreviewThumbnailCache.key(for: skin.identifier, traits: traits)
 
         // Fast path: use SkinSelectionPreviewCell's shared cache. Whatever was stored is the best
         // render there is; re-checking it for visible content only re-rendered thin artwork forever.
         if let cached = SkinPreviewThumbnailCache.shared.thumbnail(forKey: cacheKey) {
             thumbnailImage = cached
             isLoadingThumbnail = false
+            thumbnailFailed = false
             return
         }
 
-        Task.detached(priority: .utility) {
+        thumbnailFailed = false
+        isLoadingThumbnail = true
+        let skin = self.skin
+        thumbnailTask = Task.detached(priority: .utility) {
             do {
                 let image = try await SkinPreviewThumbnailCache.preview(of: skin, traits: traits)
+                // Superseded while rendering: drop the result before the cache write and the UI update.
+                try Task.checkCancellation()
                 SkinPreviewThumbnailCache.shared.store(image, forKey: cacheKey)
                 await MainActor.run {
+                    guard !Task.isCancelled else { return }
                     self.thumbnailImage = image
                     self.isLoadingThumbnail = false
                 }
+            } catch is CancellationError {
+                // A newer load owns the cell now.
             } catch {
                 ELOG("skins: SkinPreviewCell failed to load thumbnail for '\(skin.name)' traits=\(traits.description): \(error)")
                 await MainActor.run {
+                    guard !Task.isCancelled else { return }
                     self.thumbnailFailed = true
                     self.isLoadingThumbnail = false
                 }
@@ -308,6 +327,14 @@ final class SkinPreviewThumbnailCache: @unchecked Sendable {
 
     func thumbnail(forKey key: String) -> UIImage? {
         cache.image(forKey: key)
+    }
+
+    /// Key of a skin's preview for `traits`. It includes the skin's selected theme, so picking a theme
+    /// shows that theme's artwork instead of the preview cached for the previous choice.
+    static func key(for skinIdentifier: String, traits: DeltaSkinTraits) -> String {
+        // "theme:<id>" vs "none": a theme whose id is "default" must not share a key with no theme.
+        let theme = DeltaSkinThemeSelection.selectedThemeId(for: skinIdentifier).map { "theme:\($0)" } ?? "none"
+        return "\(skinIdentifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(theme)"
     }
 
     func store(_ image: UIImage, forKey key: String) {

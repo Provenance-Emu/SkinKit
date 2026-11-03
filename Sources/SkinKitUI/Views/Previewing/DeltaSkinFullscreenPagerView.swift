@@ -126,6 +126,17 @@ public struct DeltaSkinFullscreenPagerView: View {
                     controlBar(geometry: geometry)
                 }
             }
+            .overlay(alignment: .bottom) {
+                // The current page's themes. Choosing one redraws that page's `DeltaSkinView` in place.
+                if showControls, !currentSkin.availableThemes.isEmpty {
+                    DeltaSkinThemePickerView(skin: currentSkin)
+                        .id(currentSkin.identifier)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                        .padding(.horizontal)
+                        .padding(.bottom, max(geometry.safeAreaInsets.bottom, 24))
+                }
+            }
         }
         .ignoresSafeArea()
         .onAppear {

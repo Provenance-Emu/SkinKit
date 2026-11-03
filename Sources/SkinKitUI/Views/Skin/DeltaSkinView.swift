@@ -875,6 +875,10 @@ public struct DeltaSkinView: View {
                     ELOG("skins: ERROR - calculateLayout() returned nil after size change")
                 }
             }
+            .onThemeSelectionChange(of: skin.identifier) {
+                // A theme swaps the artwork only, but the artwork is loaded once per appearance.
+                reloadSkinResources()
+            }
             .onChange(of: traits) { _, newTraits in
                 reloadSkinResources()
                 ILOG("skins: Traits changed to: device=\(newTraits.device.rawValue), displayType=\(newTraits.displayType.rawValue), orientation=\(newTraits.orientation.rawValue), iPadModel=\(newTraits.iPadModel?.rawValue ?? "nil")")

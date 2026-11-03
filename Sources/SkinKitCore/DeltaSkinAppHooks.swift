@@ -16,14 +16,32 @@ public enum DeltaSkinThemeSelection {
         UserDefaults.standard.string(forKey: keyPrefix + skinIdentifier)
     }
 
+    /// Posted after a skin's selected theme changes (not when it is set to the value it already has), from
+    /// whichever thread made the change. The object is `nil`; `userInfo[skinIdentifierUserInfoKey]` is the
+    /// skin's identifier (a `String`).
+    ///
+    /// Views that already drew the skin observe this to redraw with the new theme's artwork; a stored
+    /// choice alone is only read the next time the artwork loads.
+    public static let didChangeNotification = Notification.Name("com.provenance.deltaskin.themeSelectionDidChange")
+
+    /// `userInfo` key of ``didChangeNotification`` holding the skin identifier.
+    public static let skinIdentifierUserInfoKey = "skinIdentifier"
+
     /// Persist the selected theme ID for a skin. Pass `nil` to revert to the default appearance.
     public static func setSelectedThemeId(_ id: String?, for skinIdentifier: String) {
         let key = keyPrefix + skinIdentifier
+        let previous = UserDefaults.standard.string(forKey: key)
         if let id {
             UserDefaults.standard.set(id, forKey: key)
         } else {
             UserDefaults.standard.removeObject(forKey: key)
         }
+        guard previous != id else { return }
+        NotificationCenter.default.post(
+            name: didChangeNotification,
+            object: nil,
+            userInfo: [skinIdentifierUserInfoKey: skinIdentifier]
+        )
     }
 }
 
