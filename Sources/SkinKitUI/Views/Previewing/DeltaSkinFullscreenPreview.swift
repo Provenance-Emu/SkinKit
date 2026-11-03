@@ -18,6 +18,8 @@ struct DeltaSkinFullscreenPreview: View {
     /// Pending display type when a switch was requested while unsaved edits exist.
     @State private var pendingDisplayType: DeltaSkinDisplayType? = nil
     @StateObject private var editorViewModel: DeltaSkinEditorViewModel
+    /// Kept for the view's lifetime and observed, so the skin's `toggleAltRepresentations` button switches layouts.
+    @StateObject private var inputHandler = DeltaSkinPreviewInputHandler()
     @Environment(\.dismiss) private var dismiss
 
     init(skin: any DeltaSkinRenderable, traits: DeltaSkinTraits, filters: Set<TestPatternEffect>, initialEditMode: Bool = false) {
@@ -80,7 +82,8 @@ struct DeltaSkinFullscreenPreview: View {
         DeltaSkinTraits(
             device: traits.device,
             displayType: currentDisplayType,
-            orientation: traits.orientation
+            orientation: traits.orientation,
+            usesAltRepresentations: inputHandler.usesAltRepresentations
         )
     }
 
@@ -95,7 +98,7 @@ struct DeltaSkinFullscreenPreview: View {
                     showHitTestOverlay: showHitTestOverlay && !isEditMode,
                     screenAspectRatio: nil,
                     isInEmulator: false,
-                    inputHandler: DeltaSkinPreviewInputHandler()
+                    inputHandler: inputHandler
                 )
 
                 // Edit overlay (replaces debug overlay in edit mode)

@@ -93,24 +93,40 @@ public struct DeltaSkinScreensView: View {
             .onAppear {
                 print("DeltaSkinScreensView appeared")
             }
-            .task {
-                // Load skin image
-                do {
-                    skinImage = try await skin.image(for: traits)
-                    print("Loaded skin image: \(skinImage?.size ?? .zero)")
-                } catch {
-                    loadingError = error
-                    print("Error loading skin image: \(error)")
-                }
-
-                // Load screen groups
-                screenGroups = skin.screenGroups(for: traits)
-                print("Loaded screen groups: \(screenGroups?.count ?? 0)")
-
-                // Load button mappings
-                buttonMappings = skin.buttonMappings(for: traits)
-                print("Loaded button mappings: \(buttonMappings?.count ?? 0)")
+            // Keyed by skin and traits: a trait change (orientation, or the alternate layout set) cancels the
+            // previous load and reloads. Results of a cancelled load are dropped.
+            .task(id: ResourceKey(skinIdentifier: skin.identifier, traits: traits)) {
+                await loadResources()
             }
+        }
+    }
+
+    private struct ResourceKey: Equatable {
+        let skinIdentifier: String
+        let traits: DeltaSkinTraits
+    }
+
+    /// Loads artwork, screens and hotspots for the current skin and traits.
+    @MainActor
+    private func loadResources() async {
+        let traits = self.traits
+        // Layout data first, so the controls follow the new set even while artwork decodes.
+        screenGroups = skin.screenGroups(for: traits)
+        // Built from the protocol's `buttons(for:)`: `buttonMappings(for:)` is an extension method and returns
+        // the empty default through `any DeltaSkinRenderable`.
+        buttonMappings = DeltaSkinButtonMapping.mappings(from: skin.buttons(for: traits) ?? [],
+                                                         mappingSize: skin.mappingSize(for: traits))
+        loadingError = nil
+
+        do {
+            let image = try await skin.image(for: traits)
+            guard !Task.isCancelled else { return }
+            skinImage = image
+        } catch {
+            guard !Task.isCancelled else { return }
+            skinImage = nil
+            loadingError = error
+            print("Error loading skin image: \(error)")
         }
     }
 

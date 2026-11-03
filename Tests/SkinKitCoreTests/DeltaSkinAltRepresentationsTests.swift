@@ -305,4 +305,20 @@ struct DeltaSkinAltRepresentationsTests {
         // A device the alternate set lacks reads the normal tree (no items there).
         #expect(DeltaSkin.rawItems(in: skin.jsonRepresentation, for: Self.traits(.ipad, .standard, .portrait, alt: true)) == nil)
     }
+
+    @Test("Hotspots built from decoded buttons carry the toggle token as their id, in both sets")
+    func hotspotsFromButtons() throws {
+        let skin = try Self.skin("DS-AltToggle-Test")
+        for alt in [false, true] {
+            let traits = Self.traits(alt: alt)
+            let mappings = DeltaSkinButtonMapping.mappings(from: skin.buttons(for: traits) ?? [],
+                                                           mappingSize: skin.mappingSize(for: traits))
+            let toggle = try #require(mappings.first { $0.id == DeltaSkin.toggleAltRepresentationsInput }, "alt: \(alt)")
+            #expect(toggle.inputs == [DeltaSkin.toggleAltRepresentationsInput])
+            let size = try #require(skin.mappingSize(for: traits))
+            let y: CGFloat = alt ? 850 : 700
+            #expect(toggle.frame == CGRect(x: 10 / size.width, y: y / size.height, width: 40 / size.width, height: 30 / size.height))
+            #expect(mappings.first?.id == (alt ? "b" : "a"))
+        }
+    }
 }

@@ -1642,13 +1642,15 @@ public struct DeltaSkinView: View {
     /// and a single input goes by its token (see `DeltaSkinInputHandling.touchRole(forToken:)`).
     private func touchRole(of button: DeltaSkinButton) -> TouchInputRole {
         if button.buttonKind == .hardwareSwitch { return .system }
-        // The layout toggle is a frontend control whatever the host's classifier says: it must not be slid onto.
-        if case .single(let command) = button.input, command == DeltaSkin.toggleAltRepresentationsInput { return .system }
         switch button.input {
         case .directional: return .gameplay
         case .single(let command):
             // A combo is a gameplay chord only if every member is.
             let commands = inputCommands(for: button)
+            // The layout toggle is a frontend control whatever the host's classifier says, alone or in a combo
+            // (`pressesComboInputs` presses every member): it must not be slid onto.
+            if command == DeltaSkin.toggleAltRepresentationsInput
+                || commands.contains(DeltaSkin.toggleAltRepresentationsInput) { return .system }
             guard commands.count > 1 else { return inputHandler.touchRole(forToken: command) }
             return commands.allSatisfy { inputHandler.touchRole(forToken: $0).isGameplay } ? .gameplay : .system
         }

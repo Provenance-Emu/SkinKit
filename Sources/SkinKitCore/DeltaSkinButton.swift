@@ -324,6 +324,36 @@ public struct DeltaSkinButtonMapping: Identifiable {
     }
 }
 
+public extension DeltaSkinButtonMapping {
+    /// Mappings built from decoded buttons (the protocol's `buttons(for:)`), with frames normalized to 0–1 of
+    /// `mappingSize`. `DeltaSkinProtocol.buttonMappings(for:)` is an extension method, so through an existential it
+    /// returns the empty default; views that take `any DeltaSkinRenderable` build their hotspots with this instead.
+    ///
+    /// The id is the input token for a single input (so `toggleAltRepresentations` and other frontend tokens reach
+    /// the input handler as themselves), `dpad` for a directional control, and `button_<index>` otherwise.
+    static func mappings(from buttons: [DeltaSkinButton], mappingSize: CGSize?) -> [DeltaSkinButtonMapping] {
+        buttons.enumerated().map { index, button in
+            let inputs: [String]
+            let id: String
+            switch button.input {
+            case .single(let token):
+                inputs = button.comboInputs.isEmpty ? [token] : button.comboInputs
+                id = inputs.count == 1 ? inputs[0] : (token.isEmpty ? "button_\(index)" : token)
+            case .directional(let mapping):
+                inputs = mapping.keys.sorted().compactMap { mapping[$0] }
+                id = "dpad"
+            }
+            var frame = button.frame
+            if let size = mappingSize, size.width > 0, size.height > 0,
+               frame.maxX > 1 || frame.maxY > 1 {
+                frame = CGRect(x: frame.minX / size.width, y: frame.minY / size.height,
+                               width: frame.width / size.width, height: frame.height / size.height)
+            }
+            return DeltaSkinButtonMapping(id: id, frame: frame, inputs: inputs, extendedEdges: button.extendedEdges)
+        }
+    }
+}
+
 /// Extension to DeltaSkinProtocol to add button mapping support
 public extension DeltaSkinProtocol {
     /// Get button mappings for the given traits
