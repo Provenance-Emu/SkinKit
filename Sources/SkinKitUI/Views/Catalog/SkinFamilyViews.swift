@@ -30,11 +30,15 @@ final class SkinFamilyInstallModel: ObservableObject {
 
     let family: SkinFamily
     let familyIndex: SkinFamilyIndex?
+    /// Shared with the detail view's own "Download & Install": an entry in flight on either path
+    /// is skipped by the other.
+    let tracker: SkinCatalogInstallTracker
     private var task: Task<Void, Never>?
 
-    init(family: SkinFamily, familyIndex: SkinFamilyIndex?) {
+    init(family: SkinFamily, familyIndex: SkinFamilyIndex?, tracker: SkinCatalogInstallTracker? = nil) {
         self.family = family
         self.familyIndex = familyIndex
+        self.tracker = tracker ?? .shared
     }
 
     func state(for member: SkinCatalogEntry) -> MemberState {
@@ -68,7 +72,14 @@ final class SkinFamilyInstallModel: ObservableObject {
         task?.cancel()
     }
 
-    private func run(_ plan: SkinDownloadPlan) {
+    /// Whether `member` is installing on any path: this model's plan or the detail view's button.
+    func isInFlight(_ member: SkinCatalogEntry) -> Bool {
+        state(for: member).isBusy || tracker.isInFlight(member.id)
+    }
+
+    private func run(_ fullPlan: SkinDownloadPlan) {
+        // Members already installing elsewhere stay with that install.
+        let plan = SkinDownloadPlan(entries: fullPlan.entries.filter { !tracker.isInFlight($0.id) })
         guard !plan.isEmpty, task == nil else { return }
         isInstallingPlan = true
         for entry in plan.entries {
@@ -84,6 +95,7 @@ final class SkinFamilyInstallModel: ObservableObject {
                 let failures = await DeltaSkinManager.shared.installCatalogPlan(
                     single,
                     familyIndex: index,
+                    tracker: model.tracker,
                     progress: { id, fraction in
                         Task { @MainActor in
                             guard case .downloading = model.states[id] else { return }
@@ -92,7 +104,9 @@ final class SkinFamilyInstallModel: ObservableObject {
                     }
                 )
                 if let error = failures[entry.id] {
-                    self.states[entry.id] = error is CancellationError ? .idle : .failed(error.localizedDescription)
+                    // Cancelled, or claimed by another install meanwhile (that one reports it).
+                    let quiet = error is CancellationError || error is SkinCatalogInstallError
+                    self.states[entry.id] = quiet ? .idle : .failed(error.localizedDescription)
                 } else {
                     self.states[entry.id] = .installed
                 }
@@ -118,6 +132,7 @@ struct SkinFamilyVariantsSection: View {
     let current: SkinCatalogEntry
     @ObservedObject var model: SkinFamilyInstallModel
     @ObservedObject private var skinManager = DeltaSkinManager.shared
+    @ObservedObject private var installTracker = SkinCatalogInstallTracker.shared
     let destination: (SkinCatalogEntry) -> AnyView
 
     var body: some View {
@@ -219,6 +234,11 @@ struct SkinFamilyVariantsSection: View {
     @ViewBuilder
     private func memberAction(_ member: SkinCatalogEntry) -> some View {
         switch model.state(for: member) {
+        case .idle where installTracker.isInFlight(member.id):
+            // Installing from the detail view's own button.
+            ProgressView()
+                .tint(SkinKitTheme.current.pink)
+                .accessibilityLabel("Installing \(family.label(for: member))")
         case .idle:
             Button {
                 model.install(member)

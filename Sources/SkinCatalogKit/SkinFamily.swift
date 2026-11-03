@@ -150,7 +150,7 @@ public struct SkinFamilyIndex: Sendable {
         SkinFamilyGrouping.group(entries, groupId: \.groupId, groupOrder: \.groupOrder).map { members in
             let first = members[0]
             guard let groupId = first.groupId else {
-                return SkinFamily(id: "entry:\(first.id)", groupId: nil, name: first.name, members: members, labels: [:])
+                return SkinFamily(id: SkinFamily.id(for: first), groupId: nil, name: first.name, members: members, labels: [:])
             }
             var memberLabels: [String: String] = [:]
             for member in members {
@@ -158,7 +158,7 @@ public struct SkinFamilyIndex: Sendable {
                     ?? SkinVariantLabel.resolve(explicit: member.variantLabel, fullName: member.name, baseName: baseNames[groupId])
             }
             let name = members.count == 1 ? first.name : (baseNames[groupId] ?? SkinVariantLabel.stripSuffix(first.name))
-            return SkinFamily(id: "group:\(groupId)", groupId: groupId, name: name, members: members, labels: memberLabels)
+            return SkinFamily(id: SkinFamily.id(for: first), groupId: groupId, name: name, members: members, labels: memberLabels)
         }
     }
 
@@ -166,6 +166,47 @@ public struct SkinFamilyIndex: Sendable {
         SkinFamilyGrouping.group(entries, groupId: \.groupId, groupOrder: \.groupOrder).compactMap { members in
             members[0].groupId.map { ($0, members) }
         }
+    }
+}
+
+public extension SkinFamilyIndex {
+    /// The complete families of `eligible` that have at least one member in `matches`, in the order
+    /// their first match appears in `matches`.
+    ///
+    /// Use this wherever a search, filter or shelf cut picks entries: grouping the picked entries
+    /// alone would hand the card a family missing the members that didn't make the cut, so its
+    /// variants section shrinks and "Install all" installs a subset.
+    func families(containing matches: [SkinCatalogEntry], in eligible: [SkinCatalogEntry]) -> [SkinFamily] {
+        let complete = families(from: eligible)
+        var byId: [String: SkinFamily] = [:]
+        for family in complete {
+            byId[family.id] = family
+        }
+        var seen = Set<String>()
+        var result: [SkinFamily] = []
+        for entry in matches {
+            let id = SkinFamily.id(for: entry)
+            guard seen.insert(id).inserted, let family = byId[id] else { continue }
+            result.append(family)
+        }
+        return result
+    }
+
+    /// A shelf of at most `limit` complete families of `eligible`, sorted by family. The cut is
+    /// taken after grouping, so it never splits a family.
+    func shelf(
+        from eligible: [SkinCatalogEntry],
+        limit: Int,
+        by areInIncreasingOrder: (SkinFamily, SkinFamily) -> Bool
+    ) -> [SkinFamily] {
+        Array(families(from: eligible).sorted(by: areInIncreasingOrder).prefix(max(0, limit)))
+    }
+}
+
+public extension SkinFamily {
+    /// The `id` of the family `entry` belongs to.
+    static func id(for entry: SkinCatalogEntry) -> String {
+        entry.groupId.map { "group:\($0)" } ?? "entry:\(entry.id)"
     }
 }
 

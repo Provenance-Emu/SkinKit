@@ -189,4 +189,56 @@ struct SkinStoreFamilyTests {
         #expect(!installer.isBusy(plan))
         #expect(record.storedMemberships()["m3"] == SkinFamilyMembership(groupId: "pack", groupOrder: 3, variantLabel: "V3"))
     }
+
+    // MARK: - One install per entry
+
+    @Test("The install tracker lets one claim per entry through")
+    func trackerClaims() {
+        let tracker = SkinCatalogInstallTracker()
+        #expect(tracker.begin("doom"))
+        #expect(!tracker.begin("doom"), "a second install of the same entry is refused")
+        #expect(tracker.begin("avp"), "other entries are unaffected")
+        tracker.end("doom")
+        #expect(!tracker.isInFlight("doom"))
+        #expect(tracker.begin("doom"))
+    }
+
+    @Test("A plan skips an entry another install already holds, and releases its own claims")
+    func planSkipsEntryInFlight() async throws {
+        let dir = try TestSupport.makeScratch("StoreFamilies-tracker")
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let (defaults, cleanupDefaults) = TestSupport.makeDefaults()
+        defer { cleanupDefaults() }
+        let manager = TestSupport.makeManager(skinsDirectory: dir, defaults: defaults)
+        let tracker = SkinCatalogInstallTracker()
+        let downloads = RecordingDownloader()
+
+        // The detail view's "Download & Install" is fetching Doom.
+        #expect(tracker.begin(Self.doom.id))
+        let failures = await manager.installCatalogPlan(
+            SkinDownloadPlan(entries: [Self.doom, Self.avp]),
+            downloader: downloads,
+            tracker: tracker
+        )
+
+        #expect(failures[Self.doom.id] as? SkinCatalogInstallError == .alreadyInProgress(entryId: Self.doom.id))
+        #expect(downloads.urls == [Self.avp.downloadURL], "Doom is not fetched a second time")
+        #expect(tracker.isInFlight(Self.doom.id), "the other install still owns its claim")
+        #expect(!tracker.isInFlight(Self.avp.id), "the plan released its own claim")
+    }
+}
+
+/// Records each URL it is asked for and writes a placeholder file.
+private final class RecordingDownloader: SkinStoreDownloading, @unchecked Sendable {
+    private let lock = NSLock()
+    private var recorded: [URL] = []
+
+    var urls: [URL] { lock.withLock { recorded } }
+
+    func download(from url: URL, to destination: URL, progress: @escaping @Sendable (Double) -> Void) async throws {
+        lock.withLock { recorded.append(url) }
+        try FileManager.default.createDirectory(at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("skin".utf8).write(to: destination)
+        progress(1)
+    }
 }

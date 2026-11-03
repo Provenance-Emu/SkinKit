@@ -119,6 +119,51 @@ final class SkinFamilyTests: XCTestCase {
         XCTAssertEqual(index.baseName(forGroup: SkinCatalogFixture.gbaFamilyGroupID), "Fixture Pad")
     }
 
+    // MARK: - Complete families for searches and shelves
+
+    func testSearchHitShowsItsCompleteFamily() throws {
+        let index = catalog.familyIndex
+        // Only the third member matched: the card still carries all three, so "Install all" gets them all.
+        let hits = [try entry(SkinCatalogFixture.gbaFamilyGreenID), try entry(SkinCatalogFixture.gbaFamilyRedID)]
+        let families = index.families(containing: hits, in: catalog.skins)
+        XCTAssertEqual(families.count, 1, "two hits from one family make one card")
+        XCTAssertEqual(families[0].members.map(\.id), [
+            SkinCatalogFixture.gbaFamilyRedID, SkinCatalogFixture.gbaFamilyGreenID, SkinCatalogFixture.gbaFamilyBlueID,
+        ])
+        XCTAssertEqual(families[0].downloadPlan().count, 3)
+        XCTAssertEqual(families[0].label(for: hits[0]), "Green")
+    }
+
+    func testSearchKeepsTheOrderOfTheFirstHitAndOnlyEligibleMembers() throws {
+        let eligible = [
+            make("solo"),
+            make("a1", name: "Pack - One", group: "pack", order: 1),
+            make("a2", name: "Pack - Two", group: "pack", order: 2),
+        ]
+        let index = SkinFamilyIndex(entries: eligible)
+        let families = index.families(containing: [eligible[2], eligible[0], make("not-eligible")], in: eligible)
+        XCTAssertEqual(families.map(\.id), ["group:pack", "entry:solo"], "an entry outside `eligible` has no card")
+        XCTAssertEqual(families[0].members.map(\.id), ["a1", "a2"])
+    }
+
+    func testShelfCutNeverSplitsAFamily() {
+        // The two most-downloaded entries both belong to a three-member family; a cut of 2 taken
+        // before grouping would hand the card two of its three members.
+        let eligible = [
+            make("big-1", name: "Big - One", group: "big", order: 1).with(downloads: 900),
+            make("big-2", name: "Big - Two", group: "big", order: 2).with(downloads: 800),
+            make("big-3", name: "Big - Three", group: "big", order: 3).with(downloads: 1),
+            make("mid").with(downloads: 500),
+            make("low").with(downloads: 10),
+        ]
+        let index = SkinFamilyIndex(entries: eligible)
+        let shelf = index.shelf(from: eligible, limit: 2) { $0.totalDownloadCount > $1.totalDownloadCount }
+        XCTAssertEqual(shelf.map(\.id), ["group:big", "entry:mid"])
+        XCTAssertEqual(shelf[0].members.count, 3, "the whole family, including its least popular member")
+        XCTAssertEqual(shelf[0].downloadPlan().count, 3)
+        XCTAssertTrue(index.shelf(from: eligible, limit: 0) { _, _ in false }.isEmpty)
+    }
+
     // MARK: - Grouping
 
     func testGroupsByGroupIdOrderedByGroupOrder() throws {
@@ -313,5 +358,13 @@ final class SkinFamilyTests: XCTestCase {
         policy.visibility = .default
         let hidden = policy.familySections(for: catalog.skins)
         XCTAssertFalse(hidden.flatMap(\.families).flatMap(\.members).contains(where: \.isTestSkin))
+    }
+}
+
+private extension SkinCatalogEntry {
+    func with(downloads: Int) -> SkinCatalogEntry {
+        var copy = self
+        copy.downloadCount = downloads
+        return copy
     }
 }

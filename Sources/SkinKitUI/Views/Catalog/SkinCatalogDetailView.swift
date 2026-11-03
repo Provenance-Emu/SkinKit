@@ -46,6 +46,9 @@ public struct SkinCatalogDetailView: View {
 
     /// Observe the skin manager so we can detect already-installed skins.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
+    /// Installs in flight from any path (this button, the family's per-variant install and
+    /// "Install all"), so the same entry is never downloaded and imported twice at once.
+    @ObservedObject private var installTracker = SkinCatalogInstallTracker.shared
 
     // MARK: - Types
 
@@ -359,6 +362,10 @@ public struct SkinCatalogDetailView: View {
     private var actionSection: some View {
         VStack(spacing: 12) {
             switch downloadState {
+            case .idle where installTracker.isInFlight(entry.id):
+                // Installing from the family's variants section.
+                installingIndicator
+
             case .idle:
                 downloadButton
 
@@ -366,21 +373,7 @@ public struct SkinCatalogDetailView: View {
                 downloadProgressView(progress: progress)
 
             case .installing:
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .tint(SkinKitTheme.current.pink)
-                    Text("INSTALLING...")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                        .tracking(1)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.black.opacity(0.5))
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
-                )
+                installingIndicator
 
             case .installed:
                 VStack(spacing: 10) {
@@ -431,6 +424,24 @@ public struct SkinCatalogDetailView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .animation(.easeInOut(duration: 0.3), value: downloadState)
+    }
+
+    private var installingIndicator: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .tint(SkinKitTheme.current.pink)
+            Text("INSTALLING...")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(SkinKitTheme.current.horizontalGradient)
+                .tracking(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.5))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+        )
     }
 
     private var downloadButton: some View {
@@ -894,9 +905,19 @@ public struct SkinCatalogDetailView: View {
     private func downloadAndInstall() async {
         guard !Task.isCancelled else { return }
 
-        await MainActor.run {
+        // One install per entry at a time, shared with the family's per-variant install and
+        // "Install all": a second import of the same file would replace the skin under the first.
+        let entryId = entry.id
+        let claimed = await MainActor.run { () -> Bool in
+            guard SkinCatalogInstallTracker.shared.begin(entryId) else { return false }
             downloadState = .downloading(progress: 0)
+            return true
         }
+        guard claimed else {
+            ILOG("SkinCatalogDetailView: '\(entry.name)' is already installing; not starting another")
+            return
+        }
+        defer { Task { @MainActor in SkinCatalogInstallTracker.shared.end(entryId) } }
 
         do {
             // Download the skin file with progress

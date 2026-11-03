@@ -50,18 +50,32 @@ public extension DeltaSkinManager {
     ///   - familyIndex: the whole catalog's index, so each sidecar stores the label the store showed.
     ///   - downloader: fetches each file; tests pass a fake.
     ///   - progress: per entry id, the fraction of that entry's download.
+    ///   - tracker: claims each entry while it installs; an entry another install already holds
+    ///     is skipped with `SkinCatalogInstallError.alreadyInProgress`.
     /// - Returns: per entry id, the error that stopped it. Empty when everything installed.
     @discardableResult
     func installCatalogPlan(
         _ plan: SkinDownloadPlan,
         familyIndex: SkinFamilyIndex? = nil,
         downloader: any SkinStoreDownloading = URLSessionSkinStoreDownloader(),
+        tracker: SkinCatalogInstallTracker? = nil,
         progress: @escaping @Sendable (_ entryId: String, _ fraction: Double) -> Void = { _, _ in }
     ) async -> [String: Error] {
+        let claims: SkinCatalogInstallTracker
+        if let tracker {
+            claims = tracker
+        } else {
+            claims = await MainActor.run { SkinCatalogInstallTracker.shared }
+        }
         var failures: [String: Error] = [:]
         for entry in plan.entries {
             if Task.isCancelled {
                 failures[entry.id] = CancellationError()
+                continue
+            }
+            guard await claims.begin(entry.id) else {
+                ILOG("SkinKitManager: '\(entry.name)' is already installing; skipped")
+                failures[entry.id] = SkinCatalogInstallError.alreadyInProgress(entryId: entry.id)
                 continue
             }
             let directory = FileManager.default.temporaryDirectory
@@ -76,6 +90,7 @@ public extension DeltaSkinManager {
                 WLOG("SkinKitManager: Family install of '\(entry.name)' failed: \(error)")
                 failures[entry.id] = error
             }
+            await claims.end(entry.id)
         }
         return failures
     }

@@ -85,31 +85,32 @@ public struct TVOSSkinCatalogBrowserView: View {
         }
     }
 
-    private var popularSkins: [SkinCatalogEntry] {
-        filteredCatalog
-            .sorted { ($0.downloadCount ?? 0) > ($1.downloadCount ?? 0) }
-            .prefix(12)
-            .map { $0 }
+    /// Complete families with at least one member passing the system filter. Shelves are cut by
+    /// family, after grouping, so a card never arrives missing members.
+    private var filteredFamilies: [SkinFamily] {
+        familyIndex.families(containing: filteredCatalog, in: catalog)
     }
 
-    private var newSkins: [SkinCatalogEntry] {
-        filteredCatalog
-            .sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }
-            .prefix(12)
-            .map { $0 }
+    private var popularFamilies: [SkinFamily] {
+        Array(filteredFamilies.sorted { $0.totalDownloadCount > $1.totalDownloadCount }.prefix(12))
     }
 
-    private var skinsBySystem: [(system: String, skins: [SkinCatalogEntry])] {
-        // Group by the first non-legacy system code (normalized to lowercase).
-        let grouped = Dictionary(grouping: filteredCatalog) { entry -> String in
-            entry.systems
+    private var newFamilies: [SkinFamily] {
+        Array(filteredFamilies.sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }.prefix(12))
+    }
+
+    private var familiesBySystem: [(system: String, families: [SkinFamily])] {
+        // Group by the primary member's first non-legacy system code (normalized to lowercase), so
+        // a family spanning systems shows once, whole.
+        let grouped = Dictionary(grouping: filteredFamilies) { family -> String in
+            family.primary.systems
                 .map { $0.lowercased() }
                 .first { !SkinCatalogService.isLegacySystemCode($0) }
                 ?? "other"
         }
         return grouped
             .filter { !SkinCatalogService.isLegacySystemCode($0.key) }
-            .map { (system: $0.key, skins: $0.value) }
+            .map { (system: $0.key, families: $0.value) }
             .sorted { $0.system < $1.system }
     }
 
@@ -165,19 +166,19 @@ public struct TVOSSkinCatalogBrowserView: View {
                 }
 
                 // Popular section
-                if !popularSkins.isEmpty {
-                    sectionRow(title: "POPULAR", skins: popularSkins)
+                if !popularFamilies.isEmpty {
+                    sectionRow(title: "POPULAR", families: popularFamilies)
                 }
 
                 // New / Recently Updated section
-                if !newSkins.isEmpty {
-                    sectionRow(title: "NEW & UPDATED", skins: newSkins)
+                if !newFamilies.isEmpty {
+                    sectionRow(title: "NEW & UPDATED", families: newFamilies)
                 }
 
                 // By System sections
-                ForEach(skinsBySystem, id: \.system) { item in
+                ForEach(familiesBySystem, id: \.system) { item in
                     if selectedSystem == nil || selectedSystemFilterCodes?.contains(item.system) == true {
-                        sectionRow(title: DeltaSkinSystemDirectory.current.displayNameForCatalogCode(item.system), skins: item.skins)
+                        sectionRow(title: DeltaSkinSystemDirectory.current.displayNameForCatalogCode(item.system), families: item.families)
                     }
                 }
             }
@@ -235,14 +236,14 @@ public struct TVOSSkinCatalogBrowserView: View {
 
     // MARK: - Horizontal section row
 
-    private func sectionRow(title: String, skins: [SkinCatalogEntry]) -> some View {
+    private func sectionRow(title: String, families: [SkinFamily]) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader(title)
                 .padding(.leading, 60)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 24) {
-                    ForEach(familyIndex.families(from: skins)) { family in
+                    ForEach(families) { family in
                         NavigationLink(destination: catalogDetailDestination(for: family)) {
                             TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                         }
@@ -267,7 +268,7 @@ public struct TVOSSkinCatalogBrowserView: View {
                         columns: [GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 30)],
                         spacing: 30
                     ) {
-                        ForEach(familyIndex.families(from: searchResults)) { family in
+                        ForEach(familyIndex.families(containing: searchResults, in: catalog)) { family in
                             NavigationLink(destination: catalogDetailDestination(for: family)) {
                                 TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                             }

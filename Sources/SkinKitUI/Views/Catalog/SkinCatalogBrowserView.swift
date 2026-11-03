@@ -598,10 +598,12 @@ public struct SkinCatalogBrowserView: View {
 
             guard !Task.isCancelled else { return }
 
-            // Group after filtering (hidden sample/mature entries never reach a family), with
-            // labels from the whole catalog.
+            // A card shows its complete family (every visible member, not only the ones that matched
+            // the search or filter), so "Install all" never installs a subset. Hidden sample/mature
+            // entries never reach a family; labels come from the whole catalog.
             let index = try await SkinCatalogService.shared.familyIndex()
-            let grouped = index.families(from: results)
+            let visible = try await SkinCatalogService.shared.visibleCatalog().skins
+            let grouped = index.families(containing: results, in: visible)
 
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.2)) {
