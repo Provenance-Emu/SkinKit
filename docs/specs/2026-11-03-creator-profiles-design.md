@@ -96,7 +96,7 @@ One hand-editable file per claimed creator, next to `skins/` and `sources.json`.
 - writes `docs/creators.json`: `{ "version": 1, "updated": ISO date, "creators": [ ...profile objects without `claim`, plus `stats` from the gamification build and `skinIds` ... ] }`. Unclaimed authors appear too, as minimal records (`slug`, `displayName`, `aliases: [author]`, `claimed: false`, `avatarURL` = mirrored GitHub avatar when `source` gives one), so the apps have one directory to read. At about 150 creators this is tens of kilobytes.
 - publishes `docs/creators/<slug>.json` per creator as well, so a page or an app can fetch one profile without the directory. Both are generated; the hand-edited source stays under `creators/`.
 
-`catalog.json` stays one flat file and gains only the `creator` string per entry. The profile text is not inlined, which keeps the 1 MB catalog from growing with bios and lets a profile edit publish without changing 1,376 entries.
+`catalog.json` stays one flat file and gains only the `creator` string per entry. The profile text is not inlined, which keeps the 1 MB catalog from growing with bios and lets a profile edit publish without changing every entry.
 
 ### 3. Claiming: an issue form plus the opt-out bot's verification
 
@@ -173,7 +173,7 @@ Apps: no app code beyond adopting the SkinKit bump, since the store views come f
 
 ## Calls I made
 
-- **Profiles live in `creators/<slug>.json` in the skins repo**, not in a separate data repo, a Discussions thread, or a service. The skins repo already has the bot pattern, the validators, the build, CODEOWNERS and the issue forms; a second repo would double the plumbing for 149 small files. Discussions are off on the repo and are not a data store. A service is unjustified for data that changes a few times a week.
+- **Profiles live in `creators/<slug>.json` in the skins repo**, not in a separate data repo, a Discussions thread, or a service. The skins repo already has the bot pattern, the validators, the build, CODEOWNERS and the issue forms; a second repo would double the plumbing for about 150 small files. Discussions are off on the repo and are not a data store. A service is unjustified for data that changes a few times a week.
 - **Claim verification reuses `process_optout.py`'s checks**, extracted to a shared module, with a maintainer `/approve` path for deltastyles creators. Automatic for GitHub-sourced creators, human for the rest, because we cannot prove a deltastyles identity without scraping, and scraping for identity is both fragile and impolite.
 - **Socials are handles, links are a short allow-listed list**, so the profile can never carry an arbitrary clickable URL dressed as a Discord icon.
 - **Every author gets a page**; the two-skin threshold goes. Single-skin creators are a third of all authors.
