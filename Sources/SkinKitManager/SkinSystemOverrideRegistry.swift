@@ -23,6 +23,10 @@ import SkinKitCore
 /// launches and is replicated by the CloudKit and iCloud Drive non-database
 /// syncers (see `DeltaSkinSyncSupport.allowedExtensions`).
 public struct SkinCatalogSidecar: Codable, Sendable, Equatable {
+    /// Version 2 added the family fields. A version 1 sidecar predates them and is migrated on read
+    /// (`SkinSystemOverrideRegistry.familyMemberships(for:catalog:)`).
+    public static let currentVersion = 2
+
     /// Sidecar schema version; bump if the file layout changes.
     public let version: Int
     /// Catalog entry id used to install this skin.
@@ -35,14 +39,23 @@ public struct SkinCatalogSidecar: Codable, Sendable, Equatable {
     public let systems: [String]
     /// Optional original game-type identifier URN from the catalog entry.
     public let gameTypeIdentifier: String?
+    /// The catalog entry's variant family (`groupId`), or `nil` when it has none. Version 2.
+    public let groupId: String?
+    /// The entry's position in its family. Version 2.
+    public let groupOrder: Int?
+    /// The entry's resolved variant label ("Doom"). Version 2.
+    public let variantLabel: String?
 
     public init(
-        version: Int = 1,
+        version: Int = SkinCatalogSidecar.currentVersion,
         catalogEntryId: String?,
         skinIdentifier: String?,
         name: String?,
         systems: [String],
-        gameTypeIdentifier: String?
+        gameTypeIdentifier: String?,
+        groupId: String? = nil,
+        groupOrder: Int? = nil,
+        variantLabel: String? = nil
     ) {
         self.version = version
         self.catalogEntryId = catalogEntryId
@@ -50,6 +63,43 @@ public struct SkinCatalogSidecar: Codable, Sendable, Equatable {
         self.name = name
         self.systems = systems
         self.gameTypeIdentifier = gameTypeIdentifier
+        self.groupId = groupId
+        self.groupOrder = groupOrder
+        self.variantLabel = variantLabel
+    }
+
+    /// Whether the family fields are authoritative (written by a version 2 install or migration).
+    public var hasFamilyFields: Bool { version >= 2 }
+
+    /// The family fields, or `nil` for a version 1 sidecar that has not been migrated yet.
+    public var familyMembership: SkinFamilyMembership? {
+        guard hasFamilyFields else { return nil }
+        return SkinFamilyMembership(groupId: groupId, groupOrder: groupOrder, variantLabel: variantLabel)
+    }
+
+    /// This sidecar at the current version with `membership`'s family fields.
+    public func with(_ membership: SkinFamilyMembership) -> SkinCatalogSidecar {
+        SkinCatalogSidecar(
+            catalogEntryId: catalogEntryId,
+            skinIdentifier: skinIdentifier,
+            name: name,
+            systems: systems,
+            gameTypeIdentifier: gameTypeIdentifier,
+            groupId: membership.groupId,
+            groupOrder: membership.groupOrder,
+            variantLabel: membership.variantLabel
+        )
+    }
+
+    /// A version 1 sidecar migrated against `catalog`: the family fields of the entry whose id is
+    /// `catalogEntryId`, or standalone when the catalog has no such entry. `nil` when there is
+    /// nothing to migrate (already version 2) or nothing to match by (no `catalogEntryId`).
+    public func migrated(using catalog: SkinCatalog, index: SkinFamilyIndex? = nil) -> SkinCatalogSidecar? {
+        guard !hasFamilyFields, let catalogEntryId else { return nil }
+        guard let entry = catalog.skins.first(where: { $0.id == catalogEntryId }) else {
+            return with(.standalone)
+        }
+        return with(SkinFamilyMembership(entry: entry, index: index ?? catalog.familyIndex))
     }
 }
 
@@ -163,23 +213,73 @@ public actor SkinSystemOverrideRegistry {
     }
 
     /// Persist a sidecar for a freshly installed skin and warm the in-memory cache.
+    ///
+    /// - Parameter index: the whole catalog's family index, so the stored variant label falls back
+    ///   the same way the store showed it. Without one only the entry's own `variantLabel` and
+    ///   " — " suffix count.
     public func writeSidecar(
         for skinFileURL: URL,
         entry: SkinCatalogEntry,
-        skinIdentifier: String?
+        skinIdentifier: String?,
+        index: SkinFamilyIndex? = nil
     ) async throws {
+        let membership = SkinFamilyMembership(entry: entry, index: index)
         let sidecar = SkinCatalogSidecar(
             catalogEntryId: entry.id,
             skinIdentifier: skinIdentifier,
             name: entry.name,
             systems: Array(Self.normalize(entry.systems)).sorted(),
-            gameTypeIdentifier: entry.gameTypeIdentifier
+            gameTypeIdentifier: entry.gameTypeIdentifier,
+            groupId: membership.groupId,
+            groupOrder: membership.groupOrder,
+            variantLabel: membership.variantLabel
         )
         try writeSidecar(sidecar, to: Self.sidecarURL(for: skinFileURL))
 
         let codes = Self.normalize(sidecar.systems)
         let pathKey = skinFileURL.standardizedFileURL.path
         overridesByPath[pathKey] = codes
+    }
+
+    /// Each skin's variant-family membership, keyed by skin identifier, for grouping a picker.
+    /// Standalone skins are omitted.
+    ///
+    /// Reads each skin's sidecar. A version 1 sidecar (installed before families) is migrated on
+    /// read: matched by `catalogEntryId` against `catalog` and rewritten at version 2, standalone
+    /// when the catalog has no such entry. With no catalog it stays unmigrated and is retried next
+    /// time. Skins without a sidecar (imported by hand, bundled) are standalone.
+    ///
+    /// - Parameter catalog: pass a catalog that is already in memory
+    ///   (`SkinCatalogService.cachedCatalog()`); this never fetches one.
+    public func familyMemberships(
+        for skins: [any DeltaSkinProtocol],
+        catalog: SkinCatalog?
+    ) async -> [String: SkinFamilyMembership] {
+        var result: [String: SkinFamilyMembership] = [:]
+        var index: SkinFamilyIndex?
+        for skin in skins {
+            guard let sidecar = readSidecar(for: skin.fileURL) else { continue }
+            if let membership = sidecar.familyMembership {
+                if !membership.isStandalone {
+                    result[skin.identifier] = membership
+                }
+                continue
+            }
+            guard let catalog else { continue }
+            if index == nil {
+                index = catalog.familyIndex
+            }
+            guard let migrated = sidecar.migrated(using: catalog, index: index) else { continue }
+            do {
+                try writeSidecar(migrated, to: Self.sidecarURL(for: skin.fileURL))
+            } catch {
+                WLOG("SkinSystemOverrideRegistry: Could not migrate sidecar for '\(skin.name)': \(error)")
+            }
+            if let membership = migrated.familyMembership, !membership.isStandalone {
+                result[skin.identifier] = membership
+            }
+        }
+        return result
     }
 
     /// Removes the sidecar (if present) and forgets any in-memory overrides

@@ -35,6 +35,14 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
     /// `groupOrder`. Both are null for standalone skins.
     public var groupId: String?
     public var groupOrder: Int?
+    /// The variant's own name inside its `groupId` family ("Doom"), when the catalog has one.
+    /// Catalog schema 3 (`Provenance-Emu/skins#26`). Older feeds omit it; use
+    /// `SkinFamilyIndex.variantLabel(for:)` for a label that falls back the way the catalog's
+    /// backfill derives it.
+    public var variantLabel: String?
+    /// Variants packed inside this one file (`altRepresentations`, `themes`, `gameOverrides`).
+    /// Empty for split-file skins and for entries the catalog has not inspected.
+    public var variants: [SkinCatalogVariant]
 
     /// `systems`, lowercased.
     public var normalizedSystems: [String] {
@@ -91,7 +99,9 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         submittedBy: String? = nil,
         submittedAt: Date? = nil,
         groupId: String? = nil,
-        groupOrder: Int? = nil
+        groupOrder: Int? = nil,
+        variantLabel: String? = nil,
+        variants: [SkinCatalogVariant] = []
     ) {
         self.id = id
         self.name = name
@@ -114,13 +124,15 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         self.submittedAt = submittedAt
         self.groupId = groupId
         self.groupOrder = groupOrder
+        self.variantLabel = variantLabel
+        self.variants = variants
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, author, systems, gameTypeIdentifier, version, downloadURL
         case thumbnailURL, screenshotURLs, tags, deviceSupport, downloadCount, rating
         case lastUpdated, fileSize, source, description, submittedBy, submittedAt
-        case groupId, groupOrder
+        case groupId, groupOrder, variantLabel, variants
     }
 
     public init(from decoder: Decoder) throws {
@@ -163,6 +175,20 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         submittedAt = SkinCatalogDates.parse(string(.submittedAt))
         groupId = string(.groupId)
         groupOrder = try? container.decodeIfPresent(Int.self, forKey: .groupOrder)
+        variantLabel = string(.variantLabel)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : $0 }
+        // Lossy per item: one malformed variant drops that variant, not the skin.
+        variants = ((try? container.decodeIfPresent([LossyVariant].self, forKey: .variants)) ?? [])
+            .compactMap(\.variant)
+    }
+
+    private struct LossyVariant: Decodable {
+        let variant: SkinCatalogVariant?
+
+        init(from decoder: Decoder) throws {
+            variant = try? SkinCatalogVariant(from: decoder)
+        }
     }
 
     /// Feed URLs are not always valid URL strings: two Donkey Kong panels carry

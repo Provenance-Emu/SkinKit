@@ -73,6 +73,15 @@ public final class SkinStoreInstaller: ObservableObject {
     private let notInstallableMessage: ((String) -> String)?
     private let describeError: (Error) -> String
     private var tasks: [String: Task<Void, Never>] = [:]
+    private var planTasks: [String: Task<Void, Never>] = [:]
+
+    /// The whole catalog's family index. Set it when the store loads the catalog so each install
+    /// records the variant label the store showed; `nil` falls back to the entry's own label.
+    public var familyIndex: SkinFamilyIndex?
+
+    /// The record this installer writes to, for the pickers' family grouping
+    /// (`record.membershipsBySkinIdentifier(migratingWith:)`).
+    public var installedRecord: SkinStoreInstalledRecord { record }
 
     /// - Parameters:
     ///   - policy: which entries install and what their downloads are called (`.iFly`, `.iCube`, or your own).
@@ -142,6 +151,55 @@ public final class SkinStoreInstaller: ObservableObject {
         tasks[entry.id]?.cancel()
     }
 
+    // MARK: - Families
+
+    /// Start installing a family download plan (one variant, some, or "Install all") in the
+    /// background. Entries already installed or in progress are skipped. A second call for the
+    /// same plan while one is running is ignored.
+    public func startInstall(_ plan: SkinDownloadPlan) {
+        let key = Self.planKey(plan)
+        guard planTasks[key] == nil else { return }
+        planTasks[key] = Task { [weak self] in
+            await self?.install(plan)
+            self?.planTasks[key] = nil
+        }
+    }
+
+    /// Install a plan's entries one after another (one request at a time; deltastyles.com
+    /// rate-limits). Each entry reports its own state; a failure doesn't stop the rest.
+    public func install(_ plan: SkinDownloadPlan) async {
+        for entry in plan.entries {
+            if Task.isCancelled { return }
+            switch state(for: entry) {
+            case .installed, .downloading, .installing:
+                continue
+            default:
+                break
+            }
+            guard tasks[entry.id] == nil else { continue }
+            await install(entry)
+        }
+    }
+
+    /// Whether any entry of `plan` is downloading or installing.
+    public func isBusy(_ plan: SkinDownloadPlan) -> Bool {
+        plan.entries.contains { state(for: $0).isBusy }
+    }
+
+    /// The plan's entries not yet installed.
+    public func remaining(_ plan: SkinDownloadPlan) -> SkinDownloadPlan {
+        plan.excluding(installedIds: installedIds)
+    }
+
+    /// Cancel a running plan; the entry in flight returns to idle.
+    public func cancelInstall(_ plan: SkinDownloadPlan) {
+        planTasks[Self.planKey(plan)]?.cancel()
+    }
+
+    private static func planKey(_ plan: SkinDownloadPlan) -> String {
+        plan.entries.map(\.id).joined(separator: "\u{1F}")
+    }
+
     /// Download and install `entry`, updating `states` along the way.
     public func install(_ entry: SkinCatalogEntry) async {
         if states[entry.id]?.isBusy == true {
@@ -175,7 +233,7 @@ public final class SkinStoreInstaller: ObservableObject {
             let result = try await installStep(file, section)
 
             let identifier = result.identifier
-            record.markInstalled(catalogId: entry.id, skinIdentifier: identifier)
+            record.markInstalled(entry: entry, skinIdentifier: identifier, index: familyIndex)
             installedIds.insert(entry.id)
             states[entry.id] = .installed
             ILOG(

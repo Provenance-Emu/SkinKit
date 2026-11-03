@@ -24,19 +24,52 @@ public struct SkinStorePolicy: Sendable {
     /// an entry with no (or the wrong) `systems` still lands on a shelf. The code is added to the
     /// entry's own codes. Empty means `gameTypeIdentifier` is ignored (iFly).
     public var gameTypeSuffixSystemCodes: [String: String]
+    /// Which `sample` / `mature` tagged entries show. `nil` (the default, and the presets) reads
+    /// `SkinContentVisibility.current` at filter time, so the app's settings apply without rebuilding
+    /// the policy.
+    public var visibility: SkinContentVisibility?
+
+    /// The visibility in force: `visibility`, else the app-wide setting.
+    public var effectiveVisibility: SkinContentVisibility {
+        visibility ?? SkinContentVisibility.current
+    }
+
+    /// Show `sample`-tagged entries (the developer setting "Show test skins"). Setting it pins
+    /// `visibility` for this policy.
+    public var showTestSkins: Bool {
+        get { effectiveVisibility.showTestSkins }
+        set {
+            var pinned = effectiveVisibility
+            pinned.showTestSkins = newValue
+            visibility = pinned
+        }
+    }
+
+    /// Show `mature`-tagged entries (the user setting "Show mature skins"). Off by default. Setting it
+    /// pins `visibility` for this policy.
+    public var showMatureSkins: Bool {
+        get { effectiveVisibility.showMatureSkins }
+        set {
+            var pinned = effectiveVisibility
+            pinned.showMatureSkins = newValue
+            visibility = pinned
+        }
+    }
 
     public init(
         sections: [SkinStoreSection],
         placeholderSystemCodes: Set<String> = SkinStorePolicy.defaultPlaceholderSystemCodes,
         hiddenEntryIds: Set<String> = [],
         installableExtensions: Set<String> = SkinStorePolicy.defaultInstallableExtensions,
-        gameTypeSuffixSystemCodes: [String: String] = [:]
+        gameTypeSuffixSystemCodes: [String: String] = [:],
+        visibility: SkinContentVisibility? = nil
     ) {
         self.sections = sections
         self.placeholderSystemCodes = Set(placeholderSystemCodes.map { $0.lowercased() })
         self.hiddenEntryIds = hiddenEntryIds
         self.installableExtensions = Set(installableExtensions.map { $0.lowercased() })
         self.gameTypeSuffixSystemCodes = gameTypeSuffixSystemCodes
+        self.visibility = visibility
     }
 
     // MARK: - Presets
@@ -85,9 +118,11 @@ public struct SkinStorePolicy: Sendable {
     }
 
     /// The shelf for `entry`, or `nil` when the store hides it. When an entry matches several
-    /// shelves the first in `sections` wins.
+    /// shelves the first in `sections` wins. `sample` and `mature` entries are hidden unless the
+    /// visibility allows them.
     public func section(for entry: SkinCatalogEntry) -> SkinStoreSection? {
         guard !hiddenEntryIds.contains(entry.id),
+              effectiveVisibility.allows(entry),
               installableExtension(for: entry.downloadURL) != nil
         else {
             return nil
@@ -111,6 +146,17 @@ public struct SkinStorePolicy: Sendable {
             guard let list = grouped[section], !list.isEmpty else { return nil }
             return (section, list)
         }
+    }
+
+    /// Visible entries grouped into variant families per shelf. Labels come from `index` (build it
+    /// from the whole catalog), or from `entries` when `nil`. A family whose members land on
+    /// different shelves shows on each, with the members that belong there.
+    public func familySections(
+        for entries: [SkinCatalogEntry],
+        index: SkinFamilyIndex? = nil
+    ) -> [(section: SkinStoreSection, families: [SkinFamily])] {
+        let index = index ?? SkinFamilyIndex(entries: entries)
+        return sections(for: entries).map { ($0.section, index.families(from: $0.entries)) }
     }
 
     // MARK: - Install routing

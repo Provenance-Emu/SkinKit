@@ -671,6 +671,193 @@
       "downloadCount": "lots",
       "groupId": 42,
       "groupOrder": "first"
+    },
+    {
+      "id": "test-family-gba-red",
+      "name": "Fixture Pad — Red",
+      "author": "Alice",
+      "systems": [
+        "gba"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-pad-red.deltaskin",
+      "tags": [],
+      "source": "example.com",
+      "groupId": "test:gba-family",
+      "groupOrder": 1,
+      "downloadCount": 10
+    },
+    {
+      "id": "test-family-gba-blue",
+      "name": "Fixture Pad — Blue",
+      "author": "Bob",
+      "systems": [
+        "gba"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-pad-blue.deltaskin",
+      "tags": [],
+      "source": "example.com",
+      "groupId": "test:gba-family",
+      "groupOrder": 3,
+      "downloadCount": 30,
+      "variantLabel": "Ocean Blue"
+    },
+    {
+      "id": "test-family-gba-green",
+      "name": "Fixture Pad Green",
+      "author": "Alice",
+      "systems": [
+        "gba"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-pad-green.deltaskin",
+      "tags": [],
+      "source": "example.com",
+      "groupId": "test:gba-family",
+      "groupOrder": 2,
+      "downloadCount": 20
+    },
+    {
+      "id": "test-single-file-alt-nds",
+      "name": "Fixture DS Dual",
+      "author": "Fixture Author",
+      "systems": [
+        "nds"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-ds-dual.deltaskin",
+      "tags": [],
+      "source": "example.com",
+      "variants": [
+        {
+          "kind": "alt",
+          "key": "alt",
+          "label": "Alternate layout"
+        },
+        {
+          "kind": "bogus-no-key"
+        },
+        {
+          "kind": "futureKind",
+          "key": "x"
+        }
+      ]
+    },
+    {
+      "id": "test-mixed-jaguar-split",
+      "name": "Fixture Keypad - Base",
+      "author": "Fixture Author",
+      "systems": [
+        "jaguar"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-keypad-base.manicskin",
+      "tags": [],
+      "source": "example.com",
+      "groupId": "test:jaguar-mixed",
+      "groupOrder": 1
+    },
+    {
+      "id": "test-mixed-jaguar-single",
+      "name": "Fixture Keypad - Games",
+      "author": "Fixture Author",
+      "systems": [
+        "jaguar"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-keypad-games.manicskin",
+      "tags": [],
+      "source": "example.com",
+      "groupId": "test:jaguar-mixed",
+      "groupOrder": 2,
+      "variants": [
+        {
+          "kind": "game",
+          "key": "Doom",
+          "label": "Doom"
+        },
+        {
+          "kind": "game",
+          "key": "Alien vs Predator",
+          "label": "AvP"
+        },
+        {
+          "kind": "theme",
+          "key": "dark",
+          "label": "Dark"
+        }
+      ]
+    },
+    {
+      "id": "test-sample-dc-1",
+      "name": "Sample Split Family DC — One",
+      "author": "Fixture Author",
+      "systems": [
+        "dreamcast"
+      ],
+      "downloadURL": "https://example.com/skins/sample-dc-1.deltaskin",
+      "tags": [
+        "sample"
+      ],
+      "source": "provenance-emu",
+      "groupId": "provenance-emu:sample-split-family-dc",
+      "groupOrder": 1
+    },
+    {
+      "id": "test-sample-dc-2",
+      "name": "Sample Split Family DC — Two",
+      "author": "Fixture Author",
+      "systems": [
+        "dreamcast"
+      ],
+      "downloadURL": "https://example.com/skins/sample-dc-2.deltaskin",
+      "tags": [
+        "Sample"
+      ],
+      "source": "provenance-emu",
+      "groupId": "provenance-emu:sample-split-family-dc",
+      "groupOrder": 2
+    },
+    {
+      "id": "test-sample-gc-1",
+      "name": "Sample Split Family GC — One",
+      "author": "Fixture Author",
+      "systems": [
+        "gamecube"
+      ],
+      "downloadURL": "https://example.com/skins/sample-gc-1.deltaskin",
+      "tags": [
+        "sample"
+      ],
+      "source": "provenance-emu",
+      "groupId": "provenance-emu:sample-split-family-gc",
+      "groupOrder": 1,
+      "gameTypeIdentifier": "public.aoshuang.game.ngc"
+    },
+    {
+      "id": "test-sample-gc-2",
+      "name": "Sample Split Family GC — Two",
+      "author": "Fixture Author",
+      "systems": [
+        "gamecube"
+      ],
+      "downloadURL": "https://example.com/skins/sample-gc-2.deltaskin",
+      "tags": [
+        "sample"
+      ],
+      "source": "provenance-emu",
+      "groupId": "provenance-emu:sample-split-family-gc",
+      "groupOrder": 2,
+      "gameTypeIdentifier": "public.aoshuang.game.ngc"
+    },
+    {
+      "id": "test-mature-dc",
+      "name": "Fixture Mature Dreamcast",
+      "author": "Fixture Author",
+      "systems": [
+        "dreamcast"
+      ],
+      "downloadURL": "https://example.com/skins/fixture-mature-dc.manicskin",
+      "tags": [
+        "mature",
+        "landscape"
+      ],
+      "source": "example.com"
     }
   ]
 }

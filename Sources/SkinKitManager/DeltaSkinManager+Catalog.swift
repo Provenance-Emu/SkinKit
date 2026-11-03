@@ -15,7 +15,11 @@ public extension DeltaSkinManager {
     /// - Returns: the installed skin, or `nil` if it could not be matched after the import (then
     ///   no sidecar is written).
     @discardableResult
-    func installCatalogSkin(from file: URL, entry: SkinCatalogEntry) async throws -> (any DeltaSkinProtocol)? {
+    func installCatalogSkin(
+        from file: URL,
+        entry: SkinCatalogEntry,
+        familyIndex: SkinFamilyIndex? = nil
+    ) async throws -> (any DeltaSkinProtocol)? {
         try await importSkin(from: file)
 
         let allSkins = try await availableSkins(forceRescan: false)
@@ -27,12 +31,52 @@ public extension DeltaSkinManager {
             try await overrideRegistry.writeSidecar(
                 for: skin.fileURL,
                 entry: entry,
-                skinIdentifier: skin.identifier
+                skinIdentifier: skin.identifier,
+                index: familyIndex
             )
             ILOG("SkinKitManager: Wrote catalog sidecar for '\(skin.name)' at \(SkinSystemOverrideRegistry.sidecarURL(for: skin.fileURL).lastPathComponent)")
         } catch {
             WLOG("SkinKitManager: Failed to write catalog sidecar for '\(entry.name)': \(error)")
         }
         return skin
+    }
+
+    /// Downloads and installs every entry of a family download plan, one after another (one
+    /// request per member file; deltastyles.com rate-limits parallel fetches). A failed member is
+    /// reported and the rest still install.
+    ///
+    /// - Parameters:
+    ///   - plan: from `SkinFamily.downloadPlan(memberIds:policy:)`.
+    ///   - familyIndex: the whole catalog's index, so each sidecar stores the label the store showed.
+    ///   - downloader: fetches each file; tests pass a fake.
+    ///   - progress: per entry id, the fraction of that entry's download.
+    /// - Returns: per entry id, the error that stopped it. Empty when everything installed.
+    @discardableResult
+    func installCatalogPlan(
+        _ plan: SkinDownloadPlan,
+        familyIndex: SkinFamilyIndex? = nil,
+        downloader: any SkinStoreDownloading = URLSessionSkinStoreDownloader(),
+        progress: @escaping @Sendable (_ entryId: String, _ fraction: Double) -> Void = { _, _ in }
+    ) async -> [String: Error] {
+        var failures: [String: Error] = [:]
+        for entry in plan.entries {
+            if Task.isCancelled {
+                failures[entry.id] = CancellationError()
+                continue
+            }
+            let directory = FileManager.default.temporaryDirectory
+                .appendingPathComponent("SkinCatalogPlan-\(UUID().uuidString)", isDirectory: true)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let file = directory.appendingPathComponent(entry.preferredLocalDownloadFileName())
+            do {
+                let id = entry.id
+                try await downloader.download(from: entry.downloadURL, to: file) { progress(id, $0) }
+                try await installCatalogSkin(from: file, entry: entry, familyIndex: familyIndex)
+            } catch {
+                WLOG("SkinKitManager: Family install of '\(entry.name)' failed: \(error)")
+                failures[entry.id] = error
+            }
+        }
+        return failures
     }
 }

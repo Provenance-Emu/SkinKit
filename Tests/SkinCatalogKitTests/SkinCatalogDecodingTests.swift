@@ -36,7 +36,7 @@ final class SkinCatalogDecodingTests: XCTestCase {
 
     func testFeedOrderIsKept() {
         XCTAssertEqual(catalog.skins.first?.id, SkinCatalogFixture.dreamcastIDs[0])
-        XCTAssertEqual(catalog.skins.last?.id, SkinCatalogFixture.unknownFieldsID)
+        XCTAssertEqual(catalog.skins.last?.id, SkinCatalogFixture.matureDreamcastID)
     }
 
     // MARK: - Grouping
