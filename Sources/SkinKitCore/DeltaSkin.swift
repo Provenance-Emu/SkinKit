@@ -270,31 +270,34 @@ public struct DeltaSkin: DeltaSkinProtocol {
     }
 
     /// Try to find a game-specific override representation for the given traits.
-    /// Matches against game title, ROM filename (without extension), and MD5 hash
-    /// stored in `traits.gameIdentifier`.
+    ///
+    /// Candidates are `traits.gameIdentifiers`, in order (MD5, CRC, ROM filename, title when built with
+    /// `DeltaSkinTraits.gameOverrideKeys`). The first candidate with an override that resolves for this device
+    /// and display wins, so an MD5 entry beats a title entry for the same game. Each candidate is compared
+    /// exactly, then case-insensitively. An override replaces the whole representation, with no merge.
     private func gameOverrideRepresentation(for traits: DeltaSkinTraits) -> OrientationRepresentations? {
-        guard let gameId = traits.gameIdentifier,
+        guard !traits.gameIdentifiers.isEmpty,
               let overrides = info.gameOverrides else {
             return nil
         }
 
-        // Try exact match first (game title, filename, or MD5)
-        if let deviceMap = overrides[gameId],
-           let deviceReps = deviceMap[traits.device.rawValue] {
-            if let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
+        for gameId in traits.gameIdentifiers {
+            // Try exact match first
+            if let deviceMap = overrides[gameId],
+               let deviceReps = deviceMap[traits.device.rawValue],
+               let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
                 DLOG("skins: Found game override for '\(gameId)' (exact match)")
                 return reps
             }
-        }
 
-        // Try case-insensitive match
-        let lowerId = gameId.lowercased()
-        for (key, deviceMap) in overrides {
-            if key.lowercased() == lowerId,
-               let deviceReps = deviceMap[traits.device.rawValue],
-               let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
-                DLOG("skins: Found game override for '\(gameId)' (case-insensitive match on '\(key)')")
-                return reps
+            // Then a case-insensitive match
+            let lowerId = gameId.lowercased()
+            for (key, deviceMap) in overrides where key.lowercased() == lowerId {
+                if let deviceReps = deviceMap[traits.device.rawValue],
+                   let reps = resolveOrientationReps(from: deviceReps, traits: traits) {
+                    DLOG("skins: Found game override for '\(gameId)' (case-insensitive match on '\(key)')")
+                    return reps
+                }
             }
         }
 
@@ -305,13 +308,14 @@ public struct DeltaSkin: DeltaSkinProtocol {
         // Fast-path cache: same skin + traits + game → return cached value without logging.
         // The skin's identity is part of the key: without it, a lookup on one skin returned the
         // representation another skin had just resolved for the same traits (its items and mappingSize).
-        let gameKey = traits.gameIdentifier ?? ""
+        // Length-prefixed, so no key text (a separator character included) can make two lists collide.
+        let gameKey = traits.gameIdentifiers.map { "\($0.utf8.count):\($0)" }.joined()
         let cacheKey = "\(identifier)|\(fileURL.path)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)"
         if let cached = Self.cachedRepresentation(forKey: cacheKey) {
             return cached
         }
 
-        let gameName = traits.gameIdentifier ?? "none"
+        let gameName = traits.gameIdentifiers.isEmpty ? "none" : traits.gameIdentifiers.joined(separator: ", ")
         VLOG("skins: representation(for:) device=\(traits.device.rawValue) display=\(traits.displayType.rawValue) orient=\(traits.orientation.rawValue) game=\(gameName)")
         VLOG("skins: Available device reps: \(info.representations.keys.map { $0.rawValue })")
 
@@ -393,8 +397,9 @@ public struct DeltaSkin: DeltaSkinProtocol {
         /// Legacy skins that omit this key have no themes (empty array).
         public let themes: [Theme]?
 
-        /// Per-game layout overrides. Keys are game identifiers (title, ROM filename without
-        /// extension, or MD5 hash). Values map device rawValue to orientation representations,
+        /// Per-game layout overrides. Keys are game identifiers: MD5, CRC, ROM filename (with or without
+        /// extension) or title, tried in that order (see `DeltaSkinTraits.gameOverrideKeys`) and compared
+        /// case-insensitively. Values map device rawValue to orientation representations,
         /// mirroring the structure of `DeviceRepresentations`.
         ///
         /// Example JSON:
@@ -1130,37 +1135,64 @@ public extension Archive {
     }
 }
 
-private func sanitizeJSON(_ data: Data) throws -> Data {
-    guard let jsonString = String(data: data, encoding: .utf8) else {
+/// Removes `//` line comments from an `info.json`, leaving string literals alone.
+///
+/// A `//` only starts a comment outside a string, so `"https://example.com"` and `"//"` survive. Quotes are
+/// tracked with backslash escapes, so `"a \" // b"` stays one string. Lines are not trimmed or dropped: the
+/// output keeps every newline, which keeps decode error positions meaningful.
+func sanitizeJSON(_ data: Data) throws -> Data {
+    guard String(data: data, encoding: .utf8) != nil else {
         throw DeltaSkinError.invalidInfoFile
     }
 
-    // Remove single line comments and handle special fields
-    var lines = jsonString.components(separatedBy: .newlines)
-    lines = lines.map { line in
-        var line = line
+    let slash = UInt8(ascii: "/"), quote = UInt8(ascii: "\""), backslash = UInt8(ascii: "\\")
+    let newline = UInt8(ascii: "\n"), carriageReturn = UInt8(ascii: "\r")
 
-        // Handle special comment fields that are valid JSON
-        if line.contains("\"_comment\"") {
-            return line
+    var output = [UInt8]()
+    output.reserveCapacity(data.count)
+    var inString = false
+    var escaped = false
+    var inComment = false
+    var previous: UInt8?
+
+    for byte in data {
+        if inComment {
+            // A comment runs to the end of its line; the line break itself is kept.
+            if byte == newline || byte == carriageReturn {
+                inComment = false
+                output.append(byte)
+            }
+            previous = nil
+            continue
         }
-
-        // Remove standard comments
-        if let commentIndex = line.range(of: "//")?.lowerBound {
-            line = String(line[..<commentIndex])
+        if inString {
+            output.append(byte)
+            if escaped {
+                escaped = false
+            } else if byte == backslash {
+                escaped = true
+            } else if byte == quote {
+                inString = false
+            }
+            previous = nil
+            continue
         }
-
-        return line.trimmingCharacters(in: .whitespaces)
+        if byte == quote {
+            inString = true
+            output.append(byte)
+        } else if byte == slash, previous == slash {
+            // The first `/` was already written; take it back and drop the rest of the line.
+            output.removeLast()
+            inComment = true
+            previous = nil
+            continue
+        } else {
+            output.append(byte)
+        }
+        previous = byte
     }
-    .filter { !$0.isEmpty }
 
-    // Rejoin and convert back to data
-    let sanitized = lines.joined(separator: "\n")
-    guard let sanitizedData = sanitized.data(using: .utf8) else {
-        throw DeltaSkinError.invalidInfoFile
-    }
-
-    return sanitizedData
+    return Data(output)
 }
 
 /// Asset size options for Delta skins

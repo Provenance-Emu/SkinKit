@@ -64,22 +64,89 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
     public let iPadModel: DeltaSkinIPadModel?
     public let externalDisplay: DeltaSkinExternalDisplay
 
-    /// Optional game identifier used for per-game skin layout overrides.
-    /// Can be a game title, ROM filename (without extension), or MD5 hash.
-    public var gameIdentifier: String?
+    /// Candidate keys for per-game skin layout overrides (`gameOverrides` in `info.json`), most specific first.
+    ///
+    /// The skin tries them in order and the first one that has an override for the current device and
+    /// display wins. Use `gameOverrideKeys(md5:crc:romFileName:title:)` to build the list in the order the
+    /// skin format promises: MD5, CRC, ROM filename, then title. Each key is compared exactly first, then
+    /// case-insensitively, so a hash matches whichever case the skin author wrote it in.
+    public private(set) var gameIdentifiers: [String]
+
+    /// The single most specific game key, kept so callers written for one key still compile.
+    /// Reading returns the first candidate; setting replaces the whole candidate list with that one key.
+    public var gameIdentifier: String? {
+        get { gameIdentifiers.first }
+        set { gameIdentifiers = Self.cleanedKeys(newValue.map { [$0] } ?? []) }
+    }
 
     public init(device: DeltaSkinDevice = .iphone,
                 displayType: DeltaSkinDisplayType = .standard,
                 orientation: DeltaSkinOrientation = .portrait,
                 iPadModel: DeltaSkinIPadModel? = nil,
                 externalDisplay: DeltaSkinExternalDisplay = .none,
-                gameIdentifier: String? = nil) {
+                gameIdentifier: String? = nil,
+                gameIdentifiers: [String] = []) {
         self.device = device
         self.displayType = displayType
         self.orientation = orientation
         self.iPadModel = iPadModel
         self.externalDisplay = externalDisplay
-        self.gameIdentifier = gameIdentifier
+        self.gameIdentifiers = Self.cleanedKeys((gameIdentifier.map { [$0] } ?? []) + gameIdentifiers)
+    }
+
+    /// Builds the ordered candidate keys for a game: MD5, CRC, ROM filename (as given, then without its
+    /// extension), then title. Missing, empty and repeated values are dropped, so pass whatever the game
+    /// record has.
+    public static func gameOverrideKeys(md5: String? = nil,
+                                        crc: String? = nil,
+                                        romFileName: String? = nil,
+                                        title: String? = nil) -> [String] {
+        var keys: [String] = []
+        keys.append(contentsOf: [md5, crc].compactMap { $0 })
+        if let fileName = romFileName?.trimmingCharacters(in: .whitespacesAndNewlines), !fileName.isEmpty {
+            keys.append(fileName)
+            let stem = (fileName as NSString).deletingPathExtension
+            if stem != fileName { keys.append(stem) }
+        }
+        if let title { keys.append(title) }
+        return cleanedKeys(keys)
+    }
+
+    /// Trims, drops empties and removes exact repeats, keeping the first occurrence.
+    private static func cleanedKeys(_ keys: [String]) -> [String] {
+        var seen = Set<String>()
+        return keys.compactMap { key in
+            let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+            return !trimmed.isEmpty && seen.insert(trimmed).inserted ? trimmed : nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case device, displayType, orientation, iPadModel, externalDisplay, gameIdentifiers
+        case legacyGameIdentifier = "gameIdentifier"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        device = try container.decode(DeltaSkinDevice.self, forKey: .device)
+        displayType = try container.decode(DeltaSkinDisplayType.self, forKey: .displayType)
+        orientation = try container.decode(DeltaSkinOrientation.self, forKey: .orientation)
+        iPadModel = try container.decodeIfPresent(DeltaSkinIPadModel.self, forKey: .iPadModel)
+        externalDisplay = try container.decode(DeltaSkinExternalDisplay.self, forKey: .externalDisplay)
+        // Traits encoded before the candidate list existed carry a single `gameIdentifier`.
+        let single = try container.decodeIfPresent(String.self, forKey: .legacyGameIdentifier)
+        let list = try container.decodeIfPresent([String].self, forKey: .gameIdentifiers) ?? []
+        gameIdentifiers = Self.cleanedKeys((single.map { [$0] } ?? []) + list)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(device, forKey: .device)
+        try container.encode(displayType, forKey: .displayType)
+        try container.encode(orientation, forKey: .orientation)
+        try container.encodeIfPresent(iPadModel, forKey: .iPadModel)
+        try container.encode(externalDisplay, forKey: .externalDisplay)
+        if !gameIdentifiers.isEmpty { try container.encode(gameIdentifiers, forKey: .gameIdentifiers) }
     }
 
     public var description: String {
@@ -90,8 +157,8 @@ public struct DeltaSkinTraits: Codable, Hashable, Equatable {
         if externalDisplay != .none {
             desc += "-\(externalDisplay.rawValue)"
         }
-        if let game = gameIdentifier {
-            desc += "-game:\(game)"
+        if !gameIdentifiers.isEmpty {
+            desc += "-game:\(gameIdentifiers.joined(separator: "|"))"
         }
         return desc
     }

@@ -19,8 +19,7 @@ public extension DeltaSkin {
         }
 
         /// Strip `//` comments (whole-line or trailing) before parsing. A `//` inside a string, such as a URL, is
-        /// kept. Without it a commented file throws `invalidInfoFile`, and `sanitizeJSON` (the default path) cuts any
-        /// line at the first `//`, strings included.
+        /// kept. Without it a commented file throws `invalidInfoFile`: the default path parses the raw file first.
         public static let stripsComments = DecodingOptions(rawValue: 1 << 0)
 
         /// Drop a representation, item or screen that does not decode, on its own, instead of rejecting the
