@@ -1066,6 +1066,29 @@ public struct DeltaSkin: DeltaSkinProtocol {
         return rawDictionary
     }
 
+    /// The raw `items` array of `info.json` for these traits, from the same tree `representation(for:)` uses for
+    /// the decoded controls: the alternate set when `traits.usesAltRepresentations` is on and it has these traits
+    /// (with the standard/edgeToEdge lookup chain), otherwise the normal `representations`. Callers that join
+    /// decoded buttons to their raw per-item metadata (thumbsticks, per-item artwork) read through this so the
+    /// two can't come from different trees. `gameOverrides` are not consulted, as before.
+    public static func rawItems(in json: [String: Any], for traits: DeltaSkinTraits) -> [[String: Any]]? {
+        func orientationNode(inTree key: String) -> [String: Any]? {
+            guard let tree = json[key] as? [String: Any],
+                  let device = tree[traits.device.rawValue] as? [String: Any] else { return nil }
+            for displayType in traits.displayType.lookupChain {
+                if let display = device[displayType.rawValue] as? [String: Any],
+                   let orientation = display[traits.orientation.rawValue] as? [String: Any] {
+                    return orientation
+                }
+            }
+            return nil
+        }
+        if traits.usesAltRepresentations, let alt = orientationNode(inTree: "altRepresentations") {
+            return alt["items"] as? [[String: Any]]
+        }
+        return orientationNode(inTree: "representations")?["items"] as? [[String: Any]]
+    }
+
     /// Convert representation info into button group
     public func toButtonGroup(from rep: RepresentationInfo) -> DeltaSkinButtonGroup {
         let buttons = rep.items?.map { item -> DeltaSkinButton in

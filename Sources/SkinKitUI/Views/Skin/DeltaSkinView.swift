@@ -1845,18 +1845,11 @@ public struct DeltaSkinView: View {
         let allScreens = groups.flatMap { $0.screens }
         guard allScreens.count >= 2 else { return nil }
 
-        // Prefer explicit id; fall back to the screen with the largest minY (portrait-stacked bottom),
-        // and when minY ties (e.g., side-by-side landscape), choose the one with the largest minX.
-        let bottomSkinScreen: DeltaSkinScreen? = allScreens.first { $0.id == "nds_bottom" }
-            ?? allScreens.compactMap { screen -> (DeltaSkinScreen, CGRect)? in
-                guard let frame = screen.outputFrame else { return nil }
-                return (screen, frame)
-            }.max(by: { lhs, rhs in
-                if lhs.1.minY == rhs.1.minY {
-                    return lhs.1.minX < rhs.1.minX
-                }
-                return lhs.1.minY < rhs.1.minY
-            })?.0
+        // Prefer explicit id; then, with the alternate layout set, the screen whose inputFrame is the DS
+        // bottom screen (Ignited's alternate layouts draw the touchscreen above the top screen); otherwise the
+        // screen with the largest minY (portrait-stacked bottom), largest minX on a tie (side-by-side landscape).
+        let bottomSkinScreen = DeltaSkinScreen.ndsBottomScreen(in: allScreens,
+                                                               byInputIdentity: traits.usesAltRepresentations)
 
         // When the renderer swaps the screens, the DS touchscreen is drawn in the
         // other skin screen, so the stylus area moves with it.

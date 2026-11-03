@@ -248,4 +248,61 @@ struct DeltaSkinAltRepresentationsTests {
         #expect(on.description.hasSuffix("-alt"))
         #expect(!off.description.contains("alt"))
     }
+
+    // MARK: - DS touchscreen and raw items follow the active set
+
+    @Test("On the Ignited DS, the touchscreen follows the DS bottom screen's input after toggling")
+    func ignitedTouchScreenFollowsToggle() throws {
+        let skin = try Self.skin("IgnitedDS-Alt-Test")
+        for displayType in [DeltaSkinDisplayType.standard, .edgeToEdge] {
+            for orientation in DeltaSkinOrientation.allCases {
+                let off = Self.traits(.iphone, displayType, orientation, alt: false)
+                let on = Self.traits(.iphone, displayType, orientation, alt: true)
+                let normal = try #require(skin.screenGroups(for: off)?.first?.screens)
+                let alt = try #require(skin.screenGroups(for: on)?.first?.screens)
+
+                // Normal set: the touchscreen (input y 192) is drawn lowest; both rules agree.
+                let normalTouch = try #require(DeltaSkinScreen.ndsBottomScreen(in: normal, byInputIdentity: off.usesAltRepresentations))
+                #expect(normalTouch.inputFrame?.minY == 192)
+                #expect(DeltaSkinScreen.ndsBottomScreen(in: normal, byInputIdentity: true)?.id == normalTouch.id)
+
+                // Alternate set: the touchscreen is drawn where the top screen was, above the other screen.
+                let altTouch = try #require(DeltaSkinScreen.ndsBottomScreen(in: alt, byInputIdentity: on.usesAltRepresentations))
+                #expect(altTouch.inputFrame?.minY == 192, "\(on.description)")
+                #expect(altTouch.outputFrame == normal[0].outputFrame, "\(on.description)")
+                // The output-position rule alone would have picked the non-touch screen.
+                #expect(DeltaSkinScreen.ndsBottomScreen(in: alt, byInputIdentity: false)?.inputFrame?.minY == 0)
+            }
+        }
+    }
+
+    @Test("Raw items come from the same tree as the decoded buttons, for both sets")
+    func rawItemsFollowActiveSet() throws {
+        let skin = try Self.skin("DS-AltToggle-Test")
+        func frame(_ item: [String: Any]) -> CGRect? {
+            guard let f = item["frame"] as? [String: Any],
+                  let x = (f["x"] as? NSNumber)?.doubleValue, let y = (f["y"] as? NSNumber)?.doubleValue,
+                  let w = (f["width"] as? NSNumber)?.doubleValue, let h = (f["height"] as? NSNumber)?.doubleValue else { return nil }
+            return CGRect(x: x, y: y, width: w, height: h)
+        }
+        let cases: [(DeltaSkinDevice, DeltaSkinDisplayType, DeltaSkinOrientation)] = [
+            (.iphone, .standard, .portrait), (.iphone, .edgeToEdge, .portrait),
+            (.iphone, .standard, .landscape), (.iphone, .edgeToEdge, .landscape),
+        ]
+        for (device, displayType, orientation) in cases {
+            for alt in [false, true] {
+                let traits = Self.traits(device, displayType, orientation, alt: alt)
+                let raw = DeltaSkin.rawItems(in: skin.jsonRepresentation, for: traits) ?? []
+                let decoded = skin.buttons(for: traits) ?? []
+                #expect(raw.map(frame) == decoded.map { $0.frame }, "\(traits.description)")
+            }
+        }
+        // Concretely: the alternate portrait items are the alternate tree's.
+        let altItems = DeltaSkin.rawItems(in: skin.jsonRepresentation, for: Self.traits(alt: true)) ?? []
+        #expect(altItems.first?["inputs"] as? [String] == ["b"])
+        let normalItems = DeltaSkin.rawItems(in: skin.jsonRepresentation, for: Self.traits(alt: false)) ?? []
+        #expect(normalItems.first?["inputs"] as? [String] == ["a"])
+        // A device the alternate set lacks reads the normal tree (no items there).
+        #expect(DeltaSkin.rawItems(in: skin.jsonRepresentation, for: Self.traits(.ipad, .standard, .portrait, alt: true)) == nil)
+    }
 }
