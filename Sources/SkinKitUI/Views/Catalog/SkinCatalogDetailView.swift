@@ -27,8 +27,15 @@ public struct SkinCatalogDetailView: View {
     private let activationContextSystemIdentifier: DeltaSkinSystem?
     /// When set, activation writes **game** scope so per-game prefs override any prior selection (system-only writes were ignored by the effective-skin chain).
     private let activationContextGameId: String?
+    /// The variant family this entry belongs to, when opened from a family card. Its members are
+    /// listed with per-variant installs and "Install all".
+    private let family: SkinFamily?
+    /// The whole catalog's family index, so installs store the label the store showed.
+    private let familyIndex: SkinFamilyIndex?
 
     // MARK: - State
+
+    @StateObject private var familyModel: SkinFamilyInstallModel
 
     @State private var downloadState: DownloadState = .idle
     @State private var screenshotIndex = 0
@@ -39,6 +46,9 @@ public struct SkinCatalogDetailView: View {
 
     /// Observe the skin manager so we can detect already-installed skins.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
+    /// Installs in flight from any path (this button, the family's per-variant install and
+    /// "Install all"), so the same entry is never downloaded and imported twice at once.
+    @ObservedObject private var installTracker = SkinCatalogInstallTracker.shared
 
     // MARK: - Types
 
@@ -61,10 +71,16 @@ public struct SkinCatalogDetailView: View {
 
     public init(
         entry: SkinCatalogEntry,
+        family: SkinFamily? = nil,
+        familyIndex: SkinFamilyIndex? = nil,
         activationContextSystemIdentifier: DeltaSkinSystem? = nil,
         activationContextGameId: String? = nil
     ) {
         self.entry = entry
+        self.family = family
+        self.familyIndex = familyIndex
+        let modelFamily = family ?? SkinFamily(id: "entry:\(entry.id)", groupId: nil, name: entry.name, members: [entry], labels: [:])
+        _familyModel = StateObject(wrappedValue: SkinFamilyInstallModel(family: modelFamily, familyIndex: familyIndex))
         self.activationContextSystemIdentifier = activationContextSystemIdentifier
         self.activationContextGameId = activationContextGameId.flatMap { $0.isEmpty ? nil : $0 }
     }
@@ -83,6 +99,7 @@ public struct SkinCatalogDetailView: View {
                     descriptionSection
                     statsSection
                     actionSection
+                    familySection
                     systemTagsSection
                     if !entry.tags.isEmpty {
                         tagsSection(entry.tags)
@@ -119,6 +136,30 @@ public struct SkinCatalogDetailView: View {
         .onDisappear {
             downloadTask?.cancel()
             activationTask?.cancel()
+        }
+    }
+
+    // MARK: - Family Section
+
+    /// The family's variants (split files) or this file's packed variants, when there are any.
+    @ViewBuilder
+    private var familySection: some View {
+        let shown = family ?? familyModel.family
+        if shown.isMultiFile || entry.hasPackedVariants {
+            SkinFamilyVariantsSection(
+                family: shown,
+                current: entry,
+                model: familyModel,
+                destination: { member in
+                    AnyView(SkinCatalogDetailView(
+                        entry: member,
+                        family: family,
+                        familyIndex: familyIndex,
+                        activationContextSystemIdentifier: activationContextSystemIdentifier,
+                        activationContextGameId: activationContextGameId
+                    ))
+                }
+            )
         }
     }
 
@@ -321,6 +362,10 @@ public struct SkinCatalogDetailView: View {
     private var actionSection: some View {
         VStack(spacing: 12) {
             switch downloadState {
+            case .idle where installTracker.isInFlight(entry.id):
+                // Installing from the family's variants section.
+                installingIndicator
+
             case .idle:
                 downloadButton
 
@@ -328,21 +373,7 @@ public struct SkinCatalogDetailView: View {
                 downloadProgressView(progress: progress)
 
             case .installing:
-                HStack(spacing: 12) {
-                    ProgressView()
-                        .tint(SkinKitTheme.current.pink)
-                    Text("INSTALLING...")
-                        .font(.system(size: 14, weight: .bold, design: .rounded))
-                        .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                        .tracking(1)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.black.opacity(0.5))
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
-                )
+                installingIndicator
 
             case .installed:
                 VStack(spacing: 10) {
@@ -393,6 +424,24 @@ public struct SkinCatalogDetailView: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .animation(.easeInOut(duration: 0.3), value: downloadState)
+    }
+
+    private var installingIndicator: some View {
+        HStack(spacing: 12) {
+            ProgressView()
+                .tint(SkinKitTheme.current.pink)
+            Text("INSTALLING...")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(SkinKitTheme.current.horizontalGradient)
+                .tracking(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.black.opacity(0.5))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+        )
     }
 
     private var downloadButton: some View {
@@ -856,9 +905,19 @@ public struct SkinCatalogDetailView: View {
     private func downloadAndInstall() async {
         guard !Task.isCancelled else { return }
 
-        await MainActor.run {
+        // One install per entry at a time, shared with the family's per-variant install and
+        // "Install all": a second import of the same file would replace the skin under the first.
+        let entryId = entry.id
+        let claimed = await MainActor.run { () -> Bool in
+            guard SkinCatalogInstallTracker.shared.begin(entryId) else { return false }
             downloadState = .downloading(progress: 0)
+            return true
         }
+        guard claimed else {
+            ILOG("SkinCatalogDetailView: '\(entry.name)' is already installing; not starting another")
+            return
+        }
+        defer { Task { @MainActor in SkinCatalogInstallTracker.shared.end(entryId) } }
 
         do {
             // Download the skin file with progress
@@ -879,7 +938,7 @@ public struct SkinCatalogDetailView: View {
             // Import the file, then write a `<stem>.skinmeta` sidecar so the override registry can
             // authoritatively map this skin back to the catalog systems even if
             // `info.json.gameTypeIdentifier` is misconfigured (the SEGA SG-1000 thumbstick skin bug).
-            try await DeltaSkinManager.shared.installCatalogSkin(from: localURL, entry: entry)
+            try await DeltaSkinManager.shared.installCatalogSkin(from: localURL, entry: entry, familyIndex: familyIndex)
 
             await MainActor.run {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {

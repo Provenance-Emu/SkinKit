@@ -31,6 +31,8 @@ public struct TVOSSkinCatalogBrowserView: View {
     // MARK: - State
 
     @State private var catalog: [SkinCatalogEntry] = []
+    /// Family facts over the whole catalog; rows group their entries with it.
+    @State private var familyIndex = SkinFamilyIndex(entries: [])
     @State private var availableSystems: [String] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -54,9 +56,11 @@ public struct TVOSSkinCatalogBrowserView: View {
     }
 
     @ViewBuilder
-    private func catalogDetailDestination(for entry: SkinCatalogEntry) -> some View {
+    private func catalogDetailDestination(for family: SkinFamily) -> some View {
         SkinCatalogDetailView(
-            entry: entry,
+            entry: family.primary,
+            family: family,
+            familyIndex: familyIndex,
             activationContextSystemIdentifier: activationContextSystemIdentifier,
             activationContextGameId: activationContextGameId
         )
@@ -81,31 +85,32 @@ public struct TVOSSkinCatalogBrowserView: View {
         }
     }
 
-    private var popularSkins: [SkinCatalogEntry] {
-        filteredCatalog
-            .sorted { ($0.downloadCount ?? 0) > ($1.downloadCount ?? 0) }
-            .prefix(12)
-            .map { $0 }
+    /// Complete families with at least one member passing the system filter. Shelves are cut by
+    /// family, after grouping, so a card never arrives missing members.
+    private var filteredFamilies: [SkinFamily] {
+        familyIndex.families(containing: filteredCatalog, in: catalog)
     }
 
-    private var newSkins: [SkinCatalogEntry] {
-        filteredCatalog
-            .sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }
-            .prefix(12)
-            .map { $0 }
+    private var popularFamilies: [SkinFamily] {
+        Array(filteredFamilies.sorted { $0.totalDownloadCount > $1.totalDownloadCount }.prefix(12))
     }
 
-    private var skinsBySystem: [(system: String, skins: [SkinCatalogEntry])] {
-        // Group by the first non-legacy system code (normalized to lowercase).
-        let grouped = Dictionary(grouping: filteredCatalog) { entry -> String in
-            entry.systems
+    private var newFamilies: [SkinFamily] {
+        Array(filteredFamilies.sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }.prefix(12))
+    }
+
+    private var familiesBySystem: [(system: String, families: [SkinFamily])] {
+        // Group by the primary member's first non-legacy system code (normalized to lowercase), so
+        // a family spanning systems shows once, whole.
+        let grouped = Dictionary(grouping: filteredFamilies) { family -> String in
+            family.primary.systems
                 .map { $0.lowercased() }
                 .first { !SkinCatalogService.isLegacySystemCode($0) }
                 ?? "other"
         }
         return grouped
             .filter { !SkinCatalogService.isLegacySystemCode($0.key) }
-            .map { (system: $0.key, skins: $0.value) }
+            .map { (system: $0.key, families: $0.value) }
             .sorted { $0.system < $1.system }
     }
 
@@ -161,19 +166,19 @@ public struct TVOSSkinCatalogBrowserView: View {
                 }
 
                 // Popular section
-                if !popularSkins.isEmpty {
-                    sectionRow(title: "POPULAR", skins: popularSkins)
+                if !popularFamilies.isEmpty {
+                    sectionRow(title: "POPULAR", families: popularFamilies)
                 }
 
                 // New / Recently Updated section
-                if !newSkins.isEmpty {
-                    sectionRow(title: "NEW & UPDATED", skins: newSkins)
+                if !newFamilies.isEmpty {
+                    sectionRow(title: "NEW & UPDATED", families: newFamilies)
                 }
 
                 // By System sections
-                ForEach(skinsBySystem, id: \.system) { item in
+                ForEach(familiesBySystem, id: \.system) { item in
                     if selectedSystem == nil || selectedSystemFilterCodes?.contains(item.system) == true {
-                        sectionRow(title: DeltaSkinSystemDirectory.current.displayNameForCatalogCode(item.system), skins: item.skins)
+                        sectionRow(title: DeltaSkinSystemDirectory.current.displayNameForCatalogCode(item.system), families: item.families)
                     }
                 }
             }
@@ -231,16 +236,16 @@ public struct TVOSSkinCatalogBrowserView: View {
 
     // MARK: - Horizontal section row
 
-    private func sectionRow(title: String, skins: [SkinCatalogEntry]) -> some View {
+    private func sectionRow(title: String, families: [SkinFamily]) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             sectionHeader(title)
                 .padding(.leading, 60)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 24) {
-                    ForEach(skins) { entry in
-                        NavigationLink(destination: catalogDetailDestination(for: entry)) {
-                            TVOSSkinCard(entry: entry, glowIntensity: glowIntensity)
+                    ForEach(families) { family in
+                        NavigationLink(destination: catalogDetailDestination(for: family)) {
+                            TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                         }
                         .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
                     }
@@ -263,9 +268,9 @@ public struct TVOSSkinCatalogBrowserView: View {
                         columns: [GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 30)],
                         spacing: 30
                     ) {
-                        ForEach(searchResults) { entry in
-                            NavigationLink(destination: catalogDetailDestination(for: entry)) {
-                                TVOSSkinCard(entry: entry, glowIntensity: glowIntensity)
+                        ForEach(familyIndex.families(containing: searchResults, in: catalog)) { family in
+                            NavigationLink(destination: catalogDetailDestination(for: family)) {
+                                TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                             }
                             .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
                         }
@@ -399,11 +404,14 @@ public struct TVOSSkinCatalogBrowserView: View {
         }
 
         do {
-            let skinCatalog = try await SkinCatalogService.shared.catalog(forceRefresh: false)
+            // Hidden sample/mature entries are dropped before grouping; labels come from the full catalog.
+            let skinCatalog = try await SkinCatalogService.shared.visibleCatalog()
+            let index = try await SkinCatalogService.shared.familyIndex()
             let systems = try await SkinCatalogService.shared.availableSystems()
 
             await MainActor.run {
                 catalog = skinCatalog.skins
+                familyIndex = index
                 availableSystems = systems
                 isLoading = false
             }
@@ -429,8 +437,10 @@ public struct TVOSSkinCatalogBrowserView: View {
 
 /// A large card for the tvOS skin catalog — optimised for 10-foot viewing.
 private struct TVOSSkinCard: View {
-    let entry: SkinCatalogEntry
+    let family: SkinFamily
     let glowIntensity: CGFloat
+
+    private var entry: SkinCatalogEntry { family.primary }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -438,14 +448,18 @@ private struct TVOSSkinCard: View {
                 .frame(width: 280, height: 180)
                 .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(alignment: .bottomLeading) {
+                    SkinFamilyBadge(family: family, fontSize: 14)
+                        .padding(8)
+                }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(entry.name)
+                Text(family.name)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text("by \(entry.author ?? "Unknown")")
+                Text(family.creditLine)
                     .font(.system(size: 18))
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
@@ -471,7 +485,8 @@ private struct TVOSSkinCard: View {
 
                     Spacer()
 
-                    if let count = entry.downloadCount, count > 0 {
+                    if family.totalDownloadCount > 0 {
+                        let count = family.totalDownloadCount
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.down.circle")
                                 .font(.system(size: 14))

@@ -76,6 +76,42 @@ enum PreviewFixtures {
         deviceSupport: ["iphone"],
         description: "A fixture entry for previews."
     )
+
+    /// A split-file variant family of three, the last a single-file skin with packed variants.
+    static let catalogFamilyEntries: [SkinCatalogEntry] = catalogFamilyRows.map { row in
+        SkinCatalogEntry(
+            id: "preview.paw-\(row.order)",
+            name: "Jaguar Paw — \(row.label)",
+            author: row.author,
+            systems: ["jaguar"],
+            downloadURL: URL(string: "https://example.invalid/paw-\(row.order).manicskin")!,
+            downloadCount: 100 * row.order,
+            groupId: "preview:paw",
+            groupOrder: row.order,
+            variants: row.variants
+        )
+    }
+
+    private static let catalogFamilyRows: [(order: Int, label: String, author: String, variants: [SkinCatalogVariant])] = [
+        (1, "Doom", "Alice", []),
+        (2, "Alien vs Predator", "Bob", []),
+        (3, "More Games", "Alice", [
+            SkinCatalogVariant(kind: .game, key: "Wolfenstein 3D", label: "Wolfenstein 3D"),
+            SkinCatalogVariant(kind: .theme, key: "dark", label: "Dark"),
+        ]),
+    ]
+
+    static let catalogFamily: SkinFamily = SkinFamily.families(from: catalogFamilyEntries)[0]
+
+    /// A standalone single-file skin with an alternate layout.
+    static let catalogSingleFileEntry = SkinCatalogEntry(
+        id: "preview.ds-dual",
+        name: "DS Dual",
+        author: "Provenance",
+        systems: ["nds"],
+        downloadURL: URL(string: "https://example.invalid/ds-dual.deltaskin")!,
+        variants: [SkinCatalogVariant(kind: .alt, key: "alt", label: "Alternate layout")]
+    )
 }
 #endif
 

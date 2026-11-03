@@ -13,8 +13,15 @@ import Foundation
 /// a Wii skin declared only by `gameTypeIdentifier`, a mixed-case `GameCube` with a date-only
 /// `lastUpdated`, an old-format entry with only the required keys, and one with unknown and
 /// mistyped fields.
+///
+/// Variant families (SkinKit#17) add 11 more hand-written entries, all on systems iFly and iCube
+/// don't shelve or tagged so the stores hide them by default: a 3-member GBA family (one explicit
+/// `variantLabel`, one " — " suffix, one name that only extends the base name; `groupOrder` out of
+/// feed order), a standalone single-file DS skin with `variants` (one malformed, one unknown kind),
+/// a Jaguar family mixing a split file and a single-file skin, two `sample`-tagged split families
+/// (Dreamcast, GameCube) and one `mature`-tagged Dreamcast skin.
 enum SkinCatalogFixture {
-    static let entryCount = 29
+    static let entryCount = 40
 
     static let dreamcastIDs = ["3957312ad9e7c59e", "cc0d4148aecb1099", "161704562e4e93d8"]
     static let mirrorMameID = "7e15d04188bfa40d"
@@ -42,6 +49,18 @@ enum SkinCatalogFixture {
     static let mixedCaseGameCubeID = "test-gamecube-mixed-case"
     static let oldFormatID = "test-old-format"
     static let unknownFieldsID = "test-unknown-fields"
+
+    static let gbaFamilyGroupID = "test:gba-family"
+    static let gbaFamilyRedID = "test-family-gba-red"
+    static let gbaFamilyBlueID = "test-family-gba-blue"
+    static let gbaFamilyGreenID = "test-family-gba-green"
+    static let singleFileAltID = "test-single-file-alt-nds"
+    static let jaguarMixedGroupID = "test:jaguar-mixed"
+    static let jaguarSplitID = "test-mixed-jaguar-split"
+    static let jaguarSingleID = "test-mixed-jaguar-single"
+    static let sampleDreamcastIDs = ["test-sample-dc-1", "test-sample-dc-2"]
+    static let sampleGameCubeIDs = ["test-sample-gc-1", "test-sample-gc-2"]
+    static let matureDreamcastID = "test-mature-dc"
 
     static var data: Data {
         guard let url = Bundle.module.url(forResource: "catalog", withExtension: "json", subdirectory: "Fixtures"),

@@ -35,7 +35,7 @@ public extension SkinCatalogService {
     ///   - query: The search text.
     ///   - system: Optional system short code to narrow results (e.g. "gba").
     func searchSkins(query: String, system: String? = nil) async throws -> [SkinCatalogEntry] {
-        let catalog = try await catalog()
+        let catalog = try await visibleCatalog()
         let lowercasedQuery = query.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         let systemFilterCodes = Self.resolvedSystemFilterCodes(system)
 
@@ -76,7 +76,7 @@ public extension SkinCatalogService {
         deviceSupport: [String]? = nil,
         sortBy: SkinSortOption = .popular
     ) async throws -> [SkinCatalogEntry] {
-        let catalog = try await catalog()
+        let catalog = try await visibleCatalog()
         var results = catalog.skins
         let systemFilterCodes = Self.resolvedSystemFilterCodes(system)
 
@@ -121,7 +121,7 @@ public extension SkinCatalogService {
     ///
     /// - Returns: Sorted array of lowercased system codes.
     func availableSystems() async throws -> [String] {
-        let catalog = try await catalog()
+        let catalog = try await visibleCatalog()
         let canonical = DeltaSkinSystemDirectory.current.canonicalCatalogCode
         let systems = Set(catalog.skins.flatMap { $0.systems.map { canonical($0) } })
             .filter { !Self.isLegacySystemCode($0) }
@@ -132,8 +132,23 @@ public extension SkinCatalogService {
     ///
     /// - Returns: Sorted array of tags.
     func availableTags() async throws -> [String] {
-        let catalog = try await catalog()
+        let catalog = try await visibleCatalog()
         return Set(catalog.skins.flatMap { $0.tags }).sorted()
+    }
+
+    /// The catalog minus the entries `SkinContentVisibility.current` hides (`sample` unless the
+    /// developer setting "Show test skins" is on, `mature` unless "Show mature skins" is on). Every
+    /// query above reads through this, so the browser never shows them.
+    func visibleCatalog() async throws -> SkinCatalog {
+        var catalog = try await catalog()
+        catalog.skins = SkinContentVisibility.current.filter(catalog.skins)
+        return catalog
+    }
+
+    /// Family facts over the whole catalog (hidden entries included, so labels never depend on a
+    /// setting). Group a filtered result with `index.families(from:)`.
+    func familyIndex() async throws -> SkinFamilyIndex {
+        try await catalog().familyIndex
     }
 
     /// Resolves an optional system filter into all related catalog codes.

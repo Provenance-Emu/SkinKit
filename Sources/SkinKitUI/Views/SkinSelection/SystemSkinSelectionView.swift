@@ -42,6 +42,12 @@ public struct SystemSkinSelectionView: View {
     @State private var showingImportError = false
     @State private var importError: Error?
 
+    /// Variant-family membership per skin identifier, from the `.skinmeta` sidecars (standalone
+    /// skins absent). Families show as one disclosure section; assignment stays per variant.
+    @State private var familyMemberships: [String: SkinFamilyMembership] = [:]
+    /// Families the user opened or closed. Unset ones start open when they hold the current pick.
+    @State private var familyExpansion: [String: Bool] = [:]
+
     // Animation properties
     @State private var selectedCellScale: CGFloat = 1.0
     @State private var hoveredSkinId: String? = nil
@@ -136,6 +142,82 @@ public struct SystemSkinSelectionView: View {
         guard DeltaSkinInteractionSettings.current.isCaseCompanionSkinsEnabled() else { return [] }
         return filteredSkinsForCurrentOrientation.filter { $0.isCaseControllerSkin }
 #endif
+    }
+
+    /// The main grid's skins grouped into variant families, in grid order.
+    private var regularSkinFamilies: [SkinInstalledFamily<any DeltaSkinRenderable>] {
+        SkinInstalledFamily.families(
+            regularSkinsForCurrentOrientation,
+            key: { $0.identifier },
+            name: { $0.name },
+            membership: { familyMemberships[$0.identifier] }
+        )
+    }
+
+    private func isFamilyExpanded(_ family: SkinInstalledFamily<any DeltaSkinRenderable>) -> Bool {
+        if let explicit = familyExpansion[family.id] { return explicit }
+        return family.members.contains { $0.identifier == currentSelectedSkinId }
+    }
+
+    /// One variant family as a disclosure section: a header row, and when open a grid of its
+    /// variants labelled by variant name. Tapping a variant assigns that variant, as before.
+    /// A Button-based disclosure so it works the same on tvOS, where the case-skins section avoids
+    /// `DisclosureGroup`.
+    private func familySection(_ family: SkinInstalledFamily<any DeltaSkinRenderable>) -> some View {
+        let expanded = isFamilyExpanded(family)
+        let holdsSelection = family.members.contains { $0.identifier == currentSelectedSkinId }
+        return VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                    familyExpansion[family.id] = !expanded
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: "square.stack.3d.up.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(SkinKitTheme.current.horizontalGradient)
+                        .frame(width: 24)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(family.name)
+                            .font(.system(size: 15, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                        Text("\(family.members.count) variants")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.white.opacity(0.55))
+                    }
+                    Spacer(minLength: 8)
+                    if holdsSelection {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(SkinKitTheme.current.cyan)
+                            .accessibilityLabel("Contains the selected skin")
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white.opacity(0.6))
+                        .rotationEffect(.degrees(expanded ? 90 : 0))
+                }
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: SkinKitTheme.current.radiusSM)
+                        .fill(Color.white.opacity(SkinKitTheme.current.menuCellFillOpacityUnfocused))
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(family.name), \(family.members.count) variants")
+            .accessibilityHint(expanded ? "Collapses the variants" : "Shows the variants")
+
+            if expanded {
+                LazyVGrid(columns: skinSelectionGridColumns, spacing: 24) {
+                    ForEach(family.members.indices, id: \.self) { index in
+                        skinCell(for: family.members[index], title: family.labels[index])
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
     }
 
     private var skinSelectionGridColumns: [GridItem] {
@@ -575,15 +657,23 @@ public struct SystemSkinSelectionView: View {
                     .padding(.top, 16)
 
                 // Skin grid with retrowave styling (iOS: case companion skins may appear in a disclosure section below)
+                let families = regularSkinFamilies
                 LazyVGrid(columns: skinSelectionGridColumns, spacing: 24) {
                     builtInControlsCell
 
-                    ForEach(regularSkinsForCurrentOrientation, id: \.identifier) { skin in
-                        skinCell(for: skin)
+                    // Standalone skins, and families with one variant for this orientation.
+                    ForEach(families.filter { !$0.isMultiMember }, id: \.id) { family in
+                        skinCell(for: family.members[0])
                     }
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
+
+                // Variant families, one disclosure section each.
+                ForEach(families.filter(\.isMultiMember), id: \.id) { family in
+                    familySection(family)
+                        .padding(.horizontal)
+                }
 
 #if !os(tvOS)
                 if !caseCompanionSkinsForCurrentOrientation.isEmpty {
@@ -695,7 +785,7 @@ public struct SystemSkinSelectionView: View {
         scopedSelectionIdentifier == DeltaSkinSelectionManager.builtInSkinPreferenceToken
     }
 
-    private func skinCell(for skin: any DeltaSkinRenderable) -> some View {
+    private func skinCell(for skin: any DeltaSkinRenderable, title: String? = nil) -> some View {
         let isSelected = currentSelectedSkinId == skin.identifier
         let isHovered = hoveredSkinId == skin.identifier
         let isLandscape = selectedOrientation == .landscape
@@ -729,8 +819,8 @@ public struct SystemSkinSelectionView: View {
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
             .animation(.spring(response: 0.2, dampingFraction: 0.8), value: isHovered)
 
-            // Skin name with retrowave styling
-            Text(skin.name)
+            // Skin name (or its variant label inside a family) with retrowave styling
+            Text(title ?? skin.name)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(isSelected ? .white : .white.opacity(0.7))
                 .lineLimit(1)
@@ -931,6 +1021,14 @@ public struct SystemSkinSelectionView: View {
         }
         ILOG("skins: [SelectionView] After device filter: \(deviceFilteredSkins.count) skins (rejected \(skins.count - deviceFilteredSkins.count))")
 
+        // Variant families from the sidecars. Sidecars from before families migrate against the
+        // catalog already in memory; this never fetches it.
+        let cachedCatalog = await SkinCatalogService.shared.cachedCatalog()
+        let memberships = await skinManager.overrideRegistry.familyMemberships(
+            for: deviceFilteredSkins.map { $0 as any DeltaSkinProtocol },
+            catalog: cachedCatalog
+        )
+
         // Get currently selected skins for both orientations using centralized manager
         let portraitSelection: String?
         let landscapeSelection: String?
@@ -943,6 +1041,7 @@ public struct SystemSkinSelectionView: View {
             withAnimation(.easeOut(duration: 0.3)) {
                 // Store device-filtered skins - will be further filtered by orientation in filteredSkinsForCurrentOrientation
                 self.availableSkins = deviceFilteredSkins
+                self.familyMemberships = memberships
                 self.portraitSkins = deviceFilteredSkins
                 self.landscapeSkins = deviceFilteredSkins
                 self.selectedPortraitSkinId = portraitSelection
