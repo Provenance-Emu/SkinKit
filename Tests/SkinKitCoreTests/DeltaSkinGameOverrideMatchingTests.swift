@@ -127,6 +127,21 @@ struct DeltaSkinGameOverrideMatchingTests {
         DeltaSkin.clearRepresentationCache()
     }
 
+    @Test("A key that contains a separator character cannot collide with a two-key list in the cache")
+    func cacheKeyIsUnambiguous() throws {
+        let skin = try Self.skin()
+        DeltaSkin.clearRepresentationCache()
+        // Two keys, the first with an override.
+        #expect(Self.size(skin, ["Tempest 2000", "Nope"]) == Self.titleSize)
+        // One key whose text embeds the old separator and the second key: matches nothing, so it is the base layout.
+        #expect(Self.size(skin, ["Tempest 2000\u{1F}Nope"]) == Self.baseSize)
+        #expect(Self.size(skin, ["Tempest 2000\u{1F}Nope"]) == Self.baseSize)
+        // Length-prefix lookalikes.
+        #expect(Self.size(skin, ["Tempest 2000", "1:x"]) == Self.titleSize)
+        #expect(Self.size(skin, ["Tempest 2000" + "12:Tempest 2000"]) == Self.baseSize)
+        DeltaSkin.clearRepresentationCache()
+    }
+
     // MARK: - Building and coding the list
 
     @Test("gameOverrideKeys orders md5, crc, filename, title and drops empty and repeated values")

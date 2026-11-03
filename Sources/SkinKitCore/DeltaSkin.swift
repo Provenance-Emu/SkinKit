@@ -308,7 +308,8 @@ public struct DeltaSkin: DeltaSkinProtocol {
         // Fast-path cache: same skin + traits + game → return cached value without logging.
         // The skin's identity is part of the key: without it, a lookup on one skin returned the
         // representation another skin had just resolved for the same traits (its items and mappingSize).
-        let gameKey = traits.gameIdentifiers.joined(separator: "\u{1F}")
+        // Length-prefixed, so no key text (a separator character included) can make two lists collide.
+        let gameKey = traits.gameIdentifiers.map { "\($0.utf8.count):\($0)" }.joined()
         let cacheKey = "\(identifier)|\(fileURL.path)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)"
         if let cached = Self.cachedRepresentation(forKey: cacheKey) {
             return cached
