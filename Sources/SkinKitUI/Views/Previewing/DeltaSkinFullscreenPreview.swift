@@ -231,6 +231,13 @@ struct DeltaSkinFullscreenPreview: View {
                     // Status bar in edit mode
                     if isEditMode {
                         DeltaSkinEditorStatusBar(viewModel: editorViewModel)
+                    } else if !skin.availableThemes.isEmpty {
+                        // Themes swap the artwork only, so the picker stays out of the way of editing.
+                        DeltaSkinThemePickerView(skin: skin)
+                            .padding(.vertical, 12)
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                            .padding(.horizontal)
+                            .padding(.bottom, max(geometry.safeAreaInsets.bottom, 24))
                     }
                 }
 

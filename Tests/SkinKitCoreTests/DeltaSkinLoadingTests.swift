@@ -214,6 +214,30 @@ struct DeltaSkinHooksTests {
         #expect(DeltaSkinThemeSelection.selectedThemeId(for: id) == nil)
     }
 
+    @Test("A theme change posts one notification naming the skin; setting the same value posts none")
+    func themeSelectionNotifies() {
+        let id = "com.example.themenotify.\(UUID().uuidString)"
+        defer { DeltaSkinThemeSelection.setSelectedThemeId(nil, for: id) }
+        var received: [String] = []
+        let token = NotificationCenter.default.addObserver(
+            forName: DeltaSkinThemeSelection.didChangeNotification, object: nil, queue: nil
+        ) { note in
+            if let skin = note.userInfo?[DeltaSkinThemeSelection.skinIdentifierUserInfoKey] as? String, skin == id {
+                received.append(skin)
+            }
+        }
+        defer { NotificationCenter.default.removeObserver(token) }
+
+        DeltaSkinThemeSelection.setSelectedThemeId(nil, for: id)      // already unset
+        #expect(received.isEmpty)
+        DeltaSkinThemeSelection.setSelectedThemeId("neon", for: id)
+        #expect(received == [id])
+        DeltaSkinThemeSelection.setSelectedThemeId("neon", for: id)   // unchanged
+        #expect(received == [id])
+        DeltaSkinThemeSelection.setSelectedThemeId(nil, for: id)
+        #expect(received == [id, id])
+    }
+
     @Test("Native resolution registry loads from the bundled JSON")
     func nativeResolution() {
         #expect(DeltaSkinNativeResolution.size(for: .gba) == CGSize(width: 240, height: 160))

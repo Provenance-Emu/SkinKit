@@ -1,0 +1,51 @@
+{
+    "name": "Themed GBA Test Skin",
+    "identifier": "com.skinkit.test.themed.gba",
+    "gameTypeIdentifier": "com.rileytestut.delta.game.gba",
+    "debug": false,
+    "representations": {
+        "iphone": {
+            "standard": {
+                "portrait": {
+                    "assets": {
+                        "resizable": "base.png"
+                    },
+                    "translucent": false,
+                    "mappingSize": {
+                        "width": 750,
+                        "height": 1334
+                    },
+                    "screens": [
+                        {
+                            "inputFrame": { "x": 0, "y": 0, "width": 240, "height": 160 },
+                            "outputFrame": { "x": 0, "y": 80, "width": 750, "height": 500 }
+                        }
+                    ],
+                    "items": [
+                        {
+                            "inputs": ["a"],
+                            "frame": { "x": 520, "y": 900, "width": 150, "height": 150 },
+                            "extendedEdges": { "top": 10, "bottom": 10, "left": 10, "right": 10 }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "themes": [
+        {
+            "id": "neon",
+            "name": "Neon",
+            "assets": {
+                "iphone": { "standard": { "portrait": { "resizable": "neon.png" } } }
+            }
+        },
+        {
+            "id": "ocean",
+            "name": "Ocean",
+            "assets": {
+                "iphone": { "standard": { "portrait": { "resizable": "ocean.png" } } }
+            }
+        }
+    ]
+}
