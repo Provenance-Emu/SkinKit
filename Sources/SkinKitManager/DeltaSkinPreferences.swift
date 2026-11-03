@@ -45,7 +45,9 @@ public enum SkinOrientation: String, Codable, CaseIterable, Equatable, Hashable,
 /// - `com.provenance.deltaskin.preferences`: the legacy `{systemRawValue: skinId}` JSON, migrated
 ///   to v2 (as portrait) on first load and then removed
 /// - `com.provenance.deltaskin.game.preferences.v1`: `{gameId: {orientation: skinId}}` JSON
-public final class DeltaSkinPreferences: ObservableObject {
+/// - `com.provenance.deltaskin.game.altRepresentations.v1`: `{gameId: [skinId]}` JSON, the skins whose alternate
+///   layout (`altRepresentations`) is on for that game. New in SkinKit; see ``DeltaSkinAltRepresentationsStoring``.
+public final class DeltaSkinPreferences: ObservableObject, DeltaSkinAltRepresentationsStoring {
     /// Shared instance, backed by `UserDefaults.standard`.
     public static let shared = DeltaSkinPreferences()
 
@@ -60,6 +62,12 @@ public final class DeltaSkinPreferences: ObservableObject {
 
     /// UserDefaults key for storing game-specific skin preferences
     public static let gamePreferencesKey = "com.provenance.deltaskin.game.preferences.v1"
+
+    /// UserDefaults key for the per-game alternate-layout choice: `{gameId: [skinId]}` JSON.
+    public static let gameAltRepresentationsKey = "com.provenance.deltaskin.game.altRepresentations.v1"
+
+    /// For each game key, the skins whose alternate layout set is on for that game.
+    @Published public private(set) var gameAltRepresentations: [String: Set<String>] = [:]
 
     /// UserDefaults key of the pre-orientation format, read once and then removed.
     public static let legacyPreferencesKey = "com.provenance.deltaskin.preferences"
@@ -200,12 +208,54 @@ public final class DeltaSkinPreferences: ObservableObject {
         DeltaSkinThemeSelection.setSelectedThemeId(id, for: skinIdentifier)
     }
 
+    // MARK: - Alternate layout (altRepresentations)
+
+    /// Whether the skin's alternate layout set is on for the game, checking every key the game may be stored under.
+    ///
+    /// The choice has the game skin pick's scope: one per game, stored per skin so turning it on for one skin does
+    /// not flip another skin the game may use later. `false` when nothing is stored.
+    public func usesAltRepresentations(skinIdentifier: String, gameIds: [String]) -> Bool {
+        gameIds.contains { !$0.isEmpty && gameAltRepresentations[$0]?.contains(skinIdentifier) == true }
+    }
+
+    /// Persists the alternate-layout choice for a skin in a game.
+    ///
+    /// Written under `gameId` (Provenance passes `PVGame.id`, as the skin pickers do). Turning it off also clears
+    /// the choice under `otherGameKeys` (md5, crc), so an older entry stored under another key can't keep it on.
+    @MainActor
+    public func setUsesAltRepresentations(_ usesAlt: Bool, skinIdentifier: String, gameId: String, otherGameKeys: [String] = []) {
+        guard !gameId.isEmpty else { return }
+        if usesAlt {
+            gameAltRepresentations[gameId, default: []].insert(skinIdentifier)
+        } else {
+            for key in [gameId] + otherGameKeys where !key.isEmpty {
+                gameAltRepresentations[key]?.remove(skinIdentifier)
+                if gameAltRepresentations[key]?.isEmpty == true { gameAltRepresentations.removeValue(forKey: key) }
+            }
+        }
+        saveGameAltRepresentations()
+    }
+
     // MARK: - Persistence
 
     /// Load preferences from UserDefaults
     private func loadPreferences() {
         loadSystemPreferences()
         loadGamePreferences()
+        loadGameAltRepresentations()
+    }
+
+    private func loadGameAltRepresentations() {
+        guard let data = defaults.data(forKey: Self.gameAltRepresentationsKey),
+              let stored = try? JSONDecoder().decode([String: [String]].self, from: data) else { return }
+        gameAltRepresentations = stored.mapValues(Set.init).filter { !$0.value.isEmpty }
+    }
+
+    private func saveGameAltRepresentations() {
+        let stored = gameAltRepresentations.mapValues { $0.sorted() }
+        if let data = try? JSONEncoder().encode(stored) {
+            defaults.set(data, forKey: Self.gameAltRepresentationsKey)
+        }
     }
 
     /// Load system-specific preferences

@@ -18,6 +18,10 @@ public final class DeltaSkinSelectionManager: ObservableObject {
     /// Notification name for when skin selection changes
     public static let selectionChangedNotification = NSNotification.Name("DeltaSkinSelectionChanged")
 
+    /// Posted after ``setUsesAltRepresentations(_:skinIdentifier:gameId:otherGameKeys:)``. `userInfo` has
+    /// `skinIdentifier` (String), `gameId` (String) and `usesAltRepresentations` (Bool).
+    public static let altRepresentationsChangedNotification = NSNotification.Name("DeltaSkinAltRepresentationsChanged")
+
     // MARK: - Private Storage
 
     /// Session-specific skin selections (temporary, cleared on app restart)
@@ -167,6 +171,38 @@ public final class DeltaSkinSelectionManager: ObservableObject {
                 "scope": scope.rawValue
             ]
         )
+    }
+
+    // MARK: - Public API: Alternate layout (altRepresentations)
+
+    /// Whether the skin's alternate layout set is on for the game, checking every key the game may be stored under
+    /// (pass `[game.id, md5, crc]`, as for the game's skin pick). Build the skin's traits with this value.
+    public func usesAltRepresentations(skinIdentifier: String, gameIds: [String]) -> Bool {
+        preferences.usesAltRepresentations(skinIdentifier: skinIdentifier, gameIds: gameIds)
+    }
+
+    /// Persists the alternate-layout choice per game, the same scope as the game's skin pick, and posts
+    /// ``altRepresentationsChangedNotification``.
+    @MainActor
+    public func setUsesAltRepresentations(_ usesAlt: Bool, skinIdentifier: String, gameId: String, otherGameKeys: [String] = []) {
+        preferences.setUsesAltRepresentations(usesAlt, skinIdentifier: skinIdentifier, gameId: gameId, otherGameKeys: otherGameKeys)
+        ILOG("skins: altRepresentations \(usesAlt ? "on" : "off") for skin \(skinIdentifier), game \(gameId)")
+        NotificationCenter.default.post(
+            name: Self.altRepresentationsChangedNotification,
+            object: nil,
+            userInfo: ["skinIdentifier": skinIdentifier, "gameId": gameId, "usesAltRepresentations": usesAlt]
+        )
+    }
+
+    /// Flips the persisted choice and returns the new value.
+    @MainActor
+    @discardableResult
+    public func toggleAltRepresentations(skinIdentifier: String, gameIds: [String]) -> Bool {
+        let keys = gameIds.filter { !$0.isEmpty }
+        guard let primary = keys.first else { return false }
+        let newValue = !usesAltRepresentations(skinIdentifier: skinIdentifier, gameIds: keys)
+        setUsesAltRepresentations(newValue, skinIdentifier: skinIdentifier, gameId: primary, otherGameKeys: Array(keys.dropFirst()))
+        return newValue
     }
 
     // MARK: - Public API: Getting Effective Skin
