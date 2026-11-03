@@ -47,6 +47,10 @@ public struct SkinCatalogBrowserView: View {
     // MARK: - State
 
     @State private var entries: [SkinCatalogEntry] = []
+    /// `entries` grouped into variant families (one card each), in `entries` order.
+    @State private var families: [SkinFamily] = []
+    /// Family facts over the whole catalog, so labels don't change with the filters.
+    @State private var familyIndex: SkinFamilyIndex?
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var searchText = ""
@@ -105,9 +109,11 @@ public struct SkinCatalogBrowserView: View {
     }
 
     @ViewBuilder
-    private func catalogDetailDestination(for entry: SkinCatalogEntry) -> some View {
+    private func catalogDetailDestination(for entry: SkinCatalogEntry, family: SkinFamily? = nil) -> some View {
         SkinCatalogDetailView(
             entry: entry,
+            family: family,
+            familyIndex: familyIndex,
             activationContextSystemIdentifier: activationContextSystemIdentifier,
             activationContextGameId: activationContextGameId
         )
@@ -344,10 +350,11 @@ public struct SkinCatalogBrowserView: View {
                 columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .regular ? 200 : 160), spacing: 16)],
                 spacing: 20
             ) {
-                ForEach(entries) { entry in
-                    let isInstalled = isSkinInstalled(entry)
-                    NavigationLink(destination: catalogDetailDestination(for: entry)) {
-                        CatalogSkinCard(entry: entry, glowIntensity: glowIntensity, isInstalled: isInstalled)
+                ForEach(families) { family in
+                    let entry = family.primary
+                    let isInstalled = family.members.contains(where: isSkinInstalled)
+                    NavigationLink(destination: catalogDetailDestination(for: entry, family: family)) {
+                        CatalogSkinCard(entry: entry, family: family, glowIntensity: glowIntensity, isInstalled: isInstalled)
                     }
                     .buttonStyle(PlainButtonStyle())
                 }
@@ -591,9 +598,16 @@ public struct SkinCatalogBrowserView: View {
 
             guard !Task.isCancelled else { return }
 
+            // Group after filtering (hidden sample/mature entries never reach a family), with
+            // labels from the whole catalog.
+            let index = try await SkinCatalogService.shared.familyIndex()
+            let grouped = index.families(from: results)
+
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.2)) {
                     entries = results
+                    families = grouped
+                    familyIndex = index
                 }
             }
         } catch {
@@ -603,6 +617,7 @@ public struct SkinCatalogBrowserView: View {
                 errorMessage = error.localizedDescription
                 withAnimation(.easeOut(duration: 0.2)) {
                     entries = []
+                    families = []
                 }
             }
         }
@@ -614,11 +629,16 @@ public struct SkinCatalogBrowserView: View {
 
 #if !os(tvOS)
 
-/// A grid card representing a single skin catalog entry.
+/// A grid card for one variant family (a standalone entry is a family of one).
 private struct CatalogSkinCard: View {
     let entry: SkinCatalogEntry
+    var family: SkinFamily?
     let glowIntensity: CGFloat
     var isInstalled: Bool = false
+
+    private var title: String { family?.name ?? entry.name }
+    private var credit: String { family?.creditLine ?? "by \(entry.author ?? "Unknown")" }
+    private var downloads: Int { family?.totalDownloadCount ?? entry.downloadCount ?? 0 }
 
     private func displayName(forSystemCode code: String) -> String {
         DeltaSkinSystemDirectory.current.displayNameForCatalogCode(code)
@@ -630,6 +650,12 @@ private struct CatalogSkinCard: View {
             thumbnailView
                 .aspectRatio(1.4, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay(alignment: .bottomLeading) {
+                    if let family {
+                        SkinFamilyBadge(family: family)
+                            .padding(6)
+                    }
+                }
                 .overlay(alignment: .topTrailing) {
                     if isInstalled {
                         Image(systemName: "checkmark.circle.fill")
@@ -642,12 +668,12 @@ private struct CatalogSkinCard: View {
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
-                Text(entry.name)
+                Text(title)
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text("by \(entry.author ?? "Unknown")")
+                Text(credit)
                     .font(.system(size: 11))
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
@@ -671,12 +697,12 @@ private struct CatalogSkinCard: View {
 
                     Spacer()
 
-                    // Download count
-                    if let count = entry.downloadCount, count > 0 {
+                    // Download count (a family's members summed; each keeps its own in the detail view)
+                    if downloads > 0 {
                         HStack(spacing: 2) {
                             Image(systemName: "arrow.down.circle")
                                 .font(.system(size: 9))
-                            Text(formatSkinDownloadCount(count))
+                            Text(formatSkinDownloadCount(downloads))
                                 .font(.system(size: 9, weight: .medium))
                         }
                         .foregroundColor(.white.opacity(0.5))

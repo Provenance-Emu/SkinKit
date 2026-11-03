@@ -2,6 +2,7 @@
 import SwiftUI
 import SkinKitCore
 import SkinKitManager
+import SkinCatalogKit
 
 // Previews for the main views, on the fixture skins in Tests/SkinKitUITests/Fixtures
 // (see `PreviewFixtures`). Open this file in Xcode with the package checked out.
@@ -85,6 +86,22 @@ import SkinKitManager
 #Preview("Catalog entry") {
     NavigationStack {
         SkinCatalogDetailView(entry: PreviewFixtures.catalogEntry)
+    }
+}
+
+#Preview("Catalog family") {
+    NavigationStack {
+        SkinCatalogDetailView(
+            entry: PreviewFixtures.catalogFamily.primary,
+            family: PreviewFixtures.catalogFamily,
+            familyIndex: SkinFamilyIndex(entries: PreviewFixtures.catalogFamilyEntries)
+        )
+    }
+}
+
+#Preview("Catalog single-file variants") {
+    NavigationStack {
+        SkinCatalogDetailView(entry: PreviewFixtures.catalogSingleFileEntry)
     }
 }
 #endif

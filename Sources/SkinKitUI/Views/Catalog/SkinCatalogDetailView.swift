@@ -27,8 +27,15 @@ public struct SkinCatalogDetailView: View {
     private let activationContextSystemIdentifier: DeltaSkinSystem?
     /// When set, activation writes **game** scope so per-game prefs override any prior selection (system-only writes were ignored by the effective-skin chain).
     private let activationContextGameId: String?
+    /// The variant family this entry belongs to, when opened from a family card. Its members are
+    /// listed with per-variant installs and "Install all".
+    private let family: SkinFamily?
+    /// The whole catalog's family index, so installs store the label the store showed.
+    private let familyIndex: SkinFamilyIndex?
 
     // MARK: - State
+
+    @StateObject private var familyModel: SkinFamilyInstallModel
 
     @State private var downloadState: DownloadState = .idle
     @State private var screenshotIndex = 0
@@ -61,10 +68,16 @@ public struct SkinCatalogDetailView: View {
 
     public init(
         entry: SkinCatalogEntry,
+        family: SkinFamily? = nil,
+        familyIndex: SkinFamilyIndex? = nil,
         activationContextSystemIdentifier: DeltaSkinSystem? = nil,
         activationContextGameId: String? = nil
     ) {
         self.entry = entry
+        self.family = family
+        self.familyIndex = familyIndex
+        let modelFamily = family ?? SkinFamily(id: "entry:\(entry.id)", groupId: nil, name: entry.name, members: [entry], labels: [:])
+        _familyModel = StateObject(wrappedValue: SkinFamilyInstallModel(family: modelFamily, familyIndex: familyIndex))
         self.activationContextSystemIdentifier = activationContextSystemIdentifier
         self.activationContextGameId = activationContextGameId.flatMap { $0.isEmpty ? nil : $0 }
     }
@@ -83,6 +96,7 @@ public struct SkinCatalogDetailView: View {
                     descriptionSection
                     statsSection
                     actionSection
+                    familySection
                     systemTagsSection
                     if !entry.tags.isEmpty {
                         tagsSection(entry.tags)
@@ -119,6 +133,30 @@ public struct SkinCatalogDetailView: View {
         .onDisappear {
             downloadTask?.cancel()
             activationTask?.cancel()
+        }
+    }
+
+    // MARK: - Family Section
+
+    /// The family's variants (split files) or this file's packed variants, when there are any.
+    @ViewBuilder
+    private var familySection: some View {
+        let shown = family ?? familyModel.family
+        if shown.isMultiFile || entry.hasPackedVariants {
+            SkinFamilyVariantsSection(
+                family: shown,
+                current: entry,
+                model: familyModel,
+                destination: { member in
+                    AnyView(SkinCatalogDetailView(
+                        entry: member,
+                        family: family,
+                        familyIndex: familyIndex,
+                        activationContextSystemIdentifier: activationContextSystemIdentifier,
+                        activationContextGameId: activationContextGameId
+                    ))
+                }
+            )
         }
     }
 
@@ -879,7 +917,7 @@ public struct SkinCatalogDetailView: View {
             // Import the file, then write a `<stem>.skinmeta` sidecar so the override registry can
             // authoritatively map this skin back to the catalog systems even if
             // `info.json.gameTypeIdentifier` is misconfigured (the SEGA SG-1000 thumbstick skin bug).
-            try await DeltaSkinManager.shared.installCatalogSkin(from: localURL, entry: entry)
+            try await DeltaSkinManager.shared.installCatalogSkin(from: localURL, entry: entry, familyIndex: familyIndex)
 
             await MainActor.run {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {

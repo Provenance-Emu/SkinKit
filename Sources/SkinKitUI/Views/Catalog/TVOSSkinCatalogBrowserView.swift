@@ -31,6 +31,8 @@ public struct TVOSSkinCatalogBrowserView: View {
     // MARK: - State
 
     @State private var catalog: [SkinCatalogEntry] = []
+    /// Family facts over the whole catalog; rows group their entries with it.
+    @State private var familyIndex = SkinFamilyIndex(entries: [])
     @State private var availableSystems: [String] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -54,9 +56,11 @@ public struct TVOSSkinCatalogBrowserView: View {
     }
 
     @ViewBuilder
-    private func catalogDetailDestination(for entry: SkinCatalogEntry) -> some View {
+    private func catalogDetailDestination(for family: SkinFamily) -> some View {
         SkinCatalogDetailView(
-            entry: entry,
+            entry: family.primary,
+            family: family,
+            familyIndex: familyIndex,
             activationContextSystemIdentifier: activationContextSystemIdentifier,
             activationContextGameId: activationContextGameId
         )
@@ -238,9 +242,9 @@ public struct TVOSSkinCatalogBrowserView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 24) {
-                    ForEach(skins) { entry in
-                        NavigationLink(destination: catalogDetailDestination(for: entry)) {
-                            TVOSSkinCard(entry: entry, glowIntensity: glowIntensity)
+                    ForEach(familyIndex.families(from: skins)) { family in
+                        NavigationLink(destination: catalogDetailDestination(for: family)) {
+                            TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                         }
                         .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
                     }
@@ -263,9 +267,9 @@ public struct TVOSSkinCatalogBrowserView: View {
                         columns: [GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 30)],
                         spacing: 30
                     ) {
-                        ForEach(searchResults) { entry in
-                            NavigationLink(destination: catalogDetailDestination(for: entry)) {
-                                TVOSSkinCard(entry: entry, glowIntensity: glowIntensity)
+                        ForEach(familyIndex.families(from: searchResults)) { family in
+                            NavigationLink(destination: catalogDetailDestination(for: family)) {
+                                TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                             }
                             .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
                         }
@@ -399,11 +403,14 @@ public struct TVOSSkinCatalogBrowserView: View {
         }
 
         do {
-            let skinCatalog = try await SkinCatalogService.shared.catalog(forceRefresh: false)
+            // Hidden sample/mature entries are dropped before grouping; labels come from the full catalog.
+            let skinCatalog = try await SkinCatalogService.shared.visibleCatalog()
+            let index = try await SkinCatalogService.shared.familyIndex()
             let systems = try await SkinCatalogService.shared.availableSystems()
 
             await MainActor.run {
                 catalog = skinCatalog.skins
+                familyIndex = index
                 availableSystems = systems
                 isLoading = false
             }
@@ -429,8 +436,10 @@ public struct TVOSSkinCatalogBrowserView: View {
 
 /// A large card for the tvOS skin catalog — optimised for 10-foot viewing.
 private struct TVOSSkinCard: View {
-    let entry: SkinCatalogEntry
+    let family: SkinFamily
     let glowIntensity: CGFloat
+
+    private var entry: SkinCatalogEntry { family.primary }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -438,14 +447,18 @@ private struct TVOSSkinCard: View {
                 .frame(width: 280, height: 180)
                 .clipped()
                 .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(alignment: .bottomLeading) {
+                    SkinFamilyBadge(family: family, fontSize: 14)
+                        .padding(8)
+                }
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(entry.name)
+                Text(family.name)
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .lineLimit(1)
 
-                Text("by \(entry.author ?? "Unknown")")
+                Text(family.creditLine)
                     .font(.system(size: 18))
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
@@ -471,7 +484,8 @@ private struct TVOSSkinCard: View {
 
                     Spacer()
 
-                    if let count = entry.downloadCount, count > 0 {
+                    if family.totalDownloadCount > 0 {
+                        let count = family.totalDownloadCount
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.down.circle")
                                 .font(.system(size: 14))
