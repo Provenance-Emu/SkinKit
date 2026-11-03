@@ -92,7 +92,7 @@ One hand-editable file per claimed creator, next to `skins/` and `sources.json`.
 
 `build_catalog.py` reads `creators/*.json` and:
 
-- adds `creator: "<slug>"` to each catalog entry whose `author` is in some creator's `aliases`, or whose JSON carries a hand-set `creator` (see §6). Entries with no match get `creator` derived as `slugify(author)` so the apps can always open a profile. Shipped builds ignore the key.
+- adds `creator: "<slug>"` to each catalog entry, resolved in this order: a hand-set `creator` in the skin's JSON (see §6) wins; otherwise the creator whose `aliases` contain the entry's `author`; otherwise `slugify(author)`, so the apps can always open a profile. The override must come first because in the uploader-versus-artist cases the uploader's `author` string is often itself a claimed alias; alias-first would hand the artist's skin back to the uploader. Shipped builds ignore the key.
 - writes `docs/creators.json`: `{ "version": 1, "updated": ISO date, "creators": [ ...profile objects without `claim`, plus `stats` from the gamification build and `skinIds` ... ] }`. Unclaimed authors appear too, as minimal records (`slug`, `displayName`, `aliases: [author]`, `claimed: false`, `avatarURL` = mirrored GitHub avatar when `source` gives one), so the apps have one directory to read. At about 150 creators this is tens of kilobytes.
 - publishes `docs/creators/<slug>.json` per creator as well, so a page or an app can fetch one profile without the directory. Both are generated; the hand-edited source stays under `creators/`.
 
@@ -142,8 +142,8 @@ Deletion and opt-out: a creator who opts their repo out (`process_optout.py`) lo
 
 No catalog entry's `author` changes. The slug is derived, then refined:
 
-1. **Build-time derivation** (no data change): `creator = slugify(author)` for every entry, overridden by an alias match. Verified no two current authors collapse to one slug; `build_catalog.py --check-only` keeps checking.
-2. **Per-entry override**: a skin JSON may carry `"creator": "<slug>"` by hand, for the deltastyles cases where the uploader is not the artist ("ClearDoom by NostromoCrew01" credits `starvingartist`). The crawler's merge in `process_submission.save_entries` preserves existing non-null keys, so a hand-set `creator` survives re-crawls. `backfill_creators.py` can propose overrides for the 63 "… by X" names as a dry-run report, not an automatic rewrite, because some of those are game titles, not credits.
+1. **Build-time derivation** (no data change): `creator = slugify(author)` for every entry, replaced by an alias match when one exists. Verified no two current authors collapse to one slug; `build_catalog.py --check-only` keeps checking.
+2. **Per-entry override**: a skin JSON may carry `"creator": "<slug>"` by hand, for the deltastyles cases where the uploader is not the artist ("ClearDoom by NostromoCrew01" credits `starvingartist`). The override takes precedence over an alias match: with `author: starvingartist` (an alias of starvingartist's claimed profile) and `creator: nostromocrew01`, the entry resolves to `nostromocrew01`, is listed on that page and in that creator's stats and follow feed, and is not counted for starvingartist. This exact case is a fixture in the build's tests (`tests/test_build_catalog.py`) and in SkinKit's (`Tests/SkinCatalogKitTests/Fixtures/creators.json`). The crawler's merge in `process_submission.save_entries` preserves existing non-null keys, so a hand-set `creator` survives re-crawls. `backfill_creators.py` can propose overrides for the 63 "… by X" names as a dry-run report, not an automatic rewrite, because some of those are game titles, not credits.
 3. **Aliases absorb spelling drift**: when the same person shows up as `alek_witha_k` on deltastyles and `alekwithak` on GitHub, their claim lists both and the pages merge. The old slug's page redirects to the new one through a small static `<meta http-equiv="refresh">` page the generator writes for every alias slug that differs from the creator slug, so bookmarked `authors/<old>.html` URLs keep working.
 4. **SkinKit**: `SkinCatalogEntry.creatorSlug: String?` decodes `creator`; when nil (old catalog), the app computes the same slugify locally (`SkinCreatorSlug.make(from:)`, a Swift port with a test pinning it to the Python output for the current author names), so the profile sheet works against any catalog.
 
@@ -152,7 +152,7 @@ No catalog entry's `author` changes. The slug is derived, then refined:
 `SkinCatalogKit`:
 
 - `SkinCreator: Decodable, Sendable, Hashable, Identifiable` with `slug`, `displayName`, `aliases`, `isClaimed`, `bio`, `avatarURL`, `bannerURL`, `links: [SkinCreatorLink]`, `socials: [SkinCreatorSocial]` (an enum with a `url` and `symbolName` per case, unknown keys dropped), `stats`, `badges` (from the gamification design), `skinIds`. Lenient decoding like `SkinCatalogEntry`.
-- `SkinCreatorDirectory` (actor): fetches `https://emuskins.com/creators.json`, falls back to the raw GitHub URL, caches to disk with the catalog's cache policy, and answers `creator(for slug:)`, `creator(for entry:)` (slug, then alias, then local slugify) and `skins(by creator:, in catalog:)`. One network call per session, refreshed with the catalog.
+- `SkinCreatorDirectory` (actor): fetches `https://emuskins.com/creators.json`, falls back to the raw GitHub URL, caches to disk with the catalog's cache policy, and answers `creator(for slug:)`, `creator(for entry:)` (the entry's `creatorSlug` from the catalog, which already carries the override; for an old catalog without it, alias match on `author`, then local slugify) and `skins(by creator:, in catalog:)`. One network call per session, refreshed with the catalog.
 - `SkinCatalogEntry.creatorSlug`.
 
 `SkinKitUI`:
@@ -191,9 +191,9 @@ Ready to paste. Each gets the "Later" milestone and the `See AGENTS.md` footer.
 
 **1. Catalog: `creators/<slug>.json` schema, validation and build output**
 Where: Provenance-Emu/skins: `creators/` (new), `scripts/skin_schema.py`, `scripts/creator_policy.py` (new), `scripts/build_catalog.py`, `scripts/validate_skin.py` or a new `scripts/validate_creator.py`, `.github/workflows/validate-pr.yml`, `tests/`.
-Do: Define the creator file per the spec §1 (slug, displayName, aliases, githubLogin, bio, avatarURL, bannerURL, links, socials, claim, hidden) with validation and the social-handle table. `build_catalog.py` adds `creator` to each entry (alias match, then per-entry override, then slugify) and writes `docs/creators.json` plus `docs/creators/<slug>.json`, including minimal records for unclaimed authors. `--check-only` fails on duplicate aliases and case-colliding slugs. `validate-pr.yml` validates changed creator files and checks the PR author against `githubLogin`.
+Do: Define the creator file per the spec §1 (slug, displayName, aliases, githubLogin, bio, avatarURL, bannerURL, links, socials, claim, hidden) with validation and the social-handle table. `build_catalog.py` adds `creator` to each entry (per-entry `creator` override first, then alias match on `author`, then slugify) and writes `docs/creators.json` plus `docs/creators/<slug>.json`, including minimal records for unclaimed authors. `--check-only` fails on duplicate aliases and case-colliding slugs. `validate-pr.yml` validates changed creator files and checks the PR author against `githubLogin`.
 Depends on: nothing.
-Done when: a hand-written `creators/example.json` validates, the build emits `creator` on its entries and a `creators.json` with every author, and tests cover the alias and collision rules.
+Done when: a hand-written `creators/example.json` validates, the build emits `creator` on its entries and a `creators.json` with every author, and tests cover the alias and collision rules plus the precedence fixture: an entry whose `author` is a claimed alias but whose `creator` override names another slug resolves to the override.
 
 **2. Bot: claim a creator profile from an issue form**
 Where: Provenance-Emu/skins: `.github/ISSUE_TEMPLATE/claim-profile.yml`, `.github/workflows/claim-profile.yml`, `scripts/process_claim.py`, `scripts/github_ownership.py` (extracted from `process_optout.py`), `scripts/mirror_creator_images.py`, `tests/test_claim.py`.
@@ -209,7 +209,7 @@ Done when: `python3 scripts/generate_author_pages.py` renders a claimed and an u
 
 **4. SkinCatalogKit: `SkinCreator`, `SkinCreatorDirectory` and `creatorSlug`**
 Where: SkinKit `Sources/SkinCatalogKit/`, `Tests/SkinCatalogKitTests/` (fixture `creators.json`).
-Do: Models and directory per spec §7, lenient decoding, disk cache, emuskins.com then raw GitHub fallback, `creator(for entry:)` resolution order (slug, alias, local slugify) and a `SkinCreatorSlug` port of the Python `slugify` pinned by a fixture of the current author strings.
+Do: Models and directory per spec §7, lenient decoding, disk cache, emuskins.com then raw GitHub fallback, `creator(for entry:)` resolution order (catalog `creatorSlug`, then alias, then local slugify) with a fixture where an entry's `author` is a claimed alias and its `creatorSlug` names a different creator and a `SkinCreatorSlug` port of the Python `slugify` pinned by a fixture of the current author strings.
 Depends on: issue 1 for the published shape (can start from the spec).
 Done when: `xcrun swift test` passes with the fixture and an old catalog without `creator` still resolves a profile for every entry.
 
