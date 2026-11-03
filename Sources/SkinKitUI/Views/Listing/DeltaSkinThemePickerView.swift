@@ -28,11 +28,16 @@ public struct DeltaSkinThemePickerView: View {
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
+            .accessibilityLabel("Theme")
             .onAppear {
                 selectedId = preferences.selectedThemeId(for: skin.identifier)
             }
             .onChange(of: selectedId) { newId in
                 preferences.setSelectedThemeId(newId, for: skin.identifier)
+            }
+            // Another picker (or the model) changed this skin's theme: follow it.
+            .onThemeSelectionChange(of: skin.identifier) {
+                selectedId = preferences.selectedThemeId(for: skin.identifier)
             }
         }
     }

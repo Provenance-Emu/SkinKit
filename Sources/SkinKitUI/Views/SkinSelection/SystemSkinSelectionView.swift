@@ -211,6 +211,9 @@ public struct SystemSkinSelectionView: View {
                             // Orientation picker
                             orientationPickerView
 
+                            // Theme of the selected skin, when it ships any
+                            selectedSkinThemeRow
+
                             // Skin grid for selected orientation (always shown so Built-in is accessible)
                             skinGridView
                         }
@@ -320,6 +323,29 @@ public struct SystemSkinSelectionView: View {
                         )
                 )
         )
+    }
+
+    /// The skin the selection ring is on, when it has themes.
+    private var selectedSkinWithThemes: (any DeltaSkinRenderable)? {
+        guard let id = currentSelectedSkinId else { return nil }
+        return availableSkins.first { $0.identifier == id && !$0.availableThemes.isEmpty }
+    }
+
+    /// Theme picker for the selected skin. A skin's theme is one choice for that skin everywhere,
+    /// not per scope, orientation or game.
+    @ViewBuilder
+    private var selectedSkinThemeRow: some View {
+        if let skin = selectedSkinWithThemes {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Theme for \(skin.name) (all games and orientations)")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.7))
+                    .padding(.horizontal, 16)
+                DeltaSkinThemePickerView(skin: skin)
+                    .id(skin.identifier)
+            }
+            .padding(.top, 8)
+        }
     }
 
     private var orientationPickerView: some View {
@@ -1161,6 +1187,8 @@ struct SkinSelectionPreviewCell: View {
     @State private var thumbnailImage: UIImage?
     @State private var isLoading = true
     @State private var loadFailed = false
+    /// Bumped when the skin's theme changes, which changes ``cacheKey`` and so reloads the thumbnail.
+    @State private var themeRevision = 0
 
     /// Get the current device type (matches SystemSkinSelectionView logic)
     private var currentDevice: DeltaSkinDevice {
@@ -1235,17 +1263,20 @@ struct SkinSelectionPreviewCell: View {
             }
         }
         .task(id: cacheKey) {
-            // Restarts on re-appearance and when the traits/orientation change,
+            // Restarts on re-appearance and when the traits/orientation/theme change,
             // and is cancelled on disappear. A previous failure is retried here.
             await loadThumbnail()
+        }
+        .onThemeSelectionChange(of: skin.identifier) {
+            themeRevision += 1
         }
     }
 
     // MARK: - Loading
 
     private var cacheKey: String {
-        let traits = previewTraits
-        return "\(skin.identifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)"
+        _ = themeRevision  // re-evaluate the key (which reads the stored theme) when the theme changes
+        return SkinPreviewThumbnailCache.key(for: skin.identifier, traits: previewTraits)
     }
 
     private func loadThumbnail() async {

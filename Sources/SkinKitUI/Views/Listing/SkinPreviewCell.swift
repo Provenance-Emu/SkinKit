@@ -152,6 +152,9 @@ struct SkinPreviewCell: View {
         .onAppear {
             loadThumbnail()
         }
+        .onThemeSelectionChange(of: skin.identifier) {
+            loadThumbnail()
+        }
     }
 
     // MARK: - Thumbnail preview
@@ -186,7 +189,7 @@ struct SkinPreviewCell: View {
 
     private func loadThumbnail() {
         let traits = previewTraits
-        let cacheKey = "\(skin.identifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)"
+        let cacheKey = SkinPreviewThumbnailCache.key(for: skin.identifier, traits: traits)
 
         // Fast path: use SkinSelectionPreviewCell's shared cache. Whatever was stored is the best
         // render there is; re-checking it for visible content only re-rendered thin artwork forever.
@@ -308,6 +311,13 @@ final class SkinPreviewThumbnailCache: @unchecked Sendable {
 
     func thumbnail(forKey key: String) -> UIImage? {
         cache.image(forKey: key)
+    }
+
+    /// Key of a skin's preview for `traits`. It includes the skin's selected theme, so picking a theme
+    /// shows that theme's artwork instead of the preview cached for the previous choice.
+    static func key(for skinIdentifier: String, traits: DeltaSkinTraits) -> String {
+        let theme = DeltaSkinThemeSelection.selectedThemeId(for: skinIdentifier) ?? "default"
+        return "\(skinIdentifier)-\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-theme:\(theme)"
     }
 
     func store(_ image: UIImage, forKey key: String) {
