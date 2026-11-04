@@ -1,15 +1,16 @@
 import CoreGraphics
 import Foundation
 import Testing
+import ZIPFoundation
 @testable import SkinKitCore
 
-/// `Sample-NES` is the skins repo's generated-art `sample-nes.deltaskin` (fixtures/variants), unzipped.
+/// `NES-Sample-Test` is the skins repo's generated-art `sample-nes.deltaskin` (fixtures/variants), unzipped.
 /// iCube's store tests install the same archive, so this checks SkinKit decodes it the way the apps will.
 @Suite("Sample NES fixture")
 struct SampleNESFixtureTests {
 
     private static func skin() throws -> DeltaSkin {
-        let url = try #require(Bundle.module.url(forResource: "Fixtures/Sample-NES", withExtension: "deltaskin"))
+        let url = try #require(Bundle.module.url(forResource: "Fixtures/NES-Sample-Test", withExtension: "deltaskin"))
         return try DeltaSkin(fileURL: url)
     }
 
@@ -49,10 +50,17 @@ struct SampleNESFixtureTests {
         }
     }
 
-    @Test("Passes the validator with no errors")
+    @Test("Zipped as a .deltaskin archive, it passes the validator with no errors")
     func validates() throws {
-        let url = try #require(Bundle.module.url(forResource: "Fixtures/Sample-NES", withExtension: "deltaskin"))
-        let result = DeltaSkinValidator.validate(url: url)
-        #expect(result.errors.isEmpty, "\(result.errors.map(\.title))")
+        let dir = try #require(Bundle.module.url(forResource: "Fixtures/NES-Sample-Test", withExtension: "deltaskin"))
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        // The validator skips folder skins, so check the archive form the catalog serves.
+        let archive = tmp.appendingPathComponent("sample-nes.deltaskin")
+        try FileManager.default.zipItem(at: dir, to: archive, shouldKeepParent: false)
+        let result = DeltaSkinValidator.validate(url: archive)
+        #expect(!result.findings.contains { $0.title == "Directory skin" }, "the archive path ran")
+        #expect(result.errors.isEmpty, "\(result.errors.map { "\($0.title): \($0.detail)" })")
     }
 }
