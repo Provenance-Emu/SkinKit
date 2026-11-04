@@ -56,6 +56,20 @@ public extension DeltaSkinRenderable {
     }
 }
 
+extension DeltaSkinRenderable {
+    /// The selected theme's artwork for the item at `index` of the layout for `traits`: the first of the
+    /// theme's candidate files for that item that loads. `nil` when no theme is selected, the theme has
+    /// nothing for this item, or none of its files load, in which case the caller draws the item's own art.
+    /// The same image serves the item's pressed state.
+    func themedItemImage(forItemAt index: Int, traits: DeltaSkinTraits) async -> UIImage? {
+        guard let asset = themedItemAsset(forItemAt: index, traits: traits) else { return nil }
+        for name in asset.candidates() {
+            if let image = try? await loadThumbstickImage(named: name) { return image }
+        }
+        return nil
+    }
+}
+
 public extension DeltaSkinProtocol {
     /// This skin as a ``DeltaSkinRenderable``, or `nil` when it cannot draw itself.
     ///

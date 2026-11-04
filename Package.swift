@@ -7,6 +7,7 @@
 //   SkinCatalogKit  catalog models, catalog service, store sections/policy (no UI)
 //   SkinKitManager  import, install, storage, per-game/per-system selection (no UI)
 //   SkinKitUI       SwiftUI skin rendering and store/picker views (iOS/tvOS)
+//   SkinKitRetroArch  Delta skin to RetroArch overlay preset (.cfg) conversion; depends on SkinKitCore only (no UI)
 //
 // macOS is listed only so the non-UI modules can run `swift test` on the host
 // without a simulator. The apps ship on iOS and tvOS.
@@ -25,6 +26,7 @@ let package = Package(
         .library(name: "SkinCatalogKit", targets: ["SkinCatalogKit"]),
         .library(name: "SkinKitManager", targets: ["SkinKitManager"]),
         .library(name: "SkinKitUI", targets: ["SkinKitUI"]),
+        .library(name: "SkinKitRetroArch", targets: ["SkinKitRetroArch"]),
     ],
     dependencies: [
         // Same range Provenance resolves (via PVLookup).
@@ -42,6 +44,11 @@ let package = Package(
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
         ),
         .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager"]),
+        .target(
+            name: "SkinKitRetroArch",
+            dependencies: ["SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
+            resources: [.copy("Resources/retroarch-input-map.json")]
+        ),
         // THROWAWAY: format 2.0 spike (SkinKit#24). Not a product; delete with the spike branch.
         .target(name: "SkinKit2Spike", resources: [.copy("Resources/gamecube.skin2.json")]),
 
@@ -57,6 +64,11 @@ let package = Package(
                 "SkinKitManager", "SkinKitCore", "SkinCatalogKit",
                 .product(name: "ZIPFoundation", package: "ZIPFoundation"),
             ],
+            resources: [.copy("Fixtures")]
+        ),
+        .testTarget(
+            name: "SkinKitRetroArchTests",
+            dependencies: ["SkinKitRetroArch", "SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
             resources: [.copy("Fixtures")]
         ),
         .testTarget(

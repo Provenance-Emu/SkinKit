@@ -72,7 +72,8 @@ public final class SkinStoreInstaller: ObservableObject {
     private let appName: String
     private let notInstallableMessage: ((String) -> String)?
     private let describeError: (Error) -> String
-    private var tasks: [String: Task<Void, Never>] = [:]
+    /// In-flight installs by entry id. Readable inside the module so tests can wait for bookkeeping to settle.
+    private(set) var tasks: [String: Task<Void, Never>] = [:]
     private var planTasks: [String: Task<Void, Never>] = [:]
 
     /// The whole catalog's family index. Set it when the store loads the catalog so each install
@@ -146,7 +147,8 @@ public final class SkinStoreInstaller: ObservableObject {
         }
     }
 
-    /// Cancel a running install; the entry returns to idle.
+    /// Cancel a running install; the entry returns to idle. When the entry is downloading as part
+    /// of a plan ("Install all"), only that member stops and the plan moves on to the next one.
     public func cancelInstall(_ entry: SkinCatalogEntry) {
         tasks[entry.id]?.cancel()
     }
@@ -177,7 +179,21 @@ public final class SkinStoreInstaller: ObservableObject {
                 break
             }
             guard tasks[entry.id] == nil else { continue }
-            await install(entry)
+            // Each member runs as its own task, registered like a single install, so
+            // `cancelInstall(_ entry:)` stops that variant alone while the plan continues.
+            let task = Task { [weak self] in
+                guard let self else { return }
+                await self.install(entry)
+            }
+            tasks[entry.id] = task
+            // An unstructured task doesn't inherit cancellation, so a caller cancelling the task
+            // awaiting this plan must stop the member in flight by hand.
+            await withTaskCancellationHandler {
+                await task.value
+            } onCancel: {
+                task.cancel()
+            }
+            tasks[entry.id] = nil
         }
     }
 
@@ -191,9 +207,13 @@ public final class SkinStoreInstaller: ObservableObject {
         plan.excluding(installedIds: installedIds)
     }
 
-    /// Cancel a running plan; the entry in flight returns to idle.
+    /// Cancel a running plan; the entry in flight returns to idle and no further member starts.
     public func cancelInstall(_ plan: SkinDownloadPlan) {
         planTasks[Self.planKey(plan)]?.cancel()
+        // The member in flight is its own task (see `install(_ plan:)`), so cancel it too.
+        for entry in plan.entries where states[entry.id]?.isBusy == true {
+            tasks[entry.id]?.cancel()
+        }
     }
 
     private static func planKey(_ plan: SkinDownloadPlan) -> String {

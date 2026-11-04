@@ -15,11 +15,10 @@ extension DeltaSkin: DeltaSkinRenderable {
     /// Asset names to try for `traits`, best first: a selected theme's artwork for these traits,
     /// then the skin's own artwork for `rep`.
     func assetCandidates(for rep: DeltaSkin.RepresentationInfo, traits: DeltaSkinTraits) -> [String] {
-        if let themeId = selectedThemeId,
-           let theme = availableThemes.first(where: { $0.id == themeId }),
-           let themeAsset = theme.assets?[traits.device.rawValue]?[traits.displayType.rawValue]?[traits.orientation.rawValue] {
+        if let theme = selectedTheme,
+           let themeAsset = theme.assetRepresentation(for: traits) {
             // Prepend theme candidates so they are tried first, falling back to base skin
-            ILOG("skins: Theme '\(themeId)' override candidates: \(themeAsset.candidates())")
+            ILOG("skins: Theme '\(theme.id)' override candidates: \(themeAsset.candidates())")
             return themeAsset.candidates() + rep.assets.candidates()
         }
         return rep.assets.candidates()

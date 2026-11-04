@@ -1,0 +1,44 @@
+{
+  "name": "Jaguar_GameOverrides_Test",
+  "system": "jaguar",
+  "device": "iphone",
+  "notes": [
+    "portrait: no edgeToEdge layout, using standard.",
+    "Per-game overrides (gameOverrides) are not converted; the base layout is used."
+  ],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 1,
+  "images": [
+    {
+      "file": "Jaguar_GameOverrides_Test-portrait.png",
+      "kind": "overlay",
+      "asset": "base.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "width": 375,
+      "height": 812,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "set": "base",
+      "displayType": "standard",
+      "mapping": {
+        "width": 375,
+        "height": 812
+      },
+      "asset": "base.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 0,
+      "items": 1,
+      "descs": 1
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "name": "DS_Alt_Toggle_Test",
+  "system": "nds",
+  "device": "iphone",
+  "notes": [
+    "landscape: no edgeToEdge layout, using standard.",
+    "portrait: no edgeToEdge layout, using standard.",
+    "The alternate layouts (altRepresentations) are extra overlays; the skin's toggle button switches to them."
+  ],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 6,
+  "images": [
+    {
+      "file": "DS_Alt_Toggle_Test-landscape.png",
+      "kind": "overlay",
+      "asset": "normal-landscape.pdf",
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "width": 736,
+      "height": 414,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 100,
+          "y": 0,
+          "width": 400,
+          "height": 300
+        },
+        {
+          "x": 500,
+          "y": 200,
+          "width": 200,
+          "height": 150
+        }
+      ]
+    },
+    {
+      "file": "DS_Alt_Toggle_Test-portrait.png",
+      "kind": "overlay",
+      "asset": "normal-portrait.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "width": 414,
+      "height": 736,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 0,
+          "y": 0,
+          "width": 414,
+          "height": 310
+        },
+        {
+          "x": 107,
+          "y": 320,
+          "width": 200,
+          "height": 150
+        }
+      ]
+    },
+    {
+      "file": "DS_Alt_Toggle_Test-landscape-alt.png",
+      "kind": "overlay",
+      "asset": "alt-landscape.pdf",
+      "orientation": "landscape",
+      "overlayName": "landscape-alt",
+      "width": 896,
+      "height": 414,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    },
+    {
+      "file": "DS_Alt_Toggle_Test-portrait-alt.png",
+      "kind": "overlay",
+      "asset": "alt-portrait.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait-alt",
+      "width": 414,
+      "height": 896,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 107,
+          "y": 320,
+          "width": 200,
+          "height": 150
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "width": 414,
+          "height": 310
+        }
+      ]
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "set": "base",
+      "displayType": "standard",
+      "mapping": {
+        "width": 736,
+        "height": 414
+      },
+      "asset": "normal-landscape.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 1,
+      "descs": 2
+    },
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "set": "base",
+      "displayType": "standard",
+      "mapping": {
+        "width": 414,
+        "height": 736
+      },
+      "asset": "normal-portrait.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 2,
+      "descs": 3
+    },
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape-alt",
+      "set": "alt",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 896,
+        "height": 414
+      },
+      "asset": "alt-landscape.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 0,
+      "items": 1,
+      "descs": 2
+    },
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait-alt",
+      "set": "alt",
+      "displayType": "standard",
+      "mapping": {
+        "width": 414,
+        "height": 896
+      },
+      "asset": "alt-portrait.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 2,
+      "descs": 3
+    }
+  ]
+}

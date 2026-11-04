@@ -1,0 +1,100 @@
+{
+  "name": "N64_Comments_Test",
+  "system": "n64",
+  "device": "iphone",
+  "notes": [
+    "Thumbstick image \"thumb.pdf\" is not in the archive; the stick has no cap image.",
+    "The alternate layouts (altRepresentations) are extra overlays; the skin's toggle button switches to them."
+  ],
+  "skipped": [
+    {
+      "overlayName": "landscape",
+      "displayType": "edgeToEdge",
+      "asset": "Landscape.pdf",
+      "reason": "The archive has no \"Landscape.pdf\", so this layout cannot be drawn."
+    }
+  ],
+  "unconvertible": [
+    {
+      "where": "portrait item 13",
+      "input": "touchScreenX",
+      "reason": "RetroArch cores take DS touch straight from the screen (pointer), not from an overlay button."
+    },
+    {
+      "where": "portrait item 13",
+      "input": "touchScreenY",
+      "reason": "RetroArch cores take DS touch straight from the screen (pointer), not from an overlay button."
+    }
+  ],
+  "descCount": 14,
+  "images": [
+    {
+      "file": "N64_Comments_Test-portrait.png",
+      "kind": "overlay",
+      "asset": "Portrait.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "width": 320,
+      "height": 340,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    },
+    {
+      "file": "N64_Comments_Test-portrait-alt.png",
+      "kind": "overlay",
+      "asset": "PortraitAlt.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait-alt",
+      "width": 320,
+      "height": 340,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 320,
+        "height": 340
+      },
+      "asset": "Portrait.pdf",
+      "rect": {
+        "x": 0,
+        "y": 0.5096153846153846,
+        "w": 1,
+        "h": 0.4903846153846154
+      },
+      "translucent": false,
+      "screens": 0,
+      "items": 13,
+      "descs": 26
+    },
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait-alt",
+      "set": "alt",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 320,
+        "height": 340
+      },
+      "asset": "PortraitAlt.pdf",
+      "rect": {
+        "x": 0,
+        "y": 0.5096153846153846,
+        "w": 1,
+        "h": 0.4903846153846154
+      },
+      "translucent": false,
+      "screens": 0,
+      "items": 2,
+      "descs": 2
+    }
+  ]
+}

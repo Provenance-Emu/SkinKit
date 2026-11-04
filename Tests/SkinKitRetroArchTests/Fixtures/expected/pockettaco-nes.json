@@ -1,0 +1,41 @@
+{
+  "name": "GameSir_Pocket_Taco_NES",
+  "system": "nes",
+  "device": "iphone",
+  "notes": [],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 6,
+  "images": [
+    {
+      "file": "GameSir_Pocket_Taco_NES-portrait.png",
+      "kind": "overlay",
+      "asset": "controller.svg",
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "width": 393,
+      "height": 852,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 393,
+        "height": 852
+      },
+      "asset": "controller.svg",
+      "rect": null,
+      "translucent": true,
+      "screens": 1,
+      "items": 6,
+      "descs": 13
+    }
+  ]
+}

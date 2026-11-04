@@ -2,9 +2,9 @@
 
 Controller skins for Provenance, iFly, iCube and emuskins.com. Work is tracked as GitHub issues in this repo, one [milestone](https://github.com/Provenance-Emu/SkinKit/milestones) per stage: stage 1 is #1–#8, stage 2 #9–#21, stage 3 #22–#23, stage 4 #24–#25, and later #26. Every issue says what it touches, what it depends on, and what done looks like.
 
-The stages are ordered by what blocks app releases. Stages 1 and 2 run in parallel.
+The stages are ordered by what blocks app releases. Stages 1 and 2 are done (SkinKit 0.2.0, 2026-11-03); stage 3 and the stage 4 spike and design are in progress.
 
-## Stage 1: SkinKit shared module (target: a few days)
+## Stage 1: SkinKit shared module (done, 0.1.1)
 
 Move the skin code the three apps already share into this package **with no new features**, and get every app building against it with its controls on screen. Nothing user-visible changes.
 
@@ -18,7 +18,7 @@ Move the skin code the three apps already share into this package **with no new 
 - Demo harness: Provenance's `UITesting` app (it has a `DeltaSkins` folder) renders skins from SkinKit.
 - Done when Provenance, iFly and iCube each build against SkinKit, show their current controls unchanged, and CI is green.
 
-## Stage 2: Variants, website, catalog health (parallel with stage 1; doesn't block releases)
+## Stage 2: Variants, website, catalog health (done, 0.2.0)
 
 Design: [`docs/specs/2026-10-23-skin-variants-design.md`](docs/specs/2026-10-23-skin-variants-design.md).
 
@@ -37,11 +37,11 @@ Design: [`docs/specs/2026-10-23-skin-variants-design.md`](docs/specs/2026-10-23-
   - `gameOverrides` matching by md5, then crc, then filename, then title
   - fix the `sanitizeJSON` bug that cuts `//` inside JSON strings
 
-## Stage 3: RetroArch converter (any time after stage 2's catalog work)
+## Stage 3: RetroArch converter (in progress)
 
 A standalone Delta-skin → RetroArch overlay converter page on emuskins.com, plus a "Convert to RetroArch" button on each skin. It's our own implementation, credited to warmenhoven/skin2overlay as prior art.
 
-## Stage 4: Skin format 2.0 (tentative, after the app store releases)
+## Stage 4: Skin format 2.0 (spike and design in progress; the rest after the app store releases)
 
 Notes: [`docs/specs/2026-10-23-skin-format-2-notes.md`](docs/specs/2026-10-23-skin-format-2-notes.md).
 
@@ -62,3 +62,4 @@ Notes: [`docs/specs/2026-10-23-skin-format-2-notes.md`](docs/specs/2026-10-23-sk
 ## Done
 
 - 2026-10-22: catalog link-health check, zip-pack repacking, and missing-artwork hiding (skins#17, skins#20).
+- 2026-11-03: SkinKit 0.2.0 tagged. Stage 1 (#1–#8) and stage 2 (#9–#21, #34) closed: `gameOverrides` matched by md5 → crc → filename → title, `sanitizeJSON` keeps `//` in strings, Ignited `altRepresentations` with the toggle hotspot, a reachable theme picker, variant families in all three stores and pickers (SkinKit #48–#51; Provenance #3788–#3791; iFly #910; iCube #78–#80). Catalog: `variantLabel`, `variants.json`, sample variant skins, `mature` tag hidden by default, `catalog.min.json` browse index, polite deltastyles crawling, repo opt-out, the move to emuskins.com (skins #21–#33).

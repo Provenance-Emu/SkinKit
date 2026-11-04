@@ -84,6 +84,24 @@ public extension DeltaSkinProtocol {
 
     /// Default: no alternate set, so the toggle button does nothing.
     var hasAltRepresentations: Bool { false }
+
+    /// The selected theme, or nil when none is selected or the stored id names a theme this skin no longer has.
+    var selectedTheme: DeltaSkin.Theme? {
+        guard let themeId = selectedThemeId else { return nil }
+        return availableThemes.first { $0.id == themeId }
+    }
+
+    /// The selected theme's background artwork for exactly these traits, if it has any.
+    func themedAssetRepresentation(for traits: DeltaSkinTraits) -> DeltaSkin.AssetRepresentation? {
+        selectedTheme?.assetRepresentation(for: traits)
+    }
+
+    /// The selected theme's artwork for the item at `index` of the layout for `traits`, or nil when the theme
+    /// (or its entry for that item) has none, in which case the item's own art is drawn. `index` is the item's
+    /// position in the layout's `items`, which is also the suffix of the matching `DeltaSkinButton.id`.
+    func themedItemAsset(forItemAt index: Int, traits: DeltaSkinTraits) -> DeltaSkin.AssetRepresentation? {
+        selectedTheme?.itemAsset(forItemAt: index, traits: traits)
+    }
 }
 
 public extension Identifiable where  Self: DeltaSkinProtocol  {
