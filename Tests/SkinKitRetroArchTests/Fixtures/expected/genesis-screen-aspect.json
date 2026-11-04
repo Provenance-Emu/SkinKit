@@ -1,0 +1,46 @@
+{
+  "name": "My_Genesis_Skin",
+  "system": "genesis",
+  "device": "iphone",
+  "notes": [],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 6,
+  "images": [
+    {
+      "file": "My_Genesis_Skin-portrait.png",
+      "kind": "overlay",
+      "asset": "portrait_large.png",
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "width": 375,
+      "height": 240,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "set": "base",
+      "displayType": "standard",
+      "mapping": {
+        "width": 375,
+        "height": 240
+      },
+      "asset": "portrait_large.png",
+      "rect": {
+        "x": 0,
+        "y": 0.6799999999999999,
+        "w": 1,
+        "h": 0.32
+      },
+      "translucent": false,
+      "screens": 0,
+      "items": 6,
+      "descs": 13
+    }
+  ]
+}

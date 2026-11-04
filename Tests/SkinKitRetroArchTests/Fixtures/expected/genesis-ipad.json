@@ -1,0 +1,41 @@
+{
+  "name": "Genesis_Standard_PNG-ipad",
+  "system": "genesis",
+  "device": "ipad",
+  "notes": [],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 1,
+  "images": [
+    {
+      "file": "Genesis_Standard_PNG-ipad-landscape.png",
+      "kind": "overlay",
+      "asset": "ipad.pdf",
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "width": 1024,
+      "height": 768,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "set": "base",
+      "displayType": "standard",
+      "mapping": {
+        "width": 1024,
+        "height": 768
+      },
+      "asset": "ipad.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 0,
+      "items": 1,
+      "descs": 1
+    }
+  ]
+}

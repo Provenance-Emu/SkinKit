@@ -1,0 +1,41 @@
+{
+  "name": "Backbone_One_GBA",
+  "system": "gba",
+  "device": "iphone",
+  "notes": [],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 10,
+  "images": [
+    {
+      "file": "Backbone_One_GBA-landscape.png",
+      "kind": "overlay",
+      "asset": "controller.svg",
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "width": 852,
+      "height": 393,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 852,
+        "height": 393
+      },
+      "asset": "controller.svg",
+      "rect": null,
+      "translucent": true,
+      "screens": 1,
+      "items": 10,
+      "descs": 17
+    }
+  ]
+}
