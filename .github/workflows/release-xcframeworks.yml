@@ -1,0 +1,58 @@
+name: Release XCFrameworks
+
+# Static XCFrameworks of every SkinKit module (and ZIPFoundation) for iOS, the iOS simulator, tvOS, the tvOS
+# simulator and Mac Catalyst, attached to the release for the tag. A tag without a release gets a draft
+# release to hold them. Pull requests that change the build only build it, and keep the files as a run artifact.
+
+on:
+  push:
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to build and upload, e.g. 0.3.0
+        required: true
+  pull_request:
+    paths:
+      - scripts/build-xcframeworks.sh
+      - .github/workflows/release-xcframeworks.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: xcframeworks-${{ inputs.tag || github.event.release.tag_name || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  xcframeworks:
+    name: build XCFrameworks
+    runs-on: macos-15
+    env:
+      VERSION: ${{ inputs.tag || github.event.release.tag_name || (github.event_name == 'pull_request' && format('pr{0}', github.event.pull_request.number)) || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # The script comes from this workflow's commit, so a tag cut before it existed (0.3.0) can still be built.
+      - uses: actions/checkout@v4
+        with:
+          path: tools
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
+          path: package
+      - run: xcodebuild -version
+      - run: PACKAGE_DIR="$GITHUB_WORKSPACE/package" tools/scripts/build-xcframeworks.sh "$VERSION"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SkinKit-${{ env.VERSION }}-xcframeworks
+          path: package/dist/
+      - name: Attach to the release
+        if: github.event_name != 'pull_request'
+        run: |
+          if ! gh release view "$VERSION" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$VERSION" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "SkinKit $VERSION" \
+              --notes "Static XCFrameworks for iOS, tvOS and Mac Catalyst are attached; checksums.txt has their SwiftPM checksums."
+          fi
+          gh release upload "$VERSION" package/dist/* --clobber --repo "$GITHUB_REPOSITORY"
