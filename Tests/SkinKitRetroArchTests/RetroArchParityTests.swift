@@ -1,4 +1,5 @@
 import Foundation
+import SkinKitCore
 import Testing
 @testable import SkinKitRetroArch
 
@@ -76,6 +77,23 @@ struct RetroArchParityTests {
         let result = Self.converter.convert(try c.skinInfo(), options: c.options)
         let expected = try JSONDecoder().decode(Summary.self, from: try Fixture.expected(c.id, "json"))
         #expect(Summary(result) == expected, "result differs for \(c.id)")
+    }
+
+    /// The app path: a skin loaded by SkinKitCore and converted through `jsonRepresentation`. Under `.lenient` that is
+    /// the dictionary after the info preparer rewrote it, so it must still convert to the website's cfg.
+    /// ("empty" has no identifier, so Core cannot load it.)
+    @Test("a skin loaded by SkinKitCore converts to the same cfg", arguments: allCases.filter {
+        $0.entries == nil && $0.tvFromIPadStandardLandscape != true && $0.id != "empty"
+    })
+    func loadedSkinMatches(_ c: Fixture.Case) throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("SkinKitRetroArchTests-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Fixture.infoData(c.info).write(to: root.appendingPathComponent("info.json"))
+        let skin = try DeltaSkin(fileURL: root, options: .lenient)
+        let result = Self.converter.convert(skin: skin, options: c.options)
+        #expect(result.cfg == (try Fixture.expectedText(c.id, "cfg")), "cfg differs for \(c.id)")
+        #expect(result.readme == (try Fixture.expectedText(c.id, "README.txt")), "README differs for \(c.id)")
     }
 
     @Test("the cases cover every kind of control")

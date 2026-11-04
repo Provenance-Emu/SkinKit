@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Regenerates Tests/SkinKitRetroArchTests/Fixtures/expected/ from the JavaScript converter in the
-// skins repo (Provenance-Emu/skins, docs/js/skin/retroarch-convert.js, PR #38 branch site/retroarch-converter).
+// skins repo (Provenance-Emu/skins, docs/js/skin/retroarch-convert.js, PR #38 branch site/retroarch-converter,
+// head 2f4d7e8c8ab085b90fcebb2026c135433d4330a2 when these fixtures were last generated).
 //
 //   node scripts/gen-retroarch-expected.mjs /path/to/skins-checkout
 //
