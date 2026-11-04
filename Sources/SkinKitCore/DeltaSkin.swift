@@ -411,6 +411,20 @@ public struct DeltaSkin: DeltaSkinProtocol {
             self.name = name
             self.assets = assets
         }
+
+        /// The theme's artwork for exactly these traits (device, display type and orientation), if it has any.
+        /// This is the one lookup both the background and the per-item art go through, so a theme that covers
+        /// a layout covers both.
+        public func assetRepresentation(for traits: DeltaSkinTraits) -> AssetRepresentation? {
+            assets?[traits.device.rawValue]?[traits.displayType.rawValue]?[traits.orientation.rawValue]
+        }
+
+        /// The theme's artwork for the item at `index` of the layout for `traits`: the entry keyed `"<index>"` in
+        /// that layout's `AssetRepresentation.items`. `nil` when the theme has no art for that item; the caller
+        /// then draws the item's own art.
+        public func itemAsset(forItemAt index: Int, traits: DeltaSkinTraits) -> AssetRepresentation? {
+            assetRepresentation(for: traits)?.items?[String(index)]
+        }
     }
 
     /// JSON structure for DeltaSkin info.json
@@ -711,6 +725,17 @@ public struct DeltaSkin: DeltaSkinProtocol {
         public let medium: String?
         public let large: String?
 
+        /// Per-item artwork, used only inside a theme's per-layout assets (`Theme.assets[device][displayType][orientation]`).
+        ///
+        /// Keyed by the item's index in that layout's `items` array, as a decimal string (`"0"`, `"3"`): JSON object
+        /// keys are strings, and the index is the one identifier every item has. Input names are not unique (combo
+        /// items list several inputs, a D-pad maps four, and a skin may repeat an input across items), so they
+        /// cannot address a single item. Each value names the item's replacement art in the same `resizable` /
+        /// `large` / `medium` / `small` shape as the background; its first loadable candidate is the item's normal
+        /// art, and the same art is drawn while the item is pressed. An absent key leaves the item's own art; a
+        /// theme without `items` changes nothing. Ignored on the base `assets` of a layout, and not nested.
+        public let items: [String: AssetRepresentation]?
+
         /// Get filename for a specific size
         public func filename(for size: DeltaSkinAssetSize) -> String? {
             switch size {
@@ -756,7 +781,7 @@ public struct DeltaSkin: DeltaSkinProtocol {
         }
 
         private enum CodingKeys: String, CodingKey {
-            case resizable, small, medium, large
+            case resizable, small, medium, large, items
         }
 
         public init(from decoder: Decoder) throws {
@@ -777,15 +802,20 @@ public struct DeltaSkin: DeltaSkinProtocol {
             medium = clean(rawMedium)
             large = clean(rawLarge)
 
+            // `items` is a theme extension: a malformed one is dropped instead of failing the skin, which keeps
+            // loading with its base art.
+            items = (try? container.decodeIfPresent([String: AssetRepresentation].self, forKey: .items)) ?? nil
+
             // Do not hard-fail on missing or invalid asset names here.
             // Validation and fallbacks are handled in toRepresentationInfo().
         }
 
-        public init(resizable: String?, small: String?, medium: String?, large: String?) {
+        public init(resizable: String?, small: String?, medium: String?, large: String?, items: [String: AssetRepresentation]? = nil) {
             self.resizable = resizable
             self.small = small
             self.medium = medium
             self.large = large
+            self.items = items
         }
     }
 

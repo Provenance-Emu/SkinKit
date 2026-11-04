@@ -1171,7 +1171,15 @@ public struct DeltaSkinView: View {
         guard isCurrentResourceLoad(loadID), let buttons = skin.buttons(for: traits) else { return }
         var cache: [String: (normal: UIImage, pressed: UIImage?)] = [:]
 
-        for button in buttons {
+        for (index, button) in buttons.enumerated() {
+            guard isCurrentResourceLoad(loadID) else { return }
+            // The selected theme's art for this item wins over the item's own art; no theme art (or art that
+            // fails to load) falls through to the item's own art below.
+            if let image = await skin.themedItemImage(forItemAt: index, traits: traits) {
+                guard isCurrentResourceLoad(loadID) else { return }
+                cache[button.id] = (normal: image, pressed: nil)
+                continue
+            }
             guard isCurrentResourceLoad(loadID) else { return }
             // Prefer typed `states` from decoded model (Manic EMU format)
             if let states = button.states {

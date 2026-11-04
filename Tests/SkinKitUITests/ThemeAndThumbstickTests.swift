@@ -81,6 +81,93 @@ extension UIKitSerial {
             #expect(dominantChannel(of: themed) == .green)
         }
 
+        // MARK: Per-item theme artwork
+
+        /// `Themes/Themed-Buttons-GBA.deltaskin`: background and item 0's own art are red; "neon" re-skins the
+        /// background and items 0 and 1 in green, "ocean" the background and item 0 in blue; item 1 has no art of
+        /// its own and no other item changes.
+        private func buttonsSkin() throws -> DeltaSkin {
+            var skin = try DeltaSkin(fileURL: TestSupport.fixtureURL("Themes/Themed-Buttons-GBA.deltaskin"))
+            skin.selectedThemeId = nil
+            return skin
+        }
+
+        @Test("Switching theme changes the background candidates and the item art together")
+        func themeSwitchChangesBackgroundAndItemArt() async throws {
+            var skin = try buttonsSkin()
+            defer { skin.selectedThemeId = nil }
+            let rep = try #require(skin.representation(for: TestSupport.portrait))
+
+            skin.selectedThemeId = nil
+            #expect(skin.assetCandidates(for: rep, traits: TestSupport.portrait) == rep.assets.candidates())
+            #expect(await skin.themedItemImage(forItemAt: 0, traits: TestSupport.portrait) == nil)
+
+            skin.selectedThemeId = "neon"
+            #expect(skin.assetCandidates(for: rep, traits: TestSupport.portrait).first == "neon.png")
+            let neonA = try #require(await skin.themedItemImage(forItemAt: 0, traits: TestSupport.portrait))
+            let neonB = try #require(await skin.themedItemImage(forItemAt: 1, traits: TestSupport.portrait))
+            #expect(dominantChannel(of: neonA) == .green)
+            #expect(dominantChannel(of: neonB) == .green)
+            #expect(await skin.themedItemImage(forItemAt: 2, traits: TestSupport.portrait) == nil)
+
+            skin.selectedThemeId = "ocean"
+            #expect(skin.assetCandidates(for: rep, traits: TestSupport.portrait).first == "ocean.png")
+            let oceanA = try #require(await skin.themedItemImage(forItemAt: 0, traits: TestSupport.portrait))
+            #expect(dominantChannel(of: oceanA) == .blue)
+            #expect(await skin.themedItemImage(forItemAt: 1, traits: TestSupport.portrait) == nil)
+        }
+
+        @Test("The background is redrawn in the new theme's colour, the item art with it")
+        func themeSwitchRedrawsBackgroundAndButtons() async throws {
+            var skin = try buttonsSkin()
+            defer { skin.selectedThemeId = nil }
+            var backgrounds: [Channel] = []
+            var buttons: [Channel?] = []
+            for theme in [nil, "neon", "ocean"] as [String?] {
+                skin.selectedThemeId = theme
+                backgrounds.append(dominantChannel(of: try await skin.image(for: TestSupport.portrait)))
+                if let art = await skin.themedItemImage(forItemAt: 0, traits: TestSupport.portrait) {
+                    buttons.append(dominantChannel(of: art))
+                } else {
+                    // No theme art: the item's own art, `btn-a.png`, is drawn.
+                    buttons.append(dominantChannel(of: try await skin.loadThumbstickImage(named: "btn-a.png")))
+                }
+            }
+            #expect(backgrounds == [.red, .green, .blue])
+            #expect(buttons == [.red, .green, .blue])
+        }
+
+        @Test("A background-only theme leaves every item on its own art")
+        func backgroundOnlyThemeKeepsItemArt() async throws {
+            var skin = try buttonsSkin()
+            defer { skin.selectedThemeId = nil }
+            skin.selectedThemeId = "plain"
+            let rep = try #require(skin.representation(for: TestSupport.portrait))
+            #expect(skin.assetCandidates(for: rep, traits: TestSupport.portrait).first == "neon.png")
+            for index in 0..<3 {
+                #expect(await skin.themedItemImage(forItemAt: index, traits: TestSupport.portrait) == nil)
+            }
+        }
+
+        @Test("Theme item art whose files are missing falls back to the item's own art")
+        func missingThemeItemFilesFallBack() async throws {
+            let scratch = try TestSupport.makeScratch()
+            defer { try? FileManager.default.removeItem(at: scratch) }
+            let themes: [[String: Any]] = [[
+                "id": "broken", "name": "Broken",
+                "assets": ["iphone": ["standard": ["portrait": [
+                    "resizable": "base.pdf", "items": ["0": ["resizable": "not-in-the-archive.png"]],
+                ]]]],
+            ]]
+            var skin = try DeltaSkin(fileURL: TestSupport.writeSkin(
+                info: TestSupport.gbaInfo(identifier: "com.test.theme.item-missing", asset: "base.pdf", themes: themes),
+                files: ["base.pdf": TestSupport.makePDFData()],
+                in: scratch))
+            skin.selectedThemeId = "broken"
+            defer { skin.selectedThemeId = nil }
+            #expect(await skin.themedItemImage(forItemAt: 0, traits: TestSupport.portrait) == nil)
+        }
+
         // MARK: Thumbsticks
 
         @Test("A PDF thumbstick loads with its alpha channel, and the second load is the cached image")

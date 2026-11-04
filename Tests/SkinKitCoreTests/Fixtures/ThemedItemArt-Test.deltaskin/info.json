@@ -1,0 +1,100 @@
+{
+    "name": "Themed Item Art GBA Test Skin",
+    "identifier": "com.skinkit.test.themed-item-art.gba",
+    "gameTypeIdentifier": "com.rileytestut.delta.game.gba",
+    "debug": false,
+    "representations": {
+        "iphone": {
+            "standard": {
+                "portrait": {
+                    "assets": { "resizable": "base.png" },
+                    "translucent": false,
+                    "mappingSize": { "width": 750, "height": 1334 },
+                    "screens": [
+                        {
+                            "inputFrame": { "x": 0, "y": 0, "width": 240, "height": 160 },
+                            "outputFrame": { "x": 0, "y": 80, "width": 750, "height": 500 }
+                        }
+                    ],
+                    "items": [
+                        {
+                            "inputs": ["a"],
+                            "frame": { "x": 520, "y": 900, "width": 150, "height": 150 },
+                            "extendedEdges": { "top": 10, "bottom": 10, "left": 10, "right": 10 },
+                            "asset": { "normal": "btn-a.png" }
+                        },
+                        {
+                            "inputs": ["b"],
+                            "frame": { "x": 340, "y": 960, "width": 150, "height": 150 },
+                            "extendedEdges": { "top": 10, "bottom": 10, "left": 10, "right": 10 }
+                        },
+                        {
+                            "inputs": ["start"],
+                            "frame": { "x": 300, "y": 1200, "width": 150, "height": 60 }
+                        }
+                    ]
+                },
+                "landscape": {
+                    "assets": { "resizable": "base.png" },
+                    "translucent": false,
+                    "mappingSize": { "width": 1334, "height": 750 },
+                    "screens": [
+                        {
+                            "inputFrame": { "x": 0, "y": 0, "width": 240, "height": 160 },
+                            "outputFrame": { "x": 300, "y": 50, "width": 700, "height": 466 }
+                        }
+                    ],
+                    "items": [
+                        {
+                            "inputs": ["a"],
+                            "frame": { "x": 1100, "y": 400, "width": 150, "height": 150 },
+                            "asset": { "normal": "btn-a.png" }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "themes": [
+        {
+            "id": "neon",
+            "name": "Neon",
+            "assets": {
+                "iphone": {
+                    "standard": {
+                        "portrait": {
+                            "resizable": "neon.png",
+                            "items": {
+                                "0": { "resizable": "neon-btn-a.png" },
+                                "1": { "resizable": "neon-btn-b.png" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": "ocean",
+            "name": "Ocean",
+            "assets": {
+                "iphone": {
+                    "standard": {
+                        "portrait": {
+                            "resizable": "ocean.png",
+                            "items": {
+                                "0": { "resizable": "ocean-btn-a.png" }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "id": "plain",
+            "name": "Plain (background only)",
+            "assets": {
+                "iphone": { "standard": { "portrait": { "resizable": "neon.png" } } }
+            }
+        }
+    ]
+}
