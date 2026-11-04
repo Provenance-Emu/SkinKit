@@ -146,7 +146,8 @@ public final class SkinStoreInstaller: ObservableObject {
         }
     }
 
-    /// Cancel a running install; the entry returns to idle.
+    /// Cancel a running install; the entry returns to idle. When the entry is downloading as part
+    /// of a plan ("Install all"), only that member stops and the plan moves on to the next one.
     public func cancelInstall(_ entry: SkinCatalogEntry) {
         tasks[entry.id]?.cancel()
     }
@@ -177,7 +178,15 @@ public final class SkinStoreInstaller: ObservableObject {
                 break
             }
             guard tasks[entry.id] == nil else { continue }
-            await install(entry)
+            // Each member runs as its own task, registered like a single install, so
+            // `cancelInstall(_ entry:)` stops that variant alone while the plan continues.
+            let task = Task { [weak self] in
+                guard let self else { return }
+                await self.install(entry)
+            }
+            tasks[entry.id] = task
+            await task.value
+            tasks[entry.id] = nil
         }
     }
 
@@ -191,9 +200,13 @@ public final class SkinStoreInstaller: ObservableObject {
         plan.excluding(installedIds: installedIds)
     }
 
-    /// Cancel a running plan; the entry in flight returns to idle.
+    /// Cancel a running plan; the entry in flight returns to idle and no further member starts.
     public func cancelInstall(_ plan: SkinDownloadPlan) {
         planTasks[Self.planKey(plan)]?.cancel()
+        // The member in flight is its own task (see `install(_ plan:)`), so cancel it too.
+        for entry in plan.entries where states[entry.id]?.isBusy == true {
+            tasks[entry.id]?.cancel()
+        }
     }
 
     private static func planKey(_ plan: SkinDownloadPlan) -> String {

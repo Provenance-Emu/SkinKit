@@ -190,6 +190,58 @@ struct SkinStoreFamilyTests {
         #expect(record.storedMemberships()["m3"] == SkinFamilyMembership(groupId: "pack", groupOrder: 3, variantLabel: "V3"))
     }
 
+    @Test("Cancelling one member of a running plan returns it to idle and the plan continues", arguments: StorePreset.all)
+    func cancelPlanMember(preset: StorePreset) async throws {
+        let (record, _, cleanup) = try preset.makeRecord()
+        defer { cleanup() }
+        let members = (1 ... 2).map { (i: Int) in Self.entry("m\(i)", name: "Pack — V\(i)", group: "pack", order: i, systems: [preset.installableSystemCode]) }
+        let family = try #require(SkinFamily.families(from: members).first)
+        var installed: [String] = []
+        let installer = SkinStoreInstaller(
+            policy: preset.policy, downloader: FakeDownloader(), record: record, appName: preset.appName
+        ) { file, _ in
+            let name = file.deletingPathExtension().lastPathComponent
+            if name == "m1" {
+                // Hangs until cancelled, like a stalled download.
+                try await Task.sleep(for: .seconds(30))
+            }
+            installed.append(name)
+            return .installed(identifier: "skin.\(name)")
+        }
+        installer.familyIndex = SkinFamilyIndex(entries: members)
+        let plan = family.downloadPlan(policy: preset.policy)
+
+        installer.startInstall(plan)
+        for _ in 0 ..< 200 where !installer.state(for: members[0]).isBusy {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(installer.state(for: members[0]).isBusy, "the first member is in flight")
+
+        installer.cancelInstall(members[0])
+        for _ in 0 ..< 500 where installer.state(for: members[1]) != .installed {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(installer.state(for: members[0]) == .idle, "the cancelled member goes back to idle")
+        #expect(installer.state(for: members[1]) == .installed, "the plan went on to the next member")
+        #expect(installed == ["m2"])
+        #expect(!installer.isBusy(plan))
+
+        // Cancelling the whole plan also stops the member in flight.
+        installed = []
+        let retry = installer.remaining(plan)
+        #expect(retry.entries.map(\.id) == ["m1"])
+        installer.startInstall(retry)
+        for _ in 0 ..< 200 where !installer.state(for: members[0]).isBusy {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        installer.cancelInstall(retry)
+        for _ in 0 ..< 500 where installer.isBusy(retry) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(installer.state(for: members[0]) == .idle)
+        #expect(installed.isEmpty)
+    }
+
     // MARK: - One install per entry
 
     @Test("The install tracker lets one claim per entry through")
