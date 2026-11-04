@@ -242,6 +242,12 @@ struct SkinStoreFamilyTests {
         #expect(installed.isEmpty)
 
         // A caller cancelling its own task while awaiting `install(_ plan:)` stops the member too.
+        // The cancelled plan clears its member's task slot after the state goes idle; wait for that,
+        // or the new plan skips the member as already in flight.
+        for _ in 0 ..< 500 where installer.tasks[members[0].id] != nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(installer.tasks[members[0].id] == nil)
         let caller = Task { await installer.install(retry) }
         for _ in 0 ..< 200 where !installer.state(for: members[0]).isBusy {
             try await Task.sleep(for: .milliseconds(10))

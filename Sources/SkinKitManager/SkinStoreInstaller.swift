@@ -72,7 +72,8 @@ public final class SkinStoreInstaller: ObservableObject {
     private let appName: String
     private let notInstallableMessage: ((String) -> String)?
     private let describeError: (Error) -> String
-    private var tasks: [String: Task<Void, Never>] = [:]
+    /// In-flight installs by entry id. Readable inside the module so tests can wait for bookkeeping to settle.
+    private(set) var tasks: [String: Task<Void, Never>] = [:]
     private var planTasks: [String: Task<Void, Never>] = [:]
 
     /// The whole catalog's family index. Set it when the store loads the catalog so each install
