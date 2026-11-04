@@ -68,7 +68,7 @@ iPhone 393×852 with its safe area, 1× with hit frames dashed. Landscape is the
 9. **Visibility.** `requiresFlag` should become a general `visible` condition (app flag, player toggle, orientation, device), the same `when` mechanism as layout patches.
 10. **Text metrics.** `font.size` is points at reference scale; the spike scaled labels with their frame, which is wrong for a pill. Say it: `size × unit`, optional `fit`.
 
-**Sizes.** The skin is 221 lines / 11.0 KB pretty-printed, 9.0 KB minified: 11 controls, 1 screen, 2 parts, 18 tokens, 1 theme. iCube's equivalent is about 90 lines of layout Swift plus about 300 of art Swift. The spike's Swift is about 1,000 lines: model 250, preprocessor 100, layout 230, renderer plus path parser 280, tests 120. Decoding plus layout plus rendering one orientation at 1× takes about a second in the debug test, dominated by the gradient fills.
+**Sizes.** The skin is 171 lines / 11.0 KB pretty-printed, 8.0 KB minified: 11 controls, 1 screen, 2 parts, 18 tokens, 1 theme. iCube's equivalent is about 90 lines of layout Swift plus about 300 of art Swift. The spike's Swift is about 1,000 lines: model 250, preprocessor 100, layout 230, renderer plus path parser 280, tests 120. Decoding plus layout plus rendering one orientation at 1× takes about a second in the debug test, dominated by the gradient fills.
 
 **Answers to the open questions, from what was hit**
 
