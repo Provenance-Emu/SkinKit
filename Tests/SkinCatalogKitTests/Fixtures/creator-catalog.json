@@ -1,0 +1,16 @@
+{
+  "version": 3,
+  "lastUpdated": "2026-11-04T00:00:00Z",
+  "totalSkins": 9,
+  "skins": [
+    { "id": "clear-doom", "name": "ClearDoom", "author": "starvingartist", "creator": "nostromocrew01", "systems": ["psx"], "downloadURL": "https://example.com/clear-doom.deltaskin" },
+    { "id": "starving-own", "name": "Starving Own", "author": "starvingartist", "creator": "starvingartist", "systems": ["dreamcast"], "downloadURL": "https://example.com/starving-own.deltaskin" },
+    { "id": "starving-no-key", "name": "Starving No Key", "author": "starvingartist", "systems": ["dreamcast"], "downloadURL": "https://example.com/starving-no-key.deltaskin" },
+    { "id": "janza-skin", "name": "JanZa Skin", "author": "JanZa", "creator": "janza", "systems": ["gba"], "downloadURL": "https://example.com/janza.deltaskin" },
+    { "id": "unlisted-author", "name": "Unlisted", "author": "Brand New Person!", "systems": ["nes"], "downloadURL": "https://example.com/unlisted.deltaskin" },
+    { "id": "creator-not-in-directory", "name": "Ghost", "author": "Ghost Writer", "creator": "ghost", "systems": ["snes"], "downloadURL": "https://example.com/ghost.deltaskin" },
+    { "id": "no-author", "name": "No Author", "systems": ["gba"], "downloadURL": "https://example.com/no-author.deltaskin" },
+    { "id": "blank-creator", "name": "Blank Creator", "author": "JanZa", "creator": "  ", "systems": ["gba"], "downloadURL": "https://example.com/blank.deltaskin" },
+    { "id": "mistyped-creator", "name": "Mistyped Creator", "author": "JanZa", "creator": 5, "systems": ["gba"], "downloadURL": "https://example.com/mistyped.deltaskin" }
+  ]
+}
