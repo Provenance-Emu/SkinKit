@@ -185,7 +185,13 @@ public final class SkinStoreInstaller: ObservableObject {
                 await self.install(entry)
             }
             tasks[entry.id] = task
-            await task.value
+            // An unstructured task doesn't inherit cancellation, so a caller cancelling the task
+            // awaiting this plan must stop the member in flight by hand.
+            await withTaskCancellationHandler {
+                await task.value
+            } onCancel: {
+                task.cancel()
+            }
             tasks[entry.id] = nil
         }
     }

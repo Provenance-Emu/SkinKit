@@ -240,6 +240,20 @@ struct SkinStoreFamilyTests {
         }
         #expect(installer.state(for: members[0]) == .idle)
         #expect(installed.isEmpty)
+
+        // A caller cancelling its own task while awaiting `install(_ plan:)` stops the member too.
+        let caller = Task { await installer.install(retry) }
+        for _ in 0 ..< 200 where !installer.state(for: members[0]).isBusy {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(installer.state(for: members[0]).isBusy, "the member is in flight under the caller's task")
+        caller.cancel()
+        await caller.value
+        for _ in 0 ..< 500 where installer.isBusy(retry) {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(installer.state(for: members[0]) == .idle, "the caller's cancellation reached the member")
+        #expect(installed.isEmpty)
     }
 
     // MARK: - One install per entry
