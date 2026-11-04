@@ -9,7 +9,8 @@ import Foundation
 public struct SkinCreatorIndex: Decodable, Sendable {
     public var version: Int?
     public var updated: Date?
-    public var creators: [SkinCreator]
+    /// Read-only, so the list and the lookups built from it in `init` cannot disagree.
+    public private(set) var creators: [SkinCreator]
     /// Records present in the file that could not be decoded.
     public var droppedCreatorCount: Int
 
