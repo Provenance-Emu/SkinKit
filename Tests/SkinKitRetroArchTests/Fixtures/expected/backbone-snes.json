@@ -1,0 +1,41 @@
+{
+  "name": "Backbone_One_SNES",
+  "system": "snes",
+  "device": "iphone",
+  "notes": [],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 12,
+  "images": [
+    {
+      "file": "Backbone_One_SNES-landscape.png",
+      "kind": "overlay",
+      "asset": "controller.svg",
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "width": 852,
+      "height": 393,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": []
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 852,
+        "height": 393
+      },
+      "asset": "controller.svg",
+      "rect": null,
+      "translucent": true,
+      "screens": 1,
+      "items": 12,
+      "descs": 19
+    }
+  ]
+}

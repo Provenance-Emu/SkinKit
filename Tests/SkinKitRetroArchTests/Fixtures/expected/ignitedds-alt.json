@@ -1,0 +1,200 @@
+{
+  "name": "Ignited_DS",
+  "system": "nds",
+  "device": "iphone",
+  "notes": [
+    "The alternate layouts (altRepresentations) are extra overlays; the skin's toggle button switches to them."
+  ],
+  "skipped": [],
+  "unconvertible": [
+    {
+      "where": "landscape item 11",
+      "input": "quickSettings",
+      "reason": "No RetroArch bind known for \"quickSettings\" on nds."
+    },
+    {
+      "where": "portrait item 11",
+      "input": "quickSettings",
+      "reason": "No RetroArch bind known for \"quickSettings\" on nds."
+    },
+    {
+      "where": "landscape-alt item 11",
+      "input": "quickSettings",
+      "reason": "No RetroArch bind known for \"quickSettings\" on nds."
+    },
+    {
+      "where": "portrait-alt item 11",
+      "input": "quickSettings",
+      "reason": "No RetroArch bind known for \"quickSettings\" on nds."
+    }
+  ],
+  "descCount": 44,
+  "images": [
+    {
+      "file": "Ignited_DS-landscape.png",
+      "kind": "overlay",
+      "asset": "iphone-e2e-landscape.pdf",
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "width": 896,
+      "height": 414,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 268,
+          "y": 9,
+          "width": 360,
+          "height": 270
+        },
+        {
+          "x": 364,
+          "y": 279,
+          "width": 168,
+          "height": 126
+        }
+      ]
+    },
+    {
+      "file": "Ignited_DS-portrait.png",
+      "kind": "overlay",
+      "asset": "iphone-e2e-portrait.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "width": 414,
+      "height": 896,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 27,
+          "y": 50,
+          "width": 360,
+          "height": 270
+        },
+        {
+          "x": 127,
+          "y": 320,
+          "width": 160,
+          "height": 120
+        }
+      ]
+    },
+    {
+      "file": "Ignited_DS-landscape-alt.png",
+      "kind": "overlay",
+      "asset": "iphone-e2e-landscape.pdf",
+      "orientation": "landscape",
+      "overlayName": "landscape-alt",
+      "width": 896,
+      "height": 414,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 364,
+          "y": 279,
+          "width": 168,
+          "height": 126
+        },
+        {
+          "x": 268,
+          "y": 9,
+          "width": 360,
+          "height": 270
+        }
+      ]
+    },
+    {
+      "file": "Ignited_DS-portrait-alt.png",
+      "kind": "overlay",
+      "asset": "iphone-e2e-portrait.pdf",
+      "orientation": "portrait",
+      "overlayName": "portrait-alt",
+      "width": 414,
+      "height": 896,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 127,
+          "y": 320,
+          "width": 160,
+          "height": 120
+        },
+        {
+          "x": 27,
+          "y": 50,
+          "width": 360,
+          "height": 270
+        }
+      ]
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 896,
+        "height": 414
+      },
+      "asset": "iphone-e2e-landscape.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 13,
+      "descs": 19
+    },
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 414,
+        "height": 896
+      },
+      "asset": "iphone-e2e-portrait.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 13,
+      "descs": 19
+    },
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape-alt",
+      "set": "alt",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 896,
+        "height": 414
+      },
+      "asset": "iphone-e2e-landscape.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 13,
+      "descs": 19
+    },
+    {
+      "orientation": "portrait",
+      "overlayName": "portrait-alt",
+      "set": "alt",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 414,
+        "height": 896
+      },
+      "asset": "iphone-e2e-portrait.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 13,
+      "descs": 19
+    }
+  ]
+}

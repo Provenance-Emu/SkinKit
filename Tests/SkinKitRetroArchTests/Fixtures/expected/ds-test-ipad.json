@@ -1,0 +1,56 @@
+{
+  "name": "DS_Test_Skin",
+  "system": "nds",
+  "device": "iphone",
+  "notes": [
+    "No ipad layouts; using iphone."
+  ],
+  "skipped": [],
+  "unconvertible": [],
+  "descCount": 0,
+  "images": [
+    {
+      "file": "DS_Test_Skin-landscape.png",
+      "kind": "overlay",
+      "asset": "iphone_landscape.pdf",
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "width": 896,
+      "height": 414,
+      "innerWidth": null,
+      "innerHeight": null,
+      "clearRects": [
+        {
+          "x": 20,
+          "y": 0,
+          "width": 535,
+          "height": 400
+        },
+        {
+          "x": 555,
+          "y": 0,
+          "width": 341,
+          "height": 256
+        }
+      ]
+    }
+  ],
+  "layouts": [
+    {
+      "orientation": "landscape",
+      "overlayName": "landscape",
+      "set": "base",
+      "displayType": "edgeToEdge",
+      "mapping": {
+        "width": 896,
+        "height": 414
+      },
+      "asset": "iphone_landscape.pdf",
+      "rect": null,
+      "translucent": false,
+      "screens": 2,
+      "items": 0,
+      "descs": 0
+    }
+  ]
+}
