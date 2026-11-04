@@ -232,7 +232,7 @@ final class SkinStorePolicyTests: XCTestCase {
             try SkinStorePolicy.iCube.section(for: entry(systems: ["n64", "wii"], url: "https://e.com/a.deltaskin")),
             .wii
         )
-        XCTAssertEqual(SkinStorePolicy.iCube.sections, [.gameCube, .wii, .nintendo64])
+        XCTAssertEqual(SkinStorePolicy.iCube.sections, [.gameCube, .wii, .nintendo64, .nes, .snes])
     }
 
     func testICubeOrderedSectionsAndEmptySectionsOmitted() throws {
@@ -249,7 +249,134 @@ final class SkinStorePolicyTests: XCTestCase {
             XCTAssertNil(policy.retarget(for: .gameCube, isSupportedGameType: supported))
             XCTAssertNil(policy.retarget(for: .wii, isSupportedGameType: supported))
             XCTAssertEqual(policy.retarget(for: .nintendo64, isSupportedGameType: supported), "gamecube")
+            // Virtual Console skins keep their own game type.
+            XCTAssertNil(policy.retarget(for: .nes, isSupportedGameType: supported))
+            XCTAssertNil(policy.retarget(for: .snes, isSupportedGameType: supported))
         }
+    }
+
+    // MARK: - iCube Virtual Console shelves (NES, Super NES)
+
+    private func iCubeSection(
+        systems: [String] = [],
+        gameType: String? = nil,
+        url: String = "https://e.com/a.deltaskin"
+    ) throws -> SkinStoreSection? {
+        try SkinStorePolicy.iCube.section(for: entry(systems: systems, gameType: gameType, url: url))
+    }
+
+    func testVirtualConsoleShelvesAreAsIsAndSitAfterN64() {
+        XCTAssertEqual(SkinStoreSection.nes.id, "nes")
+        XCTAssertEqual(SkinStoreSection.nes.title, "NES")
+        XCTAssertEqual(SkinStoreSection.nes.systemCodes, ["nes", "fds"])
+        XCTAssertEqual(SkinStoreSection.nes.retarget, .asIs)
+        XCTAssertEqual(SkinStoreSection.snes.id, "snes")
+        XCTAssertEqual(SkinStoreSection.snes.title, "Super NES")
+        XCTAssertEqual(SkinStoreSection.snes.systemCodes, ["snes"])
+        XCTAssertEqual(SkinStoreSection.snes.retarget, .asIs)
+        XCTAssertEqual(SkinStorePolicy.iCube.sections.map(\.id), ["gameCube", "wii", "nintendo64", "nes", "snes"])
+    }
+
+    func testNESAndSNESEntriesLandOnTheirShelves() throws {
+        XCTAssertEqual(try iCubeSection(systems: ["nes"]), .nes)
+        XCTAssertEqual(try iCubeSection(systems: ["fds"]), .nes, "Famicom Disk System shares the NES shelf")
+        XCTAssertEqual(try iCubeSection(systems: ["snes"]), .snes)
+        XCTAssertEqual(try iCubeSection(systems: ["NES"]), .nes, "codes compare lowercased")
+        XCTAssertEqual(try iCubeSection(systems: ["SNES"], url: "https://e.com/a.MANICSKIN"), .snes)
+    }
+
+    func testGameTypeSuffixPlacesVirtualConsoleEntriesWithoutSystems() throws {
+        let cases: [(String, SkinStoreSection?)] = [
+            ("com.rileytestut.delta.game.nes", .nes),
+            ("public.aoshuang.game.nes", .nes),
+            ("public.aoshuang.game.fds", .nes),
+            ("com.rileytestut.delta.game.snes", .snes),
+            ("public.aoshuang.game.snes", .snes),
+            ("public.aoshuang.game.sfc", .snes),
+            ("public.aoshuang.game.SFC", .snes),
+            ("com.rileytestut.delta.game.gb", nil),
+            ("public.aoshuang.game.sega", nil),
+        ]
+        for (gameType, expected) in cases {
+            XCTAssertEqual(try iCubeSection(gameType: gameType), expected, gameType)
+        }
+        XCTAssertEqual(
+            SkinStorePolicy.iCube.gameTypeSuffixSystemCodes,
+            [
+                "ngc": "gamecube", "gc": "gamecube", "gamecube": "gamecube", "wii": "wii", "n64": "n64",
+                "nes": "nes", "fds": "nes", "snes": "snes", "sfc": "snes",
+            ]
+        )
+    }
+
+    func testGameTypeAddsToTheEntrysOwnSystems() throws {
+        // A mis-filed entry (systems says gba) still lands where its game type says.
+        XCTAssertEqual(try iCubeSection(systems: ["gba"], gameType: "com.rileytestut.delta.game.snes"), .snes)
+        XCTAssertEqual(try iCubeSection(systems: ["unofficial"], gameType: "public.aoshuang.game.nes"), .nes)
+    }
+
+    func testEarlierShelvesWinOverVirtualConsoleShelves() throws {
+        XCTAssertEqual(try iCubeSection(systems: ["nes", "gamecube"]), .gameCube)
+        XCTAssertEqual(try iCubeSection(systems: ["snes", "wii"]), .wii)
+        XCTAssertEqual(try iCubeSection(systems: ["snes", "n64"]), .nintendo64)
+        XCTAssertEqual(try iCubeSection(systems: ["gamecube"], gameType: "com.rileytestut.delta.game.nes"), .gameCube)
+        XCTAssertEqual(try iCubeSection(systems: ["n64"], gameType: "public.aoshuang.game.snes"), .nintendo64)
+        XCTAssertEqual(try iCubeSection(systems: ["wii"], gameType: "public.aoshuang.game.sfc"), .wii)
+    }
+
+    func testNESBeatsSNESWhenAnEntryClaimsBoth() throws {
+        XCTAssertEqual(try iCubeSection(systems: ["snes", "nes"]), .nes)
+        XCTAssertEqual(try iCubeSection(systems: ["snes"], gameType: "public.aoshuang.game.fds"), .nes)
+    }
+
+    func testVirtualConsoleEntriesObeyTheInstallableExtensionRule() throws {
+        XCTAssertNil(try iCubeSection(systems: ["nes"], url: "https://e.com/a.zip"))
+        XCTAssertNil(try iCubeSection(systems: ["snes"], url: "https://drive.example.com/file/d/abc"))
+    }
+
+    func testShelvesComeOutInDisplayOrderWithVirtualConsoleLast() throws {
+        let entries = try [
+            entry(id: "super", systems: ["snes"], url: "https://e.com/s.deltaskin"),
+            entry(id: "famicom", systems: ["fds"], url: "https://e.com/f.deltaskin"),
+            entry(id: "n", systems: ["n64"], url: "https://e.com/n.deltaskin"),
+            entry(id: "g", systems: ["gamecube"], url: "https://e.com/g.manicskin"),
+            entry(id: "w", systems: ["wii"], url: "https://e.com/w.manicskin"),
+            entry(id: "nes2", systems: ["nes"], url: "https://e.com/n2.deltaskin"),
+        ]
+        let grouped = SkinStorePolicy.iCube.sections(for: entries)
+        XCTAssertEqual(grouped.map(\.section), [.gameCube, .wii, .nintendo64, .nes, .snes])
+        XCTAssertEqual(grouped[3].entries.map(\.id), ["famicom", "nes2"], "feed order kept")
+        XCTAssertEqual(grouped[4].entries.map(\.id), ["super"])
+    }
+
+    func testEmptyVirtualConsoleShelvesAreOmittedAndGameCubeStoreIsUnchanged() {
+        // The fixture feed has no NES or SNES skins, so the store a GameCube or Wii player sees is
+        // exactly what it was before the new shelves.
+        XCTAssertEqual(SkinStorePolicy.iCube.sections(for: catalog.skins).map(\.section), [.gameCube, .wii, .nintendo64])
+    }
+
+    func testVirtualConsoleFamiliesStayWholeOnTheirShelf() throws {
+        func member(_ id: String, _ order: Int) throws -> SkinCatalogEntry {
+            var member = try entry(id: id, systems: ["snes"], url: "https://e.com/\(id).deltaskin")
+            member.groupId = "g:snes-pad"
+            member.groupOrder = order
+            return member
+        }
+        let shelves = try SkinStorePolicy.iCube.familySections(for: [member("a", 1), member("b", 2)])
+        XCTAssertEqual(shelves.map(\.section), [.snes])
+        XCTAssertEqual(shelves[0].families.count, 1)
+        XCTAssertEqual(shelves[0].families[0].members.map(\.id), ["a", "b"])
+        XCTAssertEqual(shelves[0].families[0].downloadPlan(policy: .iCube).count, 2)
+    }
+
+    func testVirtualConsoleDownloadFileNames() throws {
+        let nes = try entry(id: "nes-skin", systems: ["nes"], url: "https://e.com/NES.DeltaSkin")
+        XCTAssertEqual(SkinStorePolicy.iCube.downloadFileName(for: nes), "nes-skin.deltaskin")
+    }
+
+    func testIFlyDoesNotShowVirtualConsoleSkins() throws {
+        XCTAssertNil(try SkinStorePolicy.iFly.section(for: entry(systems: ["nes"], url: "https://e.com/a.deltaskin")))
+        XCTAssertNil(try SkinStorePolicy.iFly.section(for: entry(systems: [], gameType: "public.aoshuang.game.snes", url: "https://e.com/a.deltaskin")))
     }
 
     // MARK: - Shared rules

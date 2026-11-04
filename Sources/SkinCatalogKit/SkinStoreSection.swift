@@ -92,4 +92,12 @@ public extension SkinStoreSection {
         systemCodes: ["n64"],
         retarget: .always("gamecube")
     )
+
+    /// NES (and Famicom Disk System, which the catalog files under `nes`) skins for Virtual Console
+    /// titles. Installed as-is: a NES skin is for NES games, so it keeps its game type and iCube picks
+    /// it for VC titles without touching GameCube games.
+    static let nes = SkinStoreSection(id: "nes", title: "NES", systemCodes: ["nes", "fds"])
+
+    /// Super NES (Super Famicom) skins for Virtual Console titles. Installed as-is, like ``nes``.
+    static let snes = SkinStoreSection(id: "snes", title: "Super NES", systemCodes: ["snes"])
 }
