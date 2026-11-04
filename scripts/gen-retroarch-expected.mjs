@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Regenerates Tests/SkinKitRetroArchTests/Fixtures/expected/ from the JavaScript converter in the
-// skins repo (Provenance-Emu/skins, docs/js/skin/retroarch-convert.js, PR #38 branch site/retroarch-converter,
-// head 2f4d7e8c8ab085b90fcebb2026c135433d4330a2 when these fixtures were last generated).
+// skins repo (Provenance-Emu/skins, docs/js/skin/retroarch-convert.js; generated from skins#38 at
+// 2f4d7e8c8ab085b90fcebb2026c135433d4330a2, which is what main carries).
 //
 //   node scripts/gen-retroarch-expected.mjs /path/to/skins-checkout
 //
@@ -10,7 +10,9 @@
 // compare SkinKitRetroArch's output against these files, so the converters stay byte-for-byte aligned.
 //
 // The input map is NOT read from the skins checkout: the vendored copy under Sources/SkinKitRetroArch/Resources
-// is the one both sides must use, and it is byte-identical to the one in skins#38.
+// is the one both sides must use. skins vendors these fixtures (tests/fixtures/retroarch/skinkit/, with the
+// SkinKit commit in SOURCE) and checks its converter against them and its map against this one; after
+// regenerating here, re-vendor them there. RetroArchInputMapPinTests pins the map's hash on this side.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
