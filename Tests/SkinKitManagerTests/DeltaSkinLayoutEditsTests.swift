@@ -49,11 +49,11 @@ struct DeltaSkinLayoutEditsTests {
         #expect(reloaded.document(for: skin) == store.document(for: skin))
     }
 
-    @Test("The file is <edits dir>/<identifier>.json with the documented shape")
+    @Test("The file is <edits dir>/<identifier>-<digest>.json with the documented shape")
     func fileShape() throws {
         defer { cleanup() }
         try store.setEdit(DeltaSkinButtonEdit(dx: 1, dy: 2, scale: 1.25), forButton: "a", skinIdentifier: skin, traitKey: portrait)
-        let url = directory.appendingPathComponent("com.example.skin.json")
+        let url = directory.appendingPathComponent(DeltaSkinLayoutEdits.fileName(forSkinIdentifier: skin))
         let json = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
         #expect(json["skinIdentifier"] as? String == skin)
         #expect(json["version"] as? Int == 1)
@@ -67,7 +67,7 @@ struct DeltaSkinLayoutEditsTests {
         let storage = DeltaSkinStorage(directory: directory)
         let edits = DeltaSkinLayoutEdits(storage: storage)
         try edits.setEdit(DeltaSkinButtonEdit(dx: 1), forButton: "a", skinIdentifier: skin, traitKey: portrait)
-        let expected = directory.appendingPathComponent("edits/com.example.skin.json")
+        let expected = directory.appendingPathComponent("edits/" + DeltaSkinLayoutEdits.fileName(forSkinIdentifier: skin))
         #expect(FileManager.default.fileExists(atPath: expected.path))
     }
 
@@ -177,6 +177,34 @@ struct DeltaSkinLayoutEditsTests {
         try store.setEdit(DeltaSkinButtonEdit(dx: 1), forButton: "a", skinIdentifier: evil, traitKey: portrait)
         let url = try store.fileURL(forSkinIdentifier: evil)
         #expect(url.deletingLastPathComponent().standardizedFileURL == directory.standardizedFileURL)
-        #expect(DeltaSkinLayoutEdits.fileName(forSkinIdentifier: "com.example.skin") == "com.example.skin.json")
+        let name2 = DeltaSkinLayoutEdits.fileName(forSkinIdentifier: "com.example.skin")
+        #expect(name2.hasPrefix("com.example.skin-") && name2.hasSuffix(".json"))
+        #expect(DeltaSkinLayoutEdits.fileName(forSkinIdentifier: String(repeating: "x", count: 1000)).count < 255)
+    }
+
+    @Test("Identifiers that differ only by case keep separate edits on a case-insensitive disk")
+    func caseOnlyIdentifiers() throws {
+        defer { cleanup() }
+        let upper = "com.example.Skin", lower = "com.example.skin"
+        let a = DeltaSkinLayoutEdits.fileName(forSkinIdentifier: upper)
+        let b = DeltaSkinLayoutEdits.fileName(forSkinIdentifier: lower)
+        #expect(a.lowercased() != b.lowercased())
+        try store.setEdit(DeltaSkinButtonEdit(dx: 5), forButton: "a", skinIdentifier: upper, traitKey: portrait)
+        try store.setEdit(DeltaSkinButtonEdit(dx: 9), forButton: "a", skinIdentifier: lower, traitKey: portrait)
+        try store.setEdit(.identity, forButton: "a", skinIdentifier: lower, traitKey: portrait)   // reset one
+        let fresh = DeltaSkinLayoutEdits(editsDirectory: directory)
+        #expect(fresh.edit(forButton: "a", skinIdentifier: upper, traitKey: portrait).dx == 5)
+        #expect(fresh.edit(forButton: "a", skinIdentifier: lower, traitKey: portrait) == .identity)
+    }
+
+    @Test("A file whose stored identifier is another skin's is ignored")
+    func mismatchedDocumentIgnored() throws {
+        defer { cleanup() }
+        try store.setEdit(DeltaSkinButtonEdit(dx: 3), forButton: "a", skinIdentifier: "other.skin", traitKey: portrait)
+        let source = try store.fileURL(forSkinIdentifier: "other.skin")
+        let target = try store.fileURL(forSkinIdentifier: skin)
+        try FileManager.default.copyItem(at: source, to: target)
+        let fresh = DeltaSkinLayoutEdits(editsDirectory: directory)
+        #expect(!fresh.hasEdits(skinIdentifier: skin))
     }
 }

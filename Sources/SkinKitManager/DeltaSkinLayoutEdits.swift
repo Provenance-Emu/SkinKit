@@ -1,4 +1,5 @@
 import CoreGraphics
+import CryptoKit
 import Foundation
 import SkinKitCore
 
@@ -129,15 +130,20 @@ public final class DeltaSkinLayoutEdits: @unchecked Sendable {
         "\(device.rawValue).\(displayType.rawValue).\(orientation.rawValue)"
     }
 
-    /// The file name for a skin identifier: characters outside `[A-Za-z0-9._-]` are percent-encoded so an
-    /// identifier can never name a path outside the edits folder. A leading dot is encoded too.
+    /// The file name for a skin identifier: `<readable>-<digest>.json`.
+    ///
+    /// `<readable>` is the identifier with characters outside `[A-Za-z0-9._-]` percent-encoded (and a leading dot
+    /// encoded), cut to 96 characters, so an identifier can never name a path outside the edits folder.
+    /// `<digest>` is the first 16 hex digits of the SHA-256 of the exact identifier, so identifiers that differ only
+    /// by case (`com.example.Skin`, `com.example.skin`) get different files on a case-insensitive file system.
     public static func fileName(forSkinIdentifier identifier: String) -> String {
-        var allowed = CharacterSet.alphanumerics
+        var allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
         allowed.insert(charactersIn: "-._")
-        var name = identifier.addingPercentEncoding(withAllowedCharacters: allowed) ?? identifier
-        if name.isEmpty { name = "%00" }
+        var name = identifier.addingPercentEncoding(withAllowedCharacters: allowed) ?? ""
         if name.hasPrefix(".") { name = "%2E" + name.dropFirst() }
-        return name + ".json"
+        name = String(name.prefix(96))
+        let digest = SHA256.hash(data: Data(identifier.utf8)).prefix(8).map { String(format: "%02x", $0) }.joined()
+        return (name.isEmpty ? "" : name + "-") + digest + ".json"
     }
 
     /// Where a skin's edits file lives (it may not exist).
@@ -254,7 +260,12 @@ public final class DeltaSkinLayoutEdits: @unchecked Sendable {
            let data = try? Data(contentsOf: url) {
             do {
                 var decoded = try JSONDecoder().decode(DeltaSkinLayoutEditsDocument.self, from: data)
-                decoded.skinIdentifier = skinIdentifier
+                guard decoded.skinIdentifier == skinIdentifier else {
+                    // Another skin's file (should not happen with digest names); never apply its edits here.
+                    WLOG("DeltaSkinLayoutEdits: \(url.lastPathComponent) belongs to \(decoded.skinIdentifier), not \(skinIdentifier)")
+                    cache[skinIdentifier] = doc
+                    return doc
+                }
                 decoded.traits = decoded.traits.mapValues { $0.mapValues(\.normalized).filter { !$0.value.isIdentity } }
                     .filter { !$0.value.isEmpty }
                 doc = decoded
