@@ -1,0 +1,171 @@
+{
+  "formatVersion": "2.0-draft",
+  "requires": ["layout.anchors", "layout.stack", "shapes.path", "paint.gradients", "effects.shadow", "parts", "repeat"],
+  "identifier": "com.icube.generated.gamecube",
+  "name": "iCube GameCube (generated)",
+  "gameTypes": ["com.provenance.gamecube"],
+  "reference": { "shortSide": 390, "minScale": 1.0, "maxScale": 1.35 },
+
+  "tokens": {
+    "glow": "#9E7AF2",
+    "neutralTop": "#755CA8",
+    "neutralBottom": "#3D2B66",
+    "aTop": "#52DB66",
+    "aBottom": "#1A8C38",
+    "bTop": "#F24D47",
+    "bBottom": "#A6141A",
+    "startTop": "#FAFAFA",
+    "startBottom": "#CCCCCC",
+    "label": "#FFFFFFE6",
+    "rim": "#FFFFFF80",
+    "gap": 8,
+    "edge": 8,
+    "bottomGuard": 6,
+    "diagonal": 70,
+    "mainStick": 132,
+    "cStick": 100,
+    "dpad": 104
+  },
+
+  "themes": {
+    "wii": { "glow": "#52A0FF", "neutralTop": "#FFFFFF", "neutralBottom": "#DBDBDB", "label": "#0000008C" }
+  },
+
+  "parts": {
+    "faceButton": {
+      "params": { "input": "a", "label": "A", "top": "$neutralTop", "bottom": "$neutralBottom", "shape": { "kind": "ellipse" } },
+      "node": {
+        "type": "control", "kind": "button", "input": "@input", "hit": { "extend": 0 },
+        "states": { "pressed": { "scale": 0.92, "fills": [ { "type": "linear", "start": [0.5, 0], "end": [0.5, 1], "stops": [["@bottom", 0], ["@top", 1]] } ] } },
+        "children": [
+          { "type": "shape", "shape": "@shape",
+            "fills": [
+              { "type": "linear", "start": [0.5, 0], "end": [0.5, 1], "stops": [["@top", 0], ["@bottom", 1]] },
+              { "type": "linear", "start": [0.5, 0], "end": [0.5, 0.5], "stops": [["#FFFFFF57", 0], ["#FFFFFF00", 1]] }
+            ],
+            "strokes": [ { "color": "$rim", "width": 1 } ],
+            "effects": [
+              { "type": "shadow", "color": "#00000059", "radius": 3, "offset": [0, 2] },
+              { "type": "shadow", "color": "$glow", "opacity": 0.35, "radius": 4, "offset": [0, 0] }
+            ] },
+          { "type": "text", "text": "@label", "font": { "size": 11, "weight": "bold" }, "color": "$label" }
+        ]
+      }
+    },
+    "stick": {
+      "params": { "input": "leftThumbstick", "knob": "50%" },
+      "node": {
+        "type": "control", "kind": "thumbstick", "input": "@input",
+        "children": [
+          { "type": "shape", "shape": { "kind": "ellipse" },
+            "fills": [ { "type": "radial", "center": [0.5, 0.5], "radius": 0.53, "stops": [["#00000059", 0], ["$glow", 0.28, 1]] } ] },
+          { "type": "shape", "shape": { "kind": "polygon", "sides": 8, "rotation": -22.5 }, "layout": { "inset": 6 },
+            "strokes": [ { "color": "$glow", "opacity": 0.6, "width": 2 } ] },
+          { "type": "shape", "role": "knob", "shape": { "kind": "ellipse" },
+            "layout": { "size": { "width": "@knob", "height": "@knob" }, "anchor": { "x": "center", "y": "center" } },
+            "fills": [ { "type": "radial", "center": [0.38, 0.3], "radius": 0.6, "stops": [["$neutralTop", 0], ["$neutralBottom", 1]] } ],
+            "strokes": [ { "color": "#00000040", "width": 1.5 } ],
+            "effects": [ { "type": "shadow", "color": "#00000080", "radius": 4, "offset": [0, 2] } ] }
+        ]
+      }
+    }
+  },
+
+  "root": {
+    "type": "group", "id": "canvas",
+    "children": [
+      { "type": "screen", "id": "screen", "aspect": 1.3333,
+        "layout": { "size": { "width": "100%" }, "anchor": { "x": "center", "y": "top", "to": "safeArea" } },
+        "when": [ { "orientation": "landscape", "layout": { "size": { "width": "100%", "height": "100%" }, "aspect": null, "anchor": { "x": "center", "y": "center", "to": "parent" } } } ] },
+
+      { "type": "group", "id": "leftColumn",
+        "stack": { "axis": "vertical", "spacing": "$gap", "align": "center" },
+        "layout": { "anchor": { "x": "leading", "y": "bottom", "to": "safeArea" }, "offset": { "x": "$edge", "y": -6 } },
+        "children": [
+          { "type": "control", "id": "l", "kind": "trigger", "input": "l",
+            "layout": { "size": { "width": 96, "height": 44 }, "anchor": { "x": "leading" } },
+            "children": [
+              { "type": "shape", "shape": { "kind": "path", "box": [0, 0, 1, 1], "d": "M0 0 L1 0 L0.86 1 L0.14 1 Z" },
+                "fills": [ { "type": "linear", "start": [0.5, 0], "end": [0.5, 1], "stops": [["$neutralTop", 0], ["$neutralBottom", 1]] },
+                           { "type": "linear", "start": [0.5, 0], "end": [0.5, 0.5], "stops": [["#FFFFFF57", 0], ["#FFFFFF00", 1]] } ],
+                "strokes": [ { "color": "$rim", "width": 1 } ],
+                "effects": [ { "type": "shadow", "color": "#00000059", "radius": 3, "offset": [0, 2] } ] },
+              { "type": "text", "text": "L", "font": { "size": 11, "weight": "bold" }, "color": "$label" }
+            ] },
+          { "use": "stick", "id": "mainStick", "with": { "input": "leftThumbstick" },
+            "layout": { "size": { "width": "$mainStick", "height": "$mainStick" } } },
+          { "type": "control", "id": "dpad", "kind": "dpad", "input": "dpad",
+            "layout": { "size": { "width": "$dpad", "height": "$dpad" } },
+            "when": [ { "orientation": "landscape", "layout": { "offset": { "x": "$diagonal", "y": 0 } } } ],
+            "effects": [ { "type": "shadow", "color": "#00000066", "radius": 3, "offset": [0, 2] } ],
+            "children": [
+              { "type": "shape", "shape": { "kind": "ellipse" },
+                "fills": [ { "type": "radial", "center": [0.4, 0.34], "radius": 0.7, "stops": [["$neutralTop", 0.9, 0], ["$neutralBottom", 0.95, 1]] } ],
+                "strokes": [ { "color": "$glow", "opacity": 0.55, "width": 2, "align": "inner" } ] },
+              { "type": "shape", "layout": { "inset": "14%" },
+                "shape": { "kind": "path", "box": [0, 0, 128, 128],
+                           "d": "M42 6 Q42 0 48 0 L80 0 Q86 0 86 6 L86 42 L122 42 Q128 42 128 48 L128 80 Q128 86 122 86 L86 86 L86 122 Q86 128 80 128 L48 128 Q42 128 42 122 L42 86 L6 86 Q0 86 0 80 L0 48 Q0 42 6 42 L42 42 Z" },
+                "fills": [ { "type": "linear", "start": [0.5, 0], "end": [0.5, 1], "stops": [["$neutralBottom", 0], ["$neutralTop", 1]] } ] },
+              { "type": "shape", "id": "arrow", "shape": { "kind": "polygon", "sides": 3, "rotation": -90 },
+                "layout": { "size": { "width": "15.6%", "height": "15.6%" }, "anchor": { "x": "center", "y": "center" }, "offset": { "y": "-26.5%" } },
+                "repeat": { "count": 4, "rotate": 90, "pivot": "parent" },
+                "fills": [ { "type": "solid", "color": "#FFFFFFD9" } ],
+                "effects": [ { "type": "shadow", "color": "#0000004D", "radius": 1, "offset": [0, 1] } ] }
+            ] }
+        ] },
+
+      { "type": "group", "id": "rightColumn",
+        "stack": { "axis": "vertical", "spacing": "$gap", "align": "center" },
+        "layout": { "anchor": { "x": "trailing", "y": "bottom", "to": "safeArea" }, "offset": { "x": "-$edge", "y": -6 } },
+        "children": [
+          { "type": "control", "id": "r", "kind": "trigger", "input": "r",
+            "layout": { "size": { "width": 96, "height": 44 }, "anchor": { "x": "trailing" } },
+            "children": [
+              { "type": "shape", "shape": { "kind": "path", "box": [0, 0, 1, 1], "d": "M0 0 L1 0 L0.86 1 L0.14 1 Z" },
+                "fills": [ { "type": "linear", "start": [0.5, 0], "end": [0.5, 1], "stops": [["$neutralTop", 0], ["$neutralBottom", 1]] },
+                           { "type": "linear", "start": [0.5, 0], "end": [0.5, 0.5], "stops": [["#FFFFFF57", 0], ["#FFFFFF00", 1]] } ],
+                "strokes": [ { "color": "$rim", "width": 1 } ],
+                "effects": [ { "type": "shadow", "color": "#00000059", "radius": 3, "offset": [0, 2] } ] },
+              { "type": "text", "text": "R", "font": { "size": 11, "weight": "bold" }, "color": "$label" }
+            ] },
+          { "type": "control", "id": "z", "kind": "button", "input": "z",
+            "layout": { "size": { "width": 80, "height": 44 }, "anchor": { "x": "trailing" }, "offset": { "x": -8 } },
+            "children": [
+              { "type": "shape", "shape": { "kind": "path", "box": [0, 0, 1, 1], "d": "M0 0 L1 0 L0.86 1 L0.14 1 Z" },
+                "fills": [ { "type": "linear", "start": [0.5, 0], "end": [0.5, 1], "stops": [["$neutralTop", 0], ["$neutralBottom", 1]] },
+                           { "type": "linear", "start": [0.5, 0], "end": [0.5, 0.5], "stops": [["#FFFFFF57", 0], ["#FFFFFF00", 1]] } ],
+                "strokes": [ { "color": "$rim", "width": 1 } ],
+                "effects": [ { "type": "shadow", "color": "#00000059", "radius": 3, "offset": [0, 2] } ] },
+              { "type": "text", "text": "Z", "font": { "size": 11, "weight": "bold" }, "color": "$label" }
+            ] },
+          { "type": "group", "id": "face", "layout": { "size": { "width": 170, "height": 134 }, "anchor": { "x": "trailing" } },
+            "children": [
+              { "use": "faceButton", "id": "y", "with": { "input": "y", "label": "Y",
+                  "shape": { "kind": "path", "box": [0, 0, 1, 1], "d": "M0.12 0.55 C0.05 0.05 0.60 -0.08 0.88 0.45 C1.05 0.62 0.50 1.08 0.12 0.55 Z" } },
+                "layout": { "frame": [49, 0, 64, 44] } },
+              { "use": "faceButton", "id": "x", "with": { "input": "x", "label": "X",
+                  "shape": { "kind": "path", "box": [0, 0, 1, 1], "d": "M0.12 0.55 C0.05 0.05 0.60 -0.08 0.88 0.45 C1.05 0.62 0.50 1.08 0.12 0.55 Z" } },
+                "layout": { "frame": [126, 48, 44, 64] } },
+              { "use": "faceButton", "id": "a", "with": { "input": "a", "label": "A", "top": "$aTop", "bottom": "$aBottom" },
+                "layout": { "frame": [48, 50, 72, 72] } },
+              { "use": "faceButton", "id": "b", "with": { "input": "b", "label": "B", "top": "$bTop", "bottom": "$bBottom" },
+                "layout": { "frame": [0, 86, 48, 48] } }
+            ] },
+          { "use": "stick", "id": "cStick", "with": { "input": "rightThumbstick", "knob": "50%" },
+            "layout": { "size": { "width": "$cStick", "height": "$cStick" } },
+            "when": [ { "orientation": "landscape", "layout": { "offset": { "x": "-$diagonal", "y": 0 } } } ] }
+        ] },
+
+      { "type": "group", "id": "center",
+        "stack": { "axis": "vertical", "spacing": "$gap", "align": "center" },
+        "layout": { "anchor": { "x": "center", "y": "bottom", "to": "safeArea" }, "offset": { "y": -6 } },
+        "children": [
+          { "use": "faceButton", "id": "mic", "with": { "input": "mic", "label": "MIC", "shape": { "kind": "capsule" } },
+            "requiresFlag": "microphone",
+            "layout": { "size": { "width": 70, "height": 44 } } },
+          { "use": "faceButton", "id": "start", "with": { "input": "start", "label": "START", "top": "$startTop", "bottom": "$startBottom", "shape": { "kind": "capsule" } },
+            "layout": { "size": { "width": 70, "height": 44 } } }
+        ] }
+    ]
+  }
+}

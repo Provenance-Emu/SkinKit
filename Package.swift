@@ -42,6 +42,8 @@ let package = Package(
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
         ),
         .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager"]),
+        // THROWAWAY: format 2.0 spike (SkinKit#24). Not a product; delete with the spike branch.
+        .target(name: "SkinKit2Spike", resources: [.copy("Resources/gamecube.skin2.json")]),
 
         .testTarget(
             name: "SkinKitCoreTests",
@@ -65,6 +67,7 @@ let package = Package(
             ],
             resources: [.copy("Fixtures")]
         ),
+        .testTarget(name: "SkinKit2SpikeTests", dependencies: ["SkinKit2Spike"]),
     ],
     swiftLanguageModes: [.v5]
 )
