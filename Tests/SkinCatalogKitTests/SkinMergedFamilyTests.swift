@@ -204,4 +204,25 @@ final class SkinMergedFamilyTests: XCTestCase {
         XCTAssertEqual(family.downloadPlan().count, 3)
         XCTAssertEqual(family.downloadPlan(memberIds: ["red", "blue"]).entries.map(\.id), ["red", "blue"])
     }
+
+    // MARK: - "Install all"
+
+    func testInstallAllOffersOnlyTheSplitFilesNotInstalled() throws {
+        let family = try family(mergedFamilyEntries())
+        XCTAssertEqual(family.installAllMembers(installedIds: []).map(\.id), ["red", "green", "blue"])
+        XCTAssertEqual(family.installAllMembers(installedIds: ["green"]).map(\.id), ["red", "blue"])
+    }
+
+    func testInstallAllNeverOffersTheMergedFileOnceEverySplitFileIsInstalled() throws {
+        let family = try family(mergedFamilyEntries())
+        XCTAssertEqual(family.installAllMembers(installedIds: ["red", "green", "blue"]), [])
+        let plan = family.downloadPlan(memberIds: Set(family.installAllMembers(installedIds: ["red", "green", "blue"]).map(\.id)))
+        XCTAssertTrue(plan.isEmpty, "nothing left to install, not the merged duplicate")
+    }
+
+    func testInstallAllInAFamilyOfOnlyMergedFilesOffersThem() throws {
+        let only = [make("all", order: 0, mergedFrom: ["gone1", "gone2"]), make("all2", order: 1, mergedFrom: ["gone3"])]
+        let family = try family(only)
+        XCTAssertEqual(Set(family.installAllMembers(installedIds: []).map(\.id)), ["all", "all2"])
+    }
 }
