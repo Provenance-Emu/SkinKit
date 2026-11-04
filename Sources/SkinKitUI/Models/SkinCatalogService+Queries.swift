@@ -6,7 +6,7 @@ import SkinCatalogKit
 public enum SkinSortOption: String, CaseIterable, Sendable {
     /// Sort by download count (descending)
     case popular
-    /// Sort by last updated date (most recent first)
+    /// Sort by `effectiveDate`, last updated or else added to the catalog (most recent first)
     case recent
     /// Sort alphabetically by name
     case alphabetical
@@ -177,7 +177,7 @@ public extension SkinCatalogService {
         case .popular:
             return entries.sorted { ($0.downloadCount ?? 0) > ($1.downloadCount ?? 0) }
         case .recent:
-            return entries.sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }
+            return entries.sorted { ($0.effectiveDate ?? .distantPast) > ($1.effectiveDate ?? .distantPast) }
         case .alphabetical:
             return entries.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         case .rating:

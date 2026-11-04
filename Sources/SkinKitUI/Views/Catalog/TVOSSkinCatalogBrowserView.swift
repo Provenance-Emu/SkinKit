@@ -96,7 +96,7 @@ public struct TVOSSkinCatalogBrowserView: View {
     }
 
     private var newFamilies: [SkinFamily] {
-        Array(filteredFamilies.sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }.prefix(12))
+        Array(filteredFamilies.sorted { ($0.effectiveDate ?? .distantPast) > ($1.effectiveDate ?? .distantPast) }.prefix(12))
     }
 
     private var familiesBySystem: [(system: String, families: [SkinFamily])] {

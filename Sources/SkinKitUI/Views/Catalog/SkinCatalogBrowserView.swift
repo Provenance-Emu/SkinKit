@@ -557,7 +557,7 @@ public struct SkinCatalogBrowserView: View {
     private func sortLocally(_ entries: [SkinCatalogEntry], by option: SkinSortOption) -> [SkinCatalogEntry] {
         switch option {
         case .popular:      return entries.sorted { ($0.downloadCount ?? 0) > ($1.downloadCount ?? 0) }
-        case .recent:       return entries.sorted { ($0.lastUpdated ?? .distantPast) > ($1.lastUpdated ?? .distantPast) }
+        case .recent:       return entries.sorted { ($0.effectiveDate ?? .distantPast) > ($1.effectiveDate ?? .distantPast) }
         case .alphabetical: return entries.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         case .rating:       return entries.sorted { ($0.rating ?? 0) > ($1.rating ?? 0) }
         }
