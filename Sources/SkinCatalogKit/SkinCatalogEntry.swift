@@ -29,6 +29,9 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
     public var downloadCount: Int?
     public var rating: Double?
     public var lastUpdated: Date?
+    /// When the entry's file was first committed to the skins repo (catalog `addedAt`,
+    /// `Provenance-Emu/skins#42`). Every entry carries it from that build on; older feeds omit it.
+    public var addedAt: Date?
     public var fileSize: Int?
     /// Host attribution (`deltastyles.com`, `delta-skins.github.io`), or sometimes a GitHub
     /// `owner/repo`. Use `sourceHost` for display.
@@ -54,6 +57,12 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
     /// family's `groupId` so it sits in the family, but it duplicates the members it was built from,
     /// so ``SkinDownloadPlan`` never fetches it together with them.
     public var mergedFrom: [String]
+
+    /// The date "recent" sorts and "new" markers use: `lastUpdated`, else `addedAt`.
+    /// `lastUpdated` is set for a handful of entries; `addedAt` covers the rest (follow creators design §1).
+    public var effectiveDate: Date? {
+        lastUpdated ?? addedAt
+    }
 
     /// True for a catalog-built merge of other entries (``mergedFrom`` is not empty).
     public var isMerged: Bool {
@@ -110,6 +119,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         downloadCount: Int? = nil,
         rating: Double? = nil,
         lastUpdated: Date? = nil,
+        addedAt: Date? = nil,
         fileSize: Int? = nil,
         source: String? = nil,
         description: String? = nil,
@@ -136,6 +146,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         self.downloadCount = downloadCount
         self.rating = rating
         self.lastUpdated = lastUpdated
+        self.addedAt = addedAt
         self.fileSize = fileSize
         self.source = source
         self.description = description
@@ -152,7 +163,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         case creatorSlug = "creator"
         case id, name, author, systems, gameTypeIdentifier, version, downloadURL
         case thumbnailURL, screenshotURLs, tags, deviceSupport, downloadCount, rating
-        case lastUpdated, fileSize, source, description, submittedBy, submittedAt
+        case lastUpdated, addedAt, fileSize, source, description, submittedBy, submittedAt
         case groupId, groupOrder, variantLabel, variants
         case mergedFrom
     }
@@ -193,6 +204,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         downloadCount = try? container.decodeIfPresent(Int.self, forKey: .downloadCount)
         rating = try? container.decodeIfPresent(Double.self, forKey: .rating)
         lastUpdated = SkinCatalogDates.parse(string(.lastUpdated))
+        addedAt = SkinCatalogDates.parse(string(.addedAt))
         fileSize = try? container.decodeIfPresent(Int.self, forKey: .fileSize)
         source = string(.source)
         description = string(.description)

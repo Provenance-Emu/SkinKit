@@ -316,8 +316,8 @@ public struct SkinCatalogDetailView: View {
                 )
                 statCard(
                     icon: "calendar",
-                    value: entry.lastUpdated.map { formatDate($0) } ?? "—",
-                    label: "Updated"
+                    value: entry.effectiveDate.map { formatDate($0) } ?? "—",
+                    label: entry.lastUpdated == nil && entry.addedAt != nil ? "Added" : "Updated"
                 )
             }
             .padding(.horizontal, 20)

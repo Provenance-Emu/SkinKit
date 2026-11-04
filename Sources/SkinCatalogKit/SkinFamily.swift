@@ -109,6 +109,11 @@ public struct SkinFamily: Identifiable, Sendable, Hashable {
         members.compactMap(\.lastUpdated).max()
     }
 
+    /// The newest member's ``SkinCatalogEntry/effectiveDate``, so adding a variant makes the family recent.
+    public var effectiveDate: Date? {
+        members.compactMap(\.effectiveDate).max()
+    }
+
     /// Distinct authors in member order, for a family card's credit line.
     public var authors: [String] {
         var seen = Set<String>()
