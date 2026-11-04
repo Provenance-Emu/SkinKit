@@ -10,7 +10,9 @@
 #
 # Each module is its own static library (the target's .o, not its dependencies), so an app can link any
 # set of them without duplicate symbols; link ZIPFoundation too. Built with library evolution, so the
-# .swiftinterface files work with newer compilers.
+# .swiftinterface files work with newer compilers. Each module declares a public enum of its own name
+# (`SkinKitCore.version`), so interfaces name modules through aliases; otherwise `SkinKitCore.DeltaSkin` in an
+# interface finds the enum, and compilers before Swift 6.3 reject it.
 #
 # Static libraries carry no resources. Apps add the bundles from the resources zip to their Copy Bundle
 # Resources phase: SkinKitCore and SkinKitRetroArch find theirs (Bundle.module) at the top of the main bundle.
@@ -79,6 +81,7 @@ for platform in "${platforms[@]}"; do
     CLANG_COVERAGE_MAPPING=NO \
     ONLY_ACTIVE_ARCH=NO \
     BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+    'OTHER_SWIFT_FLAGS=$(inherited) -Xfrontend -alias-module-names-in-module-interface' \
     SKIP_INSTALL=NO \
     >"$log" 2>&1; then
     grep -E "error:" "$log" | head -20 >&2 || tail -40 "$log" >&2

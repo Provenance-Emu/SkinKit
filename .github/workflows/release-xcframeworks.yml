@@ -29,8 +29,11 @@ concurrency:
 jobs:
   xcframeworks:
     name: build XCFrameworks
-    runs-on: macos-15
+    # The apps build with Xcode 26.3. A .swiftinterface reads with its own compiler or a newer one, so build with
+    # the oldest Xcode the apps use.
+    runs-on: macos-26
     env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
       VERSION: ${{ inputs.tag || github.event.release.tag_name || (github.event_name == 'pull_request' && format('pr{0}', github.event.pull_request.number)) || github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
