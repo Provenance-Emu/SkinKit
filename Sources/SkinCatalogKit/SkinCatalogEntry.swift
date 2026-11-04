@@ -48,6 +48,17 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
     /// Variants packed inside this one file (`altRepresentations`, `themes`, `gameOverrides`).
     /// Empty for split-file skins and for entries the catalog has not inspected.
     public var variants: [SkinCatalogVariant]
+    /// For a file the catalog built by merging a family's split files into one (`merge_variants.py`,
+    /// skin editing tools spec §3): the ids of the member entries it was merged from, base first.
+    /// Empty for every other entry, and for feeds that predate merging. The merged entry shares the
+    /// family's `groupId` so it sits in the family, but it duplicates the members it was built from,
+    /// so ``SkinDownloadPlan`` never fetches it together with them.
+    public var mergedFrom: [String]
+
+    /// True for a catalog-built merge of other entries (``mergedFrom`` is not empty).
+    public var isMerged: Bool {
+        !mergedFrom.isEmpty
+    }
 
     /// `systems`, lowercased.
     public var normalizedSystems: [String] {
@@ -107,7 +118,8 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         groupId: String? = nil,
         groupOrder: Int? = nil,
         variantLabel: String? = nil,
-        variants: [SkinCatalogVariant] = []
+        variants: [SkinCatalogVariant] = [],
+        mergedFrom: [String] = []
     ) {
         self.id = id
         self.name = name
@@ -133,6 +145,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         self.groupOrder = groupOrder
         self.variantLabel = variantLabel
         self.variants = variants
+        self.mergedFrom = mergedFrom
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -141,6 +154,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         case thumbnailURL, screenshotURLs, tags, deviceSupport, downloadCount, rating
         case lastUpdated, fileSize, source, description, submittedBy, submittedAt
         case groupId, groupOrder, variantLabel, variants
+        case mergedFrom
     }
 
     public init(from decoder: Decoder) throws {
@@ -192,6 +206,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         // Lossy per item: one malformed variant drops that variant, not the skin.
         variants = ((try? container.decodeIfPresent([LossyVariant].self, forKey: .variants)) ?? [])
             .compactMap(\.variant)
+        mergedFrom = strings(.mergedFrom).filter { !$0.isEmpty }
     }
 
     private struct LossyVariant: Decodable {

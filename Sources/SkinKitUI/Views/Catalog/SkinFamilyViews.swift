@@ -64,8 +64,13 @@ final class SkinFamilyInstallModel: ObservableObject {
         run(family.downloadPlan(for: member))
     }
 
+    /// What "Install all" fetches: the split members not installed yet, never a catalog-built merge of them.
+    var installAllMembers: [SkinCatalogEntry] {
+        family.installAllMembers(installedIds: Set(family.members.filter { state(for: $0) == .installed }.map(\.id)))
+    }
+
     func installAll() {
-        run(family.downloadPlan(memberIds: Set(notInstalled.map(\.id))))
+        run(family.downloadPlan(memberIds: Set(installAllMembers.map(\.id))))
     }
 
     func cancel() {
@@ -165,7 +170,7 @@ struct SkinFamilyVariantsSection: View {
     }
 
     private var installAllButton: some View {
-        let remaining = model.notInstalled.count
+        let remaining = model.installAllMembers.count
         return Button {
             model.installAll()
         } label: {

@@ -76,6 +76,23 @@ public struct SkinFamily: Identifiable, Sendable, Hashable {
     /// The "Has variants" predicate: several files, or one file that packs variants of its own.
     public var hasVariants: Bool { isMultiFile || members.contains(where: \.hasPackedVariants) }
 
+    /// Members that are a catalog-built merge of the other members (``SkinCatalogEntry/mergedFrom``).
+    /// Normally zero or one, listed first by `groupOrder` 0.
+    public var mergedMembers: [SkinCatalogEntry] { members.filter(\.isMerged) }
+
+    /// The members that are real uploads: every member except the merged ones. These are what
+    /// "Install all" fetches when the family has a merged member.
+    public var splitMembers: [SkinCatalogEntry] { members.filter { !$0.isMerged } }
+
+    /// What "Install all" fetches, given the ids already installed: the split members not yet installed.
+    /// A merged member is never offered while the family has split members, even when every split file is
+    /// already installed (it would install the same skin twice). A family with only merged members offers
+    /// those not yet installed.
+    public func installAllMembers(installedIds: Set<String>) -> [SkinCatalogEntry] {
+        let pool = splitMembers.isEmpty ? members : splitMembers
+        return pool.filter { !installedIds.contains($0.id) }
+    }
+
     /// Variants a user can pick between: one per split file plus each file's packed variants
     /// beyond its base layout.
     public var variantCount: Int {
