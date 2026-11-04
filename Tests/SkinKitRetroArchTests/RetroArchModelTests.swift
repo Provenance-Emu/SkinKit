@@ -179,6 +179,10 @@ struct RetroArchConverterTests {
         #expect(RetroArchConverter.slugify("N64 Comments // Test") == "N64_Comments_Test")
         #expect(RetroArchConverter.slugify("Backbone One — GBA") == "Backbone_One_GBA")
         #expect(RetroArchConverter.slugify("  __weird__  ") == "weird")
+        for dots in [".", "..", "...", " .. ", "_.._"] {
+            #expect(RetroArchConverter.slugify(dots) == "skin", "\(dots) must not name the current or parent folder")
+        }
+        #expect(RetroArchConverter.slugify("..hidden") == "..hidden")
         #expect(RetroArchConverter.slugify("a.b-c_d") == "a.b-c_d")
         #expect(RetroArchConverter.slugify("") == "skin")
         #expect(RetroArchConverter.slugify(nil) == "skin")

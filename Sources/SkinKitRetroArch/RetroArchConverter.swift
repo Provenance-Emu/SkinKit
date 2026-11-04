@@ -180,7 +180,8 @@ public struct RetroArchConverter {
         }
         let trimmed = String(out).trimmingCharacters(in: CharacterSet(charactersIn: "_"))
         let sliced = String(trimmed.prefix(60))
-        return sliced.isEmpty ? "skin" : sliced
+        // Empty, or only dots (`.`, `..`): those name the current or parent folder, never a new one.
+        return sliced.allSatisfy { $0 == "." } ? "skin" : sliced
     }
 
     /// Find artwork in a list of archive paths the way the apps do: exact path, then the same file name anywhere

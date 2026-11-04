@@ -157,4 +157,26 @@ struct RetroArchExporterTests {
         #expect(second.folder == first.folder)
         #expect(!FileManager.default.fileExists(atPath: second.folder.appendingPathComponent("stale.txt").path))
     }
+
+    @Test("A skin named . or .. exports into its own folder and removes nothing around it", arguments: [".", ".."])
+    func dotNamesStayInside(name: String) throws {
+        let root = try Self.scratch()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = try Self.skinFolder(in: root, info: "backbone-gba", assets: ["controller.svg"])
+        let skin = try DeltaSkin(fileURL: folder, options: .lenient)
+        let out = root.appendingPathComponent("out", isDirectory: true)
+        try FileManager.default.createDirectory(at: out, withIntermediateDirectories: true)
+        let keepInOut = out.appendingPathComponent("keep.txt")
+        let keepInRoot = root.appendingPathComponent("keep.txt")
+        try Data("keep".utf8).write(to: keepInOut)
+        try Data("keep".utf8).write(to: keepInRoot)
+
+        var options = RetroArchConverter.Options()
+        options.name = name
+        let export = try RetroArchOverlayExporter.export(skin: skin, options: options, into: out) { _ in Self.fakePNG }
+        #expect(export.folder.lastPathComponent == "skin")
+        #expect(export.folder.deletingLastPathComponent().standardizedFileURL == out.standardizedFileURL)
+        #expect(FileManager.default.fileExists(atPath: keepInOut.path))
+        #expect(FileManager.default.fileExists(atPath: keepInRoot.path))
+    }
 }

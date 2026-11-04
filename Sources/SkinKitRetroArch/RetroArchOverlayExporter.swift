@@ -36,6 +36,8 @@ public enum RetroArchExportError: Error, Equatable {
     case unreadableSkin(URL)
     /// The skin names artwork that is not in it.
     case missingAsset(String)
+    /// The overlay name would not make a folder of its own inside the output folder, so nothing was written or removed.
+    case unsafeFolderName(String)
 }
 
 /// Writes a skin as a RetroArch overlay folder: `<name>/<name>.cfg`, the PNGs it names, and a `README.txt`.
@@ -77,6 +79,12 @@ public enum RetroArchOverlayExporter {
         let fm = FileManager.default
         let root = parent ?? fm.temporaryDirectory.appendingPathComponent("SkinKitRetroArch-\(UUID().uuidString)", isDirectory: true)
         let folder = root.appendingPathComponent(conversion.name, isDirectory: true)
+        // The folder is replaced below, so it must be a real child of `root`: never `root` itself or a parent.
+        let name = conversion.name
+        guard !name.isEmpty, !name.allSatisfy({ $0 == "." }), !name.contains("/"),
+              folder.standardizedFileURL.deletingLastPathComponent().path == root.standardizedFileURL.path else {
+            throw RetroArchExportError.unsafeFolderName(name)
+        }
         if fm.fileExists(atPath: folder.path) { try fm.removeItem(at: folder) }
         try fm.createDirectory(at: folder, withIntermediateDirectories: true)
 
