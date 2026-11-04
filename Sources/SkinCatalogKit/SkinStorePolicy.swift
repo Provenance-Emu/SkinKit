@@ -83,18 +83,25 @@ public struct SkinStorePolicy: Sendable {
         hiddenEntryIds: ["b88c501e8689debb"]
     )
 
-    /// iCube: GameCube, Wii and N64 (rewritten to the GameCube pad).
+    /// iCube: GameCube, Wii, N64 (rewritten to the GameCube pad), then NES and Super NES for Virtual
+    /// Console titles (installed as-is).
     ///
-    /// An entry's `gameTypeIdentifier` also places it (`ngc`, `gc`, `gamecube`, `wii`, `n64`), the
-    /// way iCube's `SkinGameType` resolves the suffix.
+    /// An entry's `gameTypeIdentifier` also places it (`ngc`, `gc`, `gamecube`, `wii`, `n64`, `nes`,
+    /// `fds`, `snes`, `sfc`), the way iCube's `SkinGameType` resolves the suffix. The two Virtual
+    /// Console shelves come last so the first screen of the store is unchanged for GameCube and Wii
+    /// players, and so an entry that also claims a GameCube or Wii system stays on that shelf.
     public static let iCube = SkinStorePolicy(
-        sections: [.gameCube, .wii, .nintendo64],
+        sections: [.gameCube, .wii, .nintendo64, .nes, .snes],
         gameTypeSuffixSystemCodes: [
             "ngc": "gamecube",
             "gc": "gamecube",
             "gamecube": "gamecube",
             "wii": "wii",
             "n64": "n64",
+            "nes": "nes",
+            "fds": "nes",
+            "snes": "snes",
+            "sfc": "snes",
         ]
     )
 
