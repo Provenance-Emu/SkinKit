@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "updated": "2026-11-04",
+  "creators": [
+    {
+      "slug": "starvingartist",
+      "displayName": "Starving Artist",
+      "aliases": ["starvingartist"],
+      "claimed": true,
+      "githubLogin": "starvingartist",
+      "bio": "Dreamcast and PSX skins with a worn-hardware look. Requests on Discord.",
+      "avatarURL": "https://github.com/Provenance-Emu/skins/releases/download/creators/starvingartist.png",
+      "bannerURL": "https://github.com/Provenance-Emu/skins/releases/download/creators/starvingartist-banner.png",
+      "links": [
+        { "label": "Website", "url": "https://example.com/starving" },
+        { "label": "Insecure", "url": "http://example.com/plain" },
+        { "label": "Script", "url": "javascript:alert(1)" },
+        { "url": "https://example.org/no-label" }
+      ],
+      "socials": {
+        "github": "starvingartist",
+        "discord": "starving#0001",
+        "bluesky": "starving.bsky.social",
+        "mastodon": "@starving@retro.example",
+        "kofi": "starving artist/../x",
+        "myspace": "tom"
+      },
+      "stats": {
+        "releases": 4,
+        "files": 9,
+        "variantsCompleted": 5,
+        "systems": 3,
+        "dualScreen": 0,
+        "firstAddedAt": "2025-01-15",
+        "lastAddedAt": "2026-10-23T00:13:49Z",
+        "reachTier": 2,
+        "claimed": true
+      },
+      "badges": [
+        { "id": "creator.first-release", "title": "First release", "description": "Published a skin on EmuSkins.", "symbol": "sparkles", "earnedAt": "2025-01-15" },
+        { "id": "creator.systems.5", "title": "Five systems", "symbol": "square.grid.3x3", "tier": 1 },
+        "creator.claimed",
+        { "title": "No id, dropped" }
+      ],
+      "skinIds": ["3957312ad9e7c59e", "4ce9beceec67aa26"]
+    },
+    {
+      "slug": "nostromocrew01",
+      "displayName": "NostromoCrew01",
+      "aliases": ["NostromoCrew01"],
+      "githubLogin": "NostromoCrew01",
+      "bio": "  ",
+      "skinIds": ["clear-doom"]
+    },
+    {
+      "slug": "janza",
+      "displayName": "JanZa",
+      "aliases": ["JanZa"],
+      "claimed": false,
+      "avatarURL": "https://github.com/janza.png"
+    },
+    {
+      "slug": "held",
+      "displayName": "Held Profile",
+      "aliases": ["Held"],
+      "claimed": true,
+      "hidden": true,
+      "bio": "Text under a moderation hold.",
+      "avatarURL": "https://example.com/held.png",
+      "links": [{ "label": "Held", "url": "https://example.com" }],
+      "socials": { "github": "held" }
+    },
+    {
+      "slug": "typedrift",
+      "displayName": 42,
+      "aliases": "not an array",
+      "claimed": "yes",
+      "bio": ["not", "a", "string"],
+      "links": "nope",
+      "socials": ["nope"],
+      "stats": "nope",
+      "badges": 7,
+      "skinIds": [1, 2]
+    },
+    { "displayName": "No slug, dropped" },
+    { "slug": "   ", "displayName": "Blank slug, dropped" },
+    {
+      "slug": "dupe-alias",
+      "displayName": "Duplicate Alias",
+      "aliases": ["starvingartist"]
+    }
+  ]
+}

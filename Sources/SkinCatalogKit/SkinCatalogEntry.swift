@@ -9,6 +9,11 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
     public var id: String
     public var name: String
     public var author: String?
+    /// The creator this entry belongs to, as the catalog build resolved it (`creator` in the feed):
+    /// a hand-set per-entry override first, then the claimed profile whose aliases include `author`,
+    /// then the slug of `author`. Nil in catalogs that predate creator profiles; resolve those with
+    /// `SkinCreatorIndex.creator(for:)`, which derives the same slug locally.
+    public var creatorSlug: String?
     /// Short system codes as the feed writes them (`dreamcast`, `mame`,
     /// `threeDS`). Mixed case in the wild; compare via `normalizedSystems`.
     public var systems: [String]
@@ -82,6 +87,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         id: String,
         name: String,
         author: String? = nil,
+        creatorSlug: String? = nil,
         systems: [String],
         gameTypeIdentifier: String? = nil,
         version: String? = nil,
@@ -106,6 +112,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         self.id = id
         self.name = name
         self.author = author
+        self.creatorSlug = creatorSlug
         self.systems = systems
         self.gameTypeIdentifier = gameTypeIdentifier
         self.version = version
@@ -129,6 +136,7 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
     }
 
     private enum CodingKeys: String, CodingKey {
+        case creatorSlug = "creator"
         case id, name, author, systems, gameTypeIdentifier, version, downloadURL
         case thumbnailURL, screenshotURLs, tags, deviceSupport, downloadCount, rating
         case lastUpdated, fileSize, source, description, submittedBy, submittedAt
@@ -158,6 +166,9 @@ public struct SkinCatalogEntry: Decodable, Sendable, Hashable, Identifiable {
         }
 
         author = string(.author)
+        creatorSlug = string(.creatorSlug)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .flatMap { $0.isEmpty ? nil : $0 }
         systems = strings(.systems)
         gameTypeIdentifier = string(.gameTypeIdentifier)
         version = string(.version)

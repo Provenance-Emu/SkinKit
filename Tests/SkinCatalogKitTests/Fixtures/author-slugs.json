@@ -1,0 +1,637 @@
+{
+ "source": "Provenance-Emu/skins catalog.json (2026-11-04, 1392 skins): every distinct author string, then hand-written edge cases. slug is scripts/generate_author_pages.py slugify().",
+ "cases": [
+  {
+   "author": "328yt",
+   "slug": "328yt"
+  },
+  {
+   "author": "Aleks",
+   "slug": "aleks"
+  },
+  {
+   "author": "Anomalous Cabbage",
+   "slug": "anomalous-cabbage"
+  },
+  {
+   "author": "Anonymaus#9917",
+   "slug": "anonymaus-9917"
+  },
+  {
+   "author": "Astrobazel",
+   "slug": "astrobazel"
+  },
+  {
+   "author": "Azalen",
+   "slug": "azalen"
+  },
+  {
+   "author": "Baguwix",
+   "slug": "baguwix"
+  },
+  {
+   "author": "Battleshack",
+   "slug": "battleshack"
+  },
+  {
+   "author": "Bekaair14",
+   "slug": "bekaair14"
+  },
+  {
+   "author": "BelmonT",
+   "slug": "belmont"
+  },
+  {
+   "author": "Bjorniey",
+   "slug": "bjorniey"
+  },
+  {
+   "author": "BlueSteve945",
+   "slug": "bluesteve945"
+  },
+  {
+   "author": "Broank",
+   "slug": "broank"
+  },
+  {
+   "author": "Cappucho",
+   "slug": "cappucho"
+  },
+  {
+   "author": "Celluery",
+   "slug": "celluery"
+  },
+  {
+   "author": "Circa",
+   "slug": "circa"
+  },
+  {
+   "author": "Circa#5806",
+   "slug": "circa-5806"
+  },
+  {
+   "author": "Classicallybrok3n",
+   "slug": "classicallybrok3n"
+  },
+  {
+   "author": "ClearCaseStudio",
+   "slug": "clearcasestudio"
+  },
+  {
+   "author": "Daiuno",
+   "slug": "daiuno"
+  },
+  {
+   "author": "DecaTilde",
+   "slug": "decatilde"
+  },
+  {
+   "author": "Delta-J",
+   "slug": "delta-j"
+  },
+  {
+   "author": "Discoool",
+   "slug": "discoool"
+  },
+  {
+   "author": "Drowsii#9929",
+   "slug": "drowsii-9929"
+  },
+  {
+   "author": "Dumpling",
+   "slug": "dumpling"
+  },
+  {
+   "author": "Dwichotomy",
+   "slug": "dwichotomy"
+  },
+  {
+   "author": "Expandedtrout79#0917",
+   "slug": "expandedtrout79-0917"
+  },
+  {
+   "author": "GameboyAdvance3",
+   "slug": "gameboyadvance3"
+  },
+  {
+   "author": "Gheel",
+   "slug": "gheel"
+  },
+  {
+   "author": "Hazykey",
+   "slug": "hazykey"
+  },
+  {
+   "author": "Helbrecht#5158",
+   "slug": "helbrecht-5158"
+  },
+  {
+   "author": "HoriZon",
+   "slug": "horizon"
+  },
+  {
+   "author": "Hornet#1944",
+   "slug": "hornet-1944"
+  },
+  {
+   "author": "ICE",
+   "slug": "ice"
+  },
+  {
+   "author": "JBSghost",
+   "slug": "jbsghost"
+  },
+  {
+   "author": "JWiLLeh",
+   "slug": "jwilleh"
+  },
+  {
+   "author": "JanZa",
+   "slug": "janza"
+  },
+  {
+   "author": "Jeehut",
+   "slug": "jeehut"
+  },
+  {
+   "author": "KallmeKraken",
+   "slug": "kallmekraken"
+  },
+  {
+   "author": "Kearnerr",
+   "slug": "kearnerr"
+  },
+  {
+   "author": "LancelotLac",
+   "slug": "lancelotlac"
+  },
+  {
+   "author": "LitRitt",
+   "slug": "litritt"
+  },
+  {
+   "author": "Lochwoods",
+   "slug": "lochwoods"
+  },
+  {
+   "author": "LuisFeGomez",
+   "slug": "luisfegomez"
+  },
+  {
+   "author": "MalikChildish",
+   "slug": "malikchildish"
+  },
+  {
+   "author": "MawMawSinew",
+   "slug": "mawmawsinew"
+  },
+  {
+   "author": "Ml2486",
+   "slug": "ml2486"
+  },
+  {
+   "author": "Nsoshejfdbd",
+   "slug": "nsoshejfdbd"
+  },
+  {
+   "author": "Okkerstom1000",
+   "slug": "okkerstom1000"
+  },
+  {
+   "author": "Pixel Miku",
+   "slug": "pixel-miku"
+  },
+  {
+   "author": "Polyphian",
+   "slug": "polyphian"
+  },
+  {
+   "author": "ProngBoy87",
+   "slug": "prongboy87"
+  },
+  {
+   "author": "Provenance Emu",
+   "slug": "provenance-emu"
+  },
+  {
+   "author": "R0undest",
+   "slug": "r0undest"
+  },
+  {
+   "author": "R3BEL",
+   "slug": "r3bel"
+  },
+  {
+   "author": "RELIN-Q",
+   "slug": "relin-q"
+  },
+  {
+   "author": "Raj Sodhi",
+   "slug": "raj-sodhi"
+  },
+  {
+   "author": "RedHeart",
+   "slug": "redheart"
+  },
+  {
+   "author": "Ross10201",
+   "slug": "ross10201"
+  },
+  {
+   "author": "Ruben#7767",
+   "slug": "ruben-7767"
+  },
+  {
+   "author": "Ruva",
+   "slug": "ruva"
+  },
+  {
+   "author": "Skukadu",
+   "slug": "skukadu"
+  },
+  {
+   "author": "Soolra",
+   "slug": "soolra"
+  },
+  {
+   "author": "Stokerman",
+   "slug": "stokerman"
+  },
+  {
+   "author": "Stragest",
+   "slug": "stragest"
+  },
+  {
+   "author": "Systemroseheart",
+   "slug": "systemroseheart"
+  },
+  {
+   "author": "TORI",
+   "slug": "tori"
+  },
+  {
+   "author": "Tatoling",
+   "slug": "tatoling"
+  },
+  {
+   "author": "Thatdud#2036",
+   "slug": "thatdud-2036"
+  },
+  {
+   "author": "TheMameKing",
+   "slug": "themameking"
+  },
+  {
+   "author": "Theziggy",
+   "slug": "theziggy"
+  },
+  {
+   "author": "ThichGaiDep",
+   "slug": "thichgaidep"
+  },
+  {
+   "author": "UchihaObito",
+   "slug": "uchihaobito"
+  },
+  {
+   "author": "Vustom",
+   "slug": "vustom"
+  },
+  {
+   "author": "XAshley2007",
+   "slug": "xashley2007"
+  },
+  {
+   "author": "YFleiter",
+   "slug": "yfleiter"
+  },
+  {
+   "author": "Yeszh X.",
+   "slug": "yeszh-x"
+  },
+  {
+   "author": "ZachWF",
+   "slug": "zachwf"
+  },
+  {
+   "author": "Zeskotzo#9575",
+   "slug": "zeskotzo-9575"
+  },
+  {
+   "author": "acultural",
+   "slug": "acultural"
+  },
+  {
+   "author": "akiin",
+   "slug": "akiin"
+  },
+  {
+   "author": "alek_witha_k",
+   "slug": "alek-witha-k"
+  },
+  {
+   "author": "allgoodnobad",
+   "slug": "allgoodnobad"
+  },
+  {
+   "author": "andrewhaglund",
+   "slug": "andrewhaglund"
+  },
+  {
+   "author": "antnoz",
+   "slug": "antnoz"
+  },
+  {
+   "author": "aphaits",
+   "slug": "aphaits"
+  },
+  {
+   "author": "ark",
+   "slug": "ark"
+  },
+  {
+   "author": "ashRaio",
+   "slug": "ashraio"
+  },
+  {
+   "author": "atombone",
+   "slug": "atombone"
+  },
+  {
+   "author": "avid emulator",
+   "slug": "avid-emulator"
+  },
+  {
+   "author": "belle000",
+   "slug": "belle000"
+  },
+  {
+   "author": "bigpinks",
+   "slug": "bigpinks"
+  },
+  {
+   "author": "bootyscroll",
+   "slug": "bootyscroll"
+  },
+  {
+   "author": "bossmiller",
+   "slug": "bossmiller"
+  },
+  {
+   "author": "bradenhirschi",
+   "slug": "bradenhirschi"
+  },
+  {
+   "author": "bradyslonk",
+   "slug": "bradyslonk"
+  },
+  {
+   "author": "cube of baked beans",
+   "slug": "cube-of-baked-beans"
+  },
+  {
+   "author": "darksquid18",
+   "slug": "darksquid18"
+  },
+  {
+   "author": "deiviannnnoooooo",
+   "slug": "deiviannnnoooooo"
+  },
+  {
+   "author": "delta-skins",
+   "slug": "delta-skins"
+  },
+  {
+   "author": "denaeu",
+   "slug": "denaeu"
+  },
+  {
+   "author": "dub_gaming",
+   "slug": "dub-gaming"
+  },
+  {
+   "author": "ellenich#9244",
+   "slug": "ellenich-9244"
+  },
+  {
+   "author": "felix#6506",
+   "slug": "felix-6506"
+  },
+  {
+   "author": "gndelta",
+   "slug": "gndelta"
+  },
+  {
+   "author": "herrdoktormarco",
+   "slug": "herrdoktormarco"
+  },
+  {
+   "author": "houdiban",
+   "slug": "houdiban"
+  },
+  {
+   "author": "iconsalty",
+   "slug": "iconsalty"
+  },
+  {
+   "author": "itephra",
+   "slug": "itephra"
+  },
+  {
+   "author": "itephra#1717",
+   "slug": "itephra-1717"
+  },
+  {
+   "author": "jellykebab",
+   "slug": "jellykebab"
+  },
+  {
+   "author": "jesseazizi",
+   "slug": "jesseazizi"
+  },
+  {
+   "author": "jhsounds",
+   "slug": "jhsounds"
+  },
+  {
+   "author": "jupiterking",
+   "slug": "jupiterking"
+  },
+  {
+   "author": "kaisxu",
+   "slug": "kaisxu"
+  },
+  {
+   "author": "keoni.dev",
+   "slug": "keoni-dev"
+  },
+  {
+   "author": "leeroyfraiman",
+   "slug": "leeroyfraiman"
+  },
+  {
+   "author": "lvcknvts",
+   "slug": "lvcknvts"
+  },
+  {
+   "author": "mason.runs#8434",
+   "slug": "mason-runs-8434"
+  },
+  {
+   "author": "masonkoleh",
+   "slug": "masonkoleh"
+  },
+  {
+   "author": "matthias88",
+   "slug": "matthias88"
+  },
+  {
+   "author": "mavetchi",
+   "slug": "mavetchi"
+  },
+  {
+   "author": "mompig",
+   "slug": "mompig"
+  },
+  {
+   "author": "montotech",
+   "slug": "montotech"
+  },
+  {
+   "author": "moulinsoki",
+   "slug": "moulinsoki"
+  },
+  {
+   "author": "naiem",
+   "slug": "naiem"
+  },
+  {
+   "author": "noahboa",
+   "slug": "noahboa"
+  },
+  {
+   "author": "parosilience",
+   "slug": "parosilience"
+  },
+  {
+   "author": "pinedant",
+   "slug": "pinedant"
+  },
+  {
+   "author": "pjft",
+   "slug": "pjft"
+  },
+  {
+   "author": "pkosat",
+   "slug": "pkosat"
+  },
+  {
+   "author": "poket",
+   "slug": "poket"
+  },
+  {
+   "author": "pr0killerQ",
+   "slug": "pr0killerq"
+  },
+  {
+   "author": "rajsodhinyu",
+   "slug": "rajsodhinyu"
+  },
+  {
+   "author": "ryan.patrick.creates",
+   "slug": "ryan-patrick-creates"
+  },
+  {
+   "author": "rythmic",
+   "slug": "rythmic"
+  },
+  {
+   "author": "seanfletchr",
+   "slug": "seanfletchr"
+  },
+  {
+   "author": "spaz",
+   "slug": "spaz"
+  },
+  {
+   "author": "stars33k",
+   "slug": "stars33k"
+  },
+  {
+   "author": "starvingartist",
+   "slug": "starvingartist"
+  },
+  {
+   "author": "sulfuric0acid",
+   "slug": "sulfuric0acid"
+  },
+  {
+   "author": "tangtatang",
+   "slug": "tangtatang"
+  },
+  {
+   "author": "tedmosby#7997",
+   "slug": "tedmosby-7997"
+  },
+  {
+   "author": "tomkef",
+   "slug": "tomkef"
+  },
+  {
+   "author": "txmbrs",
+   "slug": "txmbrs"
+  },
+  {
+   "author": "whoisryosuke",
+   "slug": "whoisryosuke"
+  },
+  {
+   "author": "yannim",
+   "slug": "yannim"
+  },
+  {
+   "author": "yud0114",
+   "slug": "yud0114"
+  },
+  {
+   "author": "yunginternet#6280",
+   "slug": "yunginternet-6280"
+  },
+  {
+   "author": "  Spaced  Out  ",
+   "slug": "spaced-out"
+  },
+  {
+   "author": "ALL CAPS!!",
+   "slug": "all-caps"
+  },
+  {
+   "author": "Ünïçödé Ñame",
+   "slug": "n-d-ame"
+  },
+  {
+   "author": "日本語のみ",
+   "slug": ""
+  },
+  {
+   "author": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "slug": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "author": "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-",
+   "slug": "x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-x-"
+  },
+  {
+   "author": "---",
+   "slug": ""
+  },
+  {
+   "author": "Kelvin",
+   "slug": "kelvin"
+  },
+  {
+   "author": "Dr. Who? (v2)",
+   "slug": "dr-who-v2"
+  }
+ ]
+}
