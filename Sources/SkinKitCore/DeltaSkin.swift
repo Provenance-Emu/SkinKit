@@ -14,6 +14,9 @@ public struct DeltaSkin: DeltaSkinProtocol {
     /// The raw dictionary from info.json
     private let rawDictionary: [String: Any]
 
+    /// The options `info.json` was read under; part of the representation cache key.
+    private let decodingOptions: DecodingOptions
+
     /// Initialize from either a .deltaskin file or directory
     public init(fileURL: URL) throws {
         try self.init(fileURL: fileURL, options: [])
@@ -24,6 +27,7 @@ public struct DeltaSkin: DeltaSkinProtocol {
     /// With no options this is exactly `init(fileURL:)`. See `DecodingOptions`; `.lenient` is iCube's reading.
     public init(fileURL: URL, options: DecodingOptions) throws {
         self.fileURL = fileURL
+        self.decodingOptions = options
 
         let isDirectory = (try? fileURL.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
         DLOG("Loading DeltaSkin from \(fileURL.lastPathComponent) (isDirectory: \(isDirectory))")
@@ -339,7 +343,8 @@ public struct DeltaSkin: DeltaSkinProtocol {
         // The alternate-set flag only matters when the skin has an alternate set; keeping it out otherwise lets
         // both flag values share one entry.
         let altKey = traits.usesAltRepresentations && hasAltRepresentations ? "|alt" : ""
-        let cacheKey = "\(identifier)|\(fileURL.path)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)\(altKey)"
+        // The options too: the same file read strictly and leniently can resolve to different items.
+        let cacheKey = "\(identifier)|\(fileURL.path)|o\(decodingOptions.rawValue)|\(traits.device.rawValue)-\(traits.displayType.rawValue)-\(traits.orientation.rawValue)-\(gameKey)\(altKey)"
         if let cached = Self.cachedRepresentation(forKey: cacheKey) {
             return cached
         }
