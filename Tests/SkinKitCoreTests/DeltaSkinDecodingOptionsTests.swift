@@ -276,6 +276,28 @@ struct DeltaSkinDecodingOptionsTests {
         #expect(throws: (any Error).self) { try Self.decode(json, []) }
     }
 
+    @Test("requiresCompleteDirections: a DS touch screen's x/y dictionary is not a d-pad and is kept")
+    func touchScreenIsNotDirectional() throws {
+        let json = Self.portrait("""
+        "items":[{"inputs":{"x":"touchScreenX","y":"touchScreenY"},"frame":[0,0,1,1]},{"inputs":["a"],"frame":[1,2,3,4]}]
+        """)
+        #expect(Self.inputs(try Self.items(json, .lenient)) == [["x", "y"], ["a"]])
+        #expect(Self.inputs(try Self.items(json, .requiresCompleteDirections)) == [["x", "y"], ["a"]])
+    }
+
+    @Test("One file read strictly and leniently resolves each reading on its own, not from the other's cache")
+    func cacheKeepsReadingsApart() throws {
+        let json = Self.portrait(#""items":[{"inputs":{"up":"up","down":"down"},"frame":[0,0,1,1]},{"inputs":["a"],"frame":[1,2,3,4]}]"#)
+        let url = try Self.directory(json)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let traits = DeltaSkinTraits(device: .iphone, displayType: .standard, orientation: .portrait)
+        let plain = try DeltaSkin(fileURL: url)
+        let lenient = try DeltaSkin(fileURL: url, options: .lenient)
+        #expect(plain.representation(for: traits)?.items?.count == 2)
+        #expect(lenient.representation(for: traits)?.items?.count == 1, "the partial d-pad is dropped")
+        #expect(plain.representation(for: traits)?.items?.count == 2)
+    }
+
     // MARK: - keepsItemAssets
 
     @Test("keepsItemAssets: Manic per-item art is kept; a malformed asset invalidates the item")

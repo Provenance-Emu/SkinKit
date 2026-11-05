@@ -39,7 +39,8 @@ public extension DeltaSkin {
         public static let inheritsEdges = DecodingOptions(rawValue: 1 << 3)
 
         /// A directional item (d-pad, thumbstick) needs all four of `up`, `down`, `left` and `right`. The default
-        /// accepts any string-to-string dictionary.
+        /// accepts any string-to-string dictionary. A dictionary with no direction in it, such as a touch screen's
+        /// `x`/`y`, is not directional and is read as by default.
         public static let requiresCompleteDirections = DecodingOptions(rawValue: 1 << 4)
 
         /// Keep the Manic per-item `asset` (`normal`) on `ItemRepresentation.asset`. Without it the key is ignored

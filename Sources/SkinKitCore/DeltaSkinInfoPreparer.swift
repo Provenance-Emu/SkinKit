@@ -301,14 +301,15 @@ enum DeltaSkinInfoPreparer {
         return node
     }
 
-    /// `["a", "b"]`, or a directional dictionary (complete, when required).
+    /// `["a", "b"]`, or a dictionary: directional (complete, when required) or a touch screen's `x`/`y`.
     private static func cleanInputs(_ value: Any?, _ rules: Rules) -> Any? {
         if let names = value as? [Any] {
             let strings = names.compactMap { $0 as? String }
             return strings.count == names.count ? strings : nil
         }
         guard let dictionary = value as? [String: Any] else { return nil }
-        if rules.completeDirections {
+        // Only a dictionary with a direction in it is a d-pad; a DS touch screen's `x`/`y` is read as usual.
+        if rules.completeDirections, directions.contains(where: { dictionary[$0] != nil }) {
             var result: [String: String] = [:]
             for direction in directions {
                 guard let name = dictionary[direction] as? String else { return nil }
