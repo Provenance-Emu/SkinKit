@@ -599,7 +599,7 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
         case "gbc": return .gbc
         case "gba": return .gba
         case "nes", "fds": return .nes
-        case "snes": return .snes
+        case "snes", "sfc": return .snes
         case "n64", "64dd", "n64dd": return .n64
         case "ds", "nds": return .nds
         case "vb", "virtualboy": return .virtualBoy
@@ -849,7 +849,7 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
              (.gbc, "gbc"),
              (.gba, "gba"),
              (.nes, "nes"), (.nes, "fds"),
-             (.snes, "snes"),
+             (.snes, "snes"), (.snes, "sfc"),
              (.n64, "n64"),
              (.nds, "nds"), (.nds, "ds"),
              (.virtualBoy, "vb"), (.virtualBoy, "virtualboy"),

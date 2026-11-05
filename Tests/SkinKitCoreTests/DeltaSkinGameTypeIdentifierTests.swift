@@ -71,3 +71,20 @@ struct ManicGameCubeWiiIdentifierTests {
         #expect(DeltaSkinGameType.fromAnyString("ngp") == .ngp)
     }
 }
+
+@Suite("Super Famicom alias")
+struct SuperFamicomAliasTests {
+
+    @Test("sfc parses to .snes, as iCube's Virtual Console tables read it", arguments: [
+        "sfc", "SFC", "com.example.game.sfc", "snes", "com.rileytestut.delta.game.snes"
+    ])
+    func parses(raw: String) {
+        #expect(DeltaSkinGameType.fromAnyString(raw) == .snes)
+    }
+
+    @Test("matchesIdentifier accepts sfc for .snes only")
+    func matches() {
+        #expect(DeltaSkinGameType.snes.matchesIdentifier("sfc"))
+        #expect(!DeltaSkinGameType.nes.matchesIdentifier("sfc"))
+    }
+}
