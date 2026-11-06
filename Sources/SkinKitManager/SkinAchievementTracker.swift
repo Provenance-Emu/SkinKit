@@ -17,7 +17,7 @@ public struct SkinAchievement: Sendable, Hashable, Identifiable {
 /// the dates the badges were first earned.
 ///
 /// - Stats are recomputed on ``refresh(_:)``, never logged. The inputs are `SkinUserStats.Inputs`;
-///   ``currentInputs(installedRecord:catalog:creators:)`` gathers them from the shared stores.
+///   ``currentInputs(installedRecord:installedSkins:catalog:creators:preferences:follows:)`` gathers them from the shared stores.
 /// - Earned dates are `{badgeId: earnedAt}` JSON under ``earnedKey`` in `UserDefaults`, mirrored to the
 ///   iCloud key-value store the follow design adds, so a reinstall keeps them. Merging two replicas
 ///   keeps every badge and the earlier date of each. **Nothing is ever revoked**: uninstalling a skin
@@ -108,12 +108,15 @@ public final class SkinAchievementTracker: ObservableObject {
     /// The inputs from the shared stores.
     ///
     /// - Parameters:
-    ///   - installedRecord: the app's `SkinStoreInstalledRecord`. Nil falls back to the catalog ids of
-    ///     the loaded skins whose identifier is the catalog id.
+    ///   - installedRecord: the app's `SkinStoreInstalledRecord`. Nil falls back to the catalog entries
+    ///     that ``matchingInstalledSkin(for:in:)`` finds among `installedSkins`, the way the catalog
+    ///     browser marks an entry installed.
+    ///   - installedSkins: the loaded skins. Their identifiers are always theme candidates, so a
+    ///     sideloaded skin's theme counts whether or not a record is supplied.
     ///   - catalog: the catalog the store shows, hidden `sample` and `mature` entries removed.
     public func currentInputs(
         installedRecord: SkinStoreInstalledRecord?,
-        installedFallbackIdentifiers: Set<String> = [],
+        installedSkins: [any DeltaSkinProtocol] = [],
         catalog: SkinCatalog?,
         creators: SkinCreatorIndex = .empty,
         preferences: DeltaSkinPreferences? = nil,
@@ -122,19 +125,23 @@ public final class SkinAchievementTracker: ObservableObject {
         let preferences = preferences ?? .shared
         let follows = follows ?? .shared
         let installedIds: Set<String>
-        let skinIdentifiers: Set<String>
+        var candidates = Set(installedSkins.map(\.identifier))
         if let installedRecord {
             let record = installedRecord.load()
             installedIds = Set(record.keys)
-            skinIdentifiers = Set(record.values)
+            candidates.formUnion(record.values)
+        } else if let catalog, !installedSkins.isEmpty {
+            // A catalog id can differ from the skin's `info.json` identifier, so match the way the
+            // browser does (identifier, file name, then name) rather than by identifier alone.
+            installedIds = Set(catalog.skins.lazy
+                .filter { matchingInstalledSkin(for: $0, in: installedSkins) != nil }
+                .map(\.id))
         } else {
-            installedIds = catalog.map { Set($0.skins.map(\.id)).intersection(installedFallbackIdentifiers) } ?? []
-            skinIdentifiers = installedFallbackIdentifiers
+            installedIds = []
         }
 
-        // A theme is stored per skin, so look at the skins that could have one: the installed ones and
-        // the ones picked for a system or a game.
-        var candidates = skinIdentifiers
+        // A theme is stored per skin, so look at the skins that could have one: the loaded and
+        // installed ones, and the ones picked for a system or a game.
         for picks in preferences.selectedSkins.values { candidates.formUnion(picks.values) }
         for picks in preferences.gameSpecificSkins.values { candidates.formUnion(picks.values) }
         let themed = candidates.filter {

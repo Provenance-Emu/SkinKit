@@ -1,5 +1,6 @@
 import Foundation
 import SkinCatalogKit
+import SkinKitCore
 import Testing
 @testable import SkinKitManager
 
@@ -33,6 +34,11 @@ private func entry(
         groupId: groupId,
         groupOrder: groupOrder
     )
+}
+
+private func loaded(_ identifier: String, file: String? = nil) -> StubSkin {
+    StubSkin(identifier: identifier, name: "Loaded \(identifier)", gameType: .gba,
+             fileURL: URL(fileURLWithPath: "/skins/\(file ?? identifier + ".deltaskin")"))
 }
 
 private func pick(_ system: String, _ skin: String = "skin") -> (SkinSystemID, [SkinOrientation: String]) {
@@ -368,13 +374,53 @@ struct SkinAchievementTrackerTests {
 
         let inputs = device.tracker.currentInputs(
             installedRecord: nil,
-            installedFallbackIdentifiers: ["a", "ghost"],
+            installedSkins: [loaded("a"), loaded("ghost")],
             catalog: SkinCatalog(skins: [entry("a")]),
             preferences: preferences,
             follows: follows
         )
-        #expect(inputs.installedCatalogIds == ["a"], "only identifiers the catalog knows")
+        #expect(inputs.installedCatalogIds == ["a"], "only skins the catalog knows")
         #expect(inputs.selectedSkins.count == 2)
         #expect(inputs.followedSlugs == ["ann"])
+    }
+
+    @Test("Without a record, installs match the catalog the way the browser does, not by identifier alone")
+    func fallbackUsesTheBrowserMatcher() {
+        let device = Device(cloud: nil)
+        defer { device.cleanup() }
+        let (prefsDefaults, cleanup) = TestSupport.makeDefaults()
+        defer { cleanup() }
+        // The catalog browser saves `a` under its download file name; its info.json identifier differs.
+        let inputs = device.tracker.currentInputs(
+            installedRecord: nil,
+            installedSkins: [loaded("com.example.internal", file: "a.deltaskin")],
+            catalog: SkinCatalog(skins: [entry("a"), entry("b")]),
+            preferences: DeltaSkinPreferences(defaults: prefsDefaults),
+            follows: CreatorFollowStore(defaults: prefsDefaults, cloud: nil)
+        )
+        #expect(inputs.installedCatalogIds == ["a"])
+    }
+
+    @Test("A sideloaded skin's theme counts when the host supplies a record")
+    func sideloadedThemeWithRecord() {
+        let device = Device(cloud: nil)
+        defer { device.cleanup() }
+        let (prefsDefaults, cleanup) = TestSupport.makeDefaults()
+        defer { cleanup() }
+        let sideloaded = "skinkit.tests.sideloaded.\(UUID().uuidString)"
+        DeltaSkinThemeSelection.setSelectedThemeId("dark", for: sideloaded)
+        defer { DeltaSkinThemeSelection.setSelectedThemeId(nil, for: sideloaded) }
+        let record = SkinStoreInstalledRecord(defaults: prefsDefaults)
+        record.markInstalled(catalogId: "a", skinIdentifier: "a")
+
+        let inputs = device.tracker.currentInputs(
+            installedRecord: record,
+            installedSkins: [loaded("a"), loaded(sideloaded)],
+            catalog: SkinCatalog(skins: [entry("a")]),
+            preferences: DeltaSkinPreferences(defaults: prefsDefaults),
+            follows: CreatorFollowStore(defaults: prefsDefaults, cloud: nil)
+        )
+        #expect(inputs.installedCatalogIds == ["a"], "the install count stays catalog-only")
+        #expect(inputs.skinsWithTheme == [sideloaded])
     }
 }

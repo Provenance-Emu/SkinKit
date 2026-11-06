@@ -117,10 +117,9 @@ public struct SkinAchievementsCard: View {
     }
 
     private func refresh() {
-        let fallback = Set(skinManager.loadedSkins.map(\.identifier))
         let inputs = tracker.currentInputs(
             installedRecord: installedRecord,
-            installedFallbackIdentifiers: fallback,
+            installedSkins: skinManager.loadedSkins,
             catalog: catalog,
             creators: creators ?? .empty,
             preferences: preferences,
