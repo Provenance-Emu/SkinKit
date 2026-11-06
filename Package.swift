@@ -38,7 +38,7 @@ let package = Package(
             dependencies: [.product(name: "ZIPFoundation", package: "ZIPFoundation")],
             resources: [.copy("Resources/system-native-resolutions.json")]
         ),
-        .target(name: "SkinCatalogKit"),
+        .target(name: "SkinCatalogKit", resources: [.copy("Resources/badges.json")]),
         .target(
             name: "SkinKitManager",
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
