@@ -46,6 +46,16 @@ public struct TVOSSkinCatalogBrowserView: View {
     @State private var creatorIndex: SkinCreatorIndex?
     /// The creator whose profile page is open.
     @State private var profileCreator: SkinCreatorCredit?
+    /// The creators the user follows, for the row and the Following chip.
+    @ObservedObject private var followStore = CreatorFollowStore.shared
+    /// Installed skins, so the row leaves out what the user already has.
+    @ObservedObject private var skinManager = DeltaSkinManager.shared
+    /// The host store's policy, when it sets one: the row lists only what the policy can install.
+    @Environment(\.skinStorePolicy) private var storePolicy
+    /// "New from creators you follow", independent of the system filter and search.
+    @State private var followFeed = SkinFollowFeed(items: [])
+    /// The Following chip: only skins by creators the user follows.
+    @State private var followingOnly = false
 
     // MARK: - Init
 
@@ -97,8 +107,14 @@ public struct TVOSSkinCatalogBrowserView: View {
 
     /// Catalog entries after applying the optional selected-system filter.
     private var filteredCatalog: [SkinCatalogEntry] {
-        guard let filterCodes = selectedSystemFilterCodes else { return catalog }
-        return catalog.filter { entry in
+        var base = catalog
+        if followingOnly {
+            let following = followStore.followedSlugs
+            let directory = creatorIndex ?? .empty
+            base = base.filter { directory.slug(for: $0).map(following.contains) ?? false }
+        }
+        guard let filterCodes = selectedSystemFilterCodes else { return base }
+        return base.filter { entry in
             let entryCodes = Set(entry.systems.map { $0.lowercased() })
             return !entryCodes.isDisjoint(with: filterCodes)
         }
@@ -177,6 +193,9 @@ public struct TVOSSkinCatalogBrowserView: View {
         .task {
             creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
+        .task(id: followShelfKey) {
+            await refreshFollowShelf()
+        }
         .onChange(of: searchText) { _ in
             scheduleSearchUpdate()
         }
@@ -190,6 +209,11 @@ public struct TVOSSkinCatalogBrowserView: View {
                 // System filter chips (horizontal)
                 if !availableSystems.isEmpty {
                     systemFilterRow
+                }
+
+                // Followed creators' new skins
+                if showsFollowRow {
+                    followRow
                 }
 
                 // Popular section
@@ -213,6 +237,99 @@ public struct TVOSSkinCatalogBrowserView: View {
         }
     }
 
+    // MARK: - Follow row
+
+    private var showsFollowRow: Bool {
+        !followFeed.isEmpty && !followingOnly && selectedSystem == nil
+    }
+
+    /// "New from creators you follow", a horizontal row at the top (follow creators spec §3). Opening
+    /// a card from it counts as having looked at the row, which clears the badge.
+    private var followRow: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 16) {
+                sectionHeader("NEW FROM CREATORS YOU FOLLOW")
+                if followFeed.unseenCount > 0 {
+                    Text("\(followFeed.unseenCount)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 4)
+                        .background(Capsule().fill(SkinKitTheme.current.pink))
+                        .accessibilityLabel("\(followFeed.unseenCount) new")
+                }
+            }
+            .padding(.leading, 60)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 24) {
+                    ForEach(followFeed.items.prefix(12)) { item in
+                        NavigationLink(destination: catalogDetailDestination(for: item.family).onAppear { markShelfSeen() }) {
+                            TVOSSkinCard(family: item.family, glowIntensity: glowIntensity)
+                                .overlay(alignment: .topLeading) {
+                                    if item.isUnseen {
+                                        Circle()
+                                            .fill(SkinKitTheme.current.pink)
+                                            .frame(width: 18, height: 18)
+                                            .padding(12)
+                                            .accessibilityLabel("New")
+                                    }
+                                }
+                        }
+                        .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
+                        .contextMenu { creatorProfileMenu(for: item.family) }
+                    }
+                }
+                .padding(.horizontal, 60)
+                .padding(.vertical, 16)
+            }
+        }
+    }
+
+    /// Everything the row depends on, so `.task(id:)` rebuilds it when any of it changes.
+    private struct FollowShelfKey: Hashable {
+        var followed: Set<String>
+        var seenThrough: Date?
+        var installedCount: Int
+        var creatorCount: Int
+        var isLoading: Bool
+        var policyShelves: [String]
+    }
+
+    private var followShelfKey: FollowShelfKey {
+        FollowShelfKey(
+            followed: followStore.followedSlugs,
+            seenThrough: followStore.shelfSeenThrough,
+            installedCount: skinManager.loadedSkins.count,
+            creatorCount: creatorIndex?.creators.count ?? -1,
+            isLoading: isLoading,
+            policyShelves: storePolicy?.sections.map(\.id) ?? []
+        )
+    }
+
+    @MainActor
+    private func refreshFollowShelf() async {
+        guard !followStore.followedSlugs.isEmpty else {
+            followFeed = SkinFollowFeed(items: [])
+            return
+        }
+        guard let whole = try? await SkinCatalogService.shared.catalog() else { return }
+        followFeed = SkinFollowShelf.feed(
+            catalog: whole,
+            creators: creatorIndex,
+            store: followStore,
+            policy: storePolicy,
+            loadedSkins: skinManager.loadedSkins
+        )
+    }
+
+    /// The user opened the row: the badge clears. Not called on appear, or it could never show.
+    private func markShelfSeen() {
+        if let newest = followFeed.newestDate {
+            followStore.markShelfSeen(through: newest)
+        }
+    }
+
     // MARK: - System filter row
 
     private var systemFilterRow: some View {
@@ -227,6 +344,13 @@ public struct TVOSSkinCatalogBrowserView: View {
                     ForEach(availableSystems, id: \.self) { system in
                         systemChip(DeltaSkinSystemDirectory.current.displayNameForCatalogCode(system), isSelected: selectedSystem == system) {
                             withAnimation { selectedSystem = (selectedSystem == system) ? nil : system }
+                        }
+                    }
+                    // Only creators the user follows. Shown once they follow someone (or while it is on).
+                    if followingOnly || !followStore.followedSlugs.isEmpty {
+                        systemChip("Following", isSelected: followingOnly) {
+                            withAnimation { followingOnly.toggle() }
+                            if followingOnly { markShelfSeen() }
                         }
                     }
                 }
