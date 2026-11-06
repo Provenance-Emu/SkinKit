@@ -9,6 +9,7 @@
 //   SkinKitUI       SwiftUI skin rendering and store/picker views (iOS/tvOS)
 //   SkinKitRetroArch  Delta skin to RetroArch overlay preset (.cfg) conversion; depends on SkinKitCore only (no UI)
 //   SkinKit2Core    skin format 2.0: model, preprocessor, validator, layout resolver, JSON Schema (no UI, no deps)
+//   SkinKit2Render  skin format 2.0: Core Graphics drawer and hit testing for resolved layouts (no UIKit/SwiftUI)
 //
 // macOS is listed only so the non-UI modules can run `swift test` on the host
 // without a simulator. The apps ship on iOS and tvOS.
@@ -29,6 +30,7 @@ let package = Package(
         .library(name: "SkinKitUI", targets: ["SkinKitUI"]),
         .library(name: "SkinKitRetroArch", targets: ["SkinKitRetroArch"]),
         .library(name: "SkinKit2Core", targets: ["SkinKit2Core"]),
+        .library(name: "SkinKit2Render", targets: ["SkinKit2Render"]),
     ],
     dependencies: [
         // Same range Provenance resolves (via PVLookup).
@@ -45,13 +47,15 @@ let package = Package(
             name: "SkinKitManager",
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
         ),
-        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager"]),
+        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager", "SkinKit2Core", "SkinKit2Render"]),
         .target(
             name: "SkinKitRetroArch",
             dependencies: ["SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
             resources: [.copy("Resources/retroarch-input-map.json")]
         ),
         .target(name: "SkinKit2Core"),
+        // The bundled default font (Outfit, OFL) is a resource; the TypeScript renderer ships the same files.
+        .target(name: "SkinKit2Render", dependencies: ["SkinKit2Core"], resources: [.copy("Resources/Fonts")]),
 
         .testTarget(
             name: "SkinKitCoreTests",
@@ -82,6 +86,8 @@ let package = Package(
         ),
         // Reads Tests/Format2Fixtures and docs/schema through #filePath (shared with the TypeScript port).
         .testTarget(name: "SkinKit2CoreTests", dependencies: ["SkinKit2Core"]),
+        // Renders Tests/Format2Fixtures and compares with the committed expected/*@2x.png references.
+        .testTarget(name: "SkinKit2RenderTests", dependencies: ["SkinKit2Render", "SkinKit2Core"]),
     ],
     swiftLanguageModes: [.v5]
 )
