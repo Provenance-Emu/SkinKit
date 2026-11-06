@@ -132,9 +132,9 @@ public struct Skin2SkinView: View {
                 }
                 var state = Skin2HitTester.state(for: control, x: p.x, y: p.y)
                 state.selected = states[control.id]?.selected ?? false
-                guard state != states[control.id] else { return }
+                guard Skin2HitTester.isNewSample(control, state: state, previous: states[control.id]) else { return }
                 if control.kind == .action, states[control.id]?.isPressed == true { return }
-                set(control.id, state)
+                if state != states[control.id] { set(control.id, state) }
                 var point: CGPoint?
                 if control.kind == .touchSurface {
                     let s = Skin2HitTester.surfacePoint(frame: control.frame, x: p.x, y: p.y)

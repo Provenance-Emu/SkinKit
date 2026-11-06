@@ -261,6 +261,22 @@ struct HitTestingTests {
         #expect(p.x == 0.5 && p.y == 0.25)
     }
 
+    @Test("A held touch surface reports every move; other controls only state changes")
+    func dragSamples() throws {
+        let r = try resolution(##"""
+        { "type": "control", "id": "touch", "kind": "touchSurface", "inputs": ["touchScreen"], "layout": { "frame": [0, 0, 300, 300] } },
+        { "type": "control", "id": "a", "kind": "button", "input": "a", "layout": { "frame": [100, 100, 50, 50] } }
+        """##)
+        let t = Skin2HitTester(r)
+        let touch = try #require(t.control(id: "touch")), a = try #require(t.control(id: "a"))
+        let held = Skin2HitTester.state(for: touch, x: 20, y: 20)
+        #expect(Skin2HitTester.isNewSample(touch, state: Skin2HitTester.state(for: touch, x: 40, y: 60), previous: held))
+        #expect(Skin2HitTester.isNewSample(touch, state: held, previous: nil))
+        let pressed = Skin2HitTester.state(for: a, x: 120, y: 120)
+        #expect(!Skin2HitTester.isNewSample(a, state: Skin2HitTester.state(for: a, x: 130, y: 110), previous: pressed))
+        #expect(Skin2HitTester.isNewSample(a, state: pressed, previous: nil))
+    }
+
     @Test("D-pad: 3 × 3 zones around a 20 % dead zone; corners press two")
     func dpad() {
         let f = Skin2Rect(x: 0, y: 0, width: 100, height: 100)

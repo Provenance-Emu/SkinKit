@@ -74,6 +74,12 @@ public struct Skin2HitTester: Sendable {
         }
     }
 
+    /// Whether a drag sample is news for the host: the state changed, or a held touch surface moved. A
+    /// touch surface stays `pressed` while the finger moves, so comparing states alone would drop every move.
+    public static func isNewSample(_ c: Control, state: Skin2ControlState, previous: Skin2ControlState?) -> Bool {
+        state != previous || (c.kind == .touchSurface && state.isPressed)
+    }
+
     /// The input names a control sends for a state: the held directions of a d-pad, else every input while pressed.
     public static func inputs(for c: Control, state: Skin2ControlState) -> [String] {
         if case .directions(let d)? = c.input {
