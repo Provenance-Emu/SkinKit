@@ -256,6 +256,15 @@ struct CreatorFollowStoreTests {
         #expect(CreatorFollowStore.merge(["a": tombstone], ["a": follow]) == ["a": tombstone])
     }
 
+    @Test("Two tombstones unfollowed in the same millisecond merge the same way in either order")
+    func mergeTieBetweenTombstones() {
+        let unfollowed = epoch.addingTimeInterval(day)
+        let first = CreatorFollow(slug: "a", followedAt: epoch, unfollowedAt: unfollowed)
+        let second = CreatorFollow(slug: "a", followedAt: epoch.addingTimeInterval(60), unfollowedAt: unfollowed)
+        #expect(CreatorFollowStore.merge(["a": first], ["a": second]) == ["a": second])
+        #expect(CreatorFollowStore.merge(["a": second], ["a": first]) == ["a": second])
+    }
+
     @Test("Merge keeps slugs that only one side has, and is commutative and idempotent")
     func mergeProperties() {
         let a = ["x": CreatorFollow(slug: "x", followedAt: epoch), "y": CreatorFollow(slug: "y", followedAt: epoch)]

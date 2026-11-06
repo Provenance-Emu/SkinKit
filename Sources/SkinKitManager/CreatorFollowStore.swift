@@ -64,11 +64,13 @@ public struct CreatorFollow: Codable, Sendable, Hashable {
         return followedAt
     }
 
-    /// The record that wins a merge: the later change, and on an exact tie the tombstone, so every
-    /// replica picks the same one whichever order it merges in.
+    /// The record that wins a merge: the later change, on an exact tie the tombstone, and between two
+    /// records that still tie the later `followedAt`, so every replica picks the same one whichever
+    /// order it merges in. Records that tie on all of these are equal.
     static func winner(_ a: CreatorFollow, _ b: CreatorFollow) -> CreatorFollow {
         if a.lastChange != b.lastChange { return a.lastChange > b.lastChange ? a : b }
         if a.isFollowing != b.isFollowing { return a.isFollowing ? b : a }
+        if a.followedAt != b.followedAt { return a.followedAt > b.followedAt ? a : b }
         return a
     }
 }
