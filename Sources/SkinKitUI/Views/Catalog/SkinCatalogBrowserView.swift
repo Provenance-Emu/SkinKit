@@ -156,6 +156,7 @@ public struct SkinCatalogBrowserView: View {
                 }
             }
         }
+        .skinAchievementToasts()
         .navigationTitle("Skin Catalog")
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)
@@ -409,6 +410,10 @@ public struct SkinCatalogBrowserView: View {
                 }
             }
             .padding()
+
+            SkinAchievementsCard()
+                .padding(.horizontal)
+                .padding(.bottom, 24)
         }
         .scrollIndicators(.hidden)
     }
@@ -897,7 +902,7 @@ private struct CatalogSkinCard<Destination: View>: View {
                         // Download count (a family's members summed; each keeps its own in the detail view)
                         if downloads > 0 {
                             HStack(spacing: 2) {
-                                Image(systemName: "arrow.down.circle")
+                                Image(systemName: "eye")
                                     .font(.system(size: 9))
                                 Text(formatSkinDownloadCount(downloads))
                                     .font(.system(size: 9, weight: .medium))
@@ -1012,7 +1017,7 @@ func formatSkinDownloadCount(_ count: Int) -> String {
 private extension SkinSortOption {
     var displayName: String {
         switch self {
-        case .popular:     return "Popular"
+        case .popular:     return "Most viewed"
         case .recent:      return "Recent"
         case .alphabetical: return "A–Z"
         case .rating:      return "Rating"

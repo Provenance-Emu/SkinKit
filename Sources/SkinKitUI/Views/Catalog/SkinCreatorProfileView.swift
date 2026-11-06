@@ -241,7 +241,7 @@ public struct SkinCreatorProfileView: View {
             Text(verbatim: [
                 summary.skinCount == 1 ? "1 skin" : "\(summary.skinCount) skins",
                 systems == 1 ? "1 system" : "\(systems) systems",
-                summary.downloadCount > 0 ? "\(formatSkinDownloadCount(summary.downloadCount)) downloads" : nil,
+                summary.downloadCount > 0 ? "\(formatSkinDownloadCount(summary.downloadCount)) views" : nil,
             ].compactMap(\.self).joined(separator: " · "))
                 .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.6))
@@ -566,7 +566,7 @@ private struct SkinCreatorFamilyCard: View {
                     .foregroundColor(.white.opacity(0.6))
                     .lineLimit(1)
                 if family.totalDownloadCount > 0 {
-                    Label(formatSkinDownloadCount(family.totalDownloadCount), systemImage: "arrow.down.circle")
+                    Label(formatSkinDownloadCount(family.totalDownloadCount), systemImage: "eye")
                         .font(.system(size: 11))
                         .foregroundColor(.white.opacity(0.5))
                 }

@@ -211,7 +211,7 @@ struct SkinFamilyVariantsSection: View {
                     HStack(spacing: 8) {
                         Text("by \(member.author ?? "Unknown")")
                         if let count = member.downloadCount, count > 0 {
-                            Label(formatSkinDownloadCount(count), systemImage: "arrow.down.circle")
+                            Label(formatSkinDownloadCount(count), systemImage: "eye")
                         }
                     }
                     .font(.system(size: 11))
