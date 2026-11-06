@@ -15,7 +15,7 @@
 # interface finds the enum, and compilers before Swift 6.3 reject it.
 #
 # Static libraries carry no resources. Apps add the bundles from the resources zip to their Copy Bundle
-# Resources phase: SkinKitCore and SkinKitRetroArch find theirs (Bundle.module) at the top of the main bundle.
+# Resources phase: SkinKitCore, SkinKitRetroArch and SkinKit2Render (its default font) find theirs (Bundle.module) at the top of the main bundle.
 set -euo pipefail
 
 version="${1:?usage: build-xcframeworks.sh <version> [ios ios-sim tvos tvos-sim catalyst]}"
@@ -23,8 +23,8 @@ shift
 platforms=("$@")
 [ ${#platforms[@]} -eq 0 ] && platforms=(ios ios-sim tvos tvos-sim catalyst)
 
-modules=(SkinKitCore SkinCatalogKit SkinKitManager SkinKitUI SkinKitRetroArch ZIPFoundation)
-bundles=(SkinKit_SkinKitCore SkinKit_SkinKitRetroArch ZIPFoundation_ZIPFoundation)
+modules=(SkinKitCore SkinCatalogKit SkinKitManager SkinKitUI SkinKitRetroArch SkinKit2Core SkinKit2Render ZIPFoundation)
+bundles=(SkinKit_SkinKitCore SkinKit_SkinKitRetroArch SkinKit_SkinKit2Render ZIPFoundation_ZIPFoundation)
 
 # PACKAGE_DIR builds another checkout (the release workflow builds a tag with this script from main).
 root="$(cd "${PACKAGE_DIR:-$(dirname "$0")/..}" && pwd)"

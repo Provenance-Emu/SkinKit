@@ -12,7 +12,8 @@ import Testing
 struct FixtureTests {
     @Test("The fixture set is complete")
     func fixtureSet() {
-        #expect(Skin2Paths.fixtureNames == ["dual-screen", "gamecube-icube", "layout", "stacks-grids", "variants"])
+        #expect(Skin2Paths.fixtureNames == ["dual-screen", "effects", "gamecube-icube", "layout", "paint", "paths", "shapes", "stacks-grids",
+                                            "states", "strokes", "text", "variants"])
     }
 
     @Test("Validates with no errors or warnings", arguments: Skin2Paths.fixtureNames)
