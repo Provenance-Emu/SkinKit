@@ -488,6 +488,7 @@ public struct SkinCatalogBrowserView: View {
         var followed: Set<String>
         var seenThrough: Date?
         var installedCount: Int
+        var skinsAreLoaded: Bool
         var creatorCount: Int
         var isLoading: Bool
         var isRefreshing: Bool
@@ -499,6 +500,7 @@ public struct SkinCatalogBrowserView: View {
             followed: followStore.followedSlugs,
             seenThrough: followStore.shelfSeenThrough,
             installedCount: skinManager.loadedSkins.count,
+            skinsAreLoaded: skinManager.skinsAreLoaded,
             creatorCount: creatorIndex?.creators.count ?? -1,
             isLoading: isLoading,
             isRefreshing: isRefreshing,
@@ -512,6 +514,8 @@ public struct SkinCatalogBrowserView: View {
             followFeed = SkinFollowFeed(items: [])
             return
         }
+        // Until the local skins are scanned the shelf can't tell what is installed.
+        guard skinManager.skinsAreLoaded else { return }
         guard let catalog = try? await SkinCatalogService.shared.catalog() else { return }
         followFeed = SkinFollowShelf.feed(
             catalog: catalog,

@@ -184,6 +184,13 @@ public struct TVOSSkinCatalogBrowserView: View {
                 glowIntensity = 0.8
             }
             Task { await loadCatalog() }
+            // The scan is deferred by default, so loadedSkins may be empty. The follow row leaves out
+            // installed skins, so scan before it is built (it rebuilds when the count changes).
+            if !skinManager.skinsAreLoaded {
+                Task {
+                    _ = try? await skinManager.availableSkins(forceRescan: false)
+                }
+            }
         }
         .skinCreatorProfile(
             $profileCreator,
@@ -291,6 +298,7 @@ public struct TVOSSkinCatalogBrowserView: View {
         var followed: Set<String>
         var seenThrough: Date?
         var installedCount: Int
+        var skinsAreLoaded: Bool
         var creatorCount: Int
         var isLoading: Bool
         var policyShelves: [String]
@@ -301,6 +309,7 @@ public struct TVOSSkinCatalogBrowserView: View {
             followed: followStore.followedSlugs,
             seenThrough: followStore.shelfSeenThrough,
             installedCount: skinManager.loadedSkins.count,
+            skinsAreLoaded: skinManager.skinsAreLoaded,
             creatorCount: creatorIndex?.creators.count ?? -1,
             isLoading: isLoading,
             policyShelves: storePolicy?.sections.map(\.id) ?? []
@@ -313,6 +322,8 @@ public struct TVOSSkinCatalogBrowserView: View {
             followFeed = SkinFollowFeed(items: [])
             return
         }
+        // Until the local skins are scanned the shelf can't tell what is installed.
+        guard skinManager.skinsAreLoaded else { return }
         guard let whole = try? await SkinCatalogService.shared.catalog() else { return }
         followFeed = SkinFollowShelf.feed(
             catalog: whole,
