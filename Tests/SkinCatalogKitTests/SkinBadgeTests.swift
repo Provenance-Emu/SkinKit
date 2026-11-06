@@ -29,7 +29,7 @@ final class SkinBadgeTests: XCTestCase {
         let creatorIDs: Set = [
             "creator.first-release", "creator.systems.3", "creator.systems.5", "creator.systems.10",
             "creator.family-builder", "creator.completionist", "creator.dual-screen", "creator.veteran",
-            "creator.reach.1", "creator.reach.2", "creator.reach.3", "creator.claimed", "creator.open-source",
+            "creator.reach.1", "creator.reach.2", "creator.reach.3", "creator.claimed",
         ]
         let userIDs: Set = [
             "user.first-install", "user.systems.3", "user.systems.5", "user.systems.10", "user.themes.1",
@@ -48,10 +48,16 @@ final class SkinBadgeTests: XCTestCase {
     }
 
     /// The skins repo owns `badges.json`; this copy must not drift from it. `Fixtures/skins-badges.json`
-    /// is the skins repo's file. Refresh it (and `Resources/badges.json`) together when it changes.
+    /// is copied from skins `main` once skins#47 merges (until then, from that PR's branch). Refresh it
+    /// and `Resources/badges.json` together, as byte-identical copies, when it changes.
     func testBundledFileMatchesTheSkinsRepoCopy() throws {
         let url = try XCTUnwrap(
             Bundle.module.url(forResource: "skins-badges", withExtension: "json", subdirectory: "Fixtures")
+        )
+        XCTAssertEqual(
+            try Data(contentsOf: XCTUnwrap(SkinBadgeCatalog.bundledURL)),
+            try Data(contentsOf: url),
+            "Resources/badges.json is not a byte-identical copy of the skins repo's file"
         )
         let skins = try SkinBadgeCatalog(data: Data(contentsOf: url))
         XCTAssertEqual(catalog.version, skins.version, "badges.json version differs from the skins repo")
@@ -84,7 +90,7 @@ final class SkinBadgeTests: XCTestCase {
     func testKnownIDResolvesFromTheBundle() {
         let badge = catalog.resolve(SkinCreatorBadge(id: "creator.claimed"))
         XCTAssertEqual(badge.title, "Claimed profile")
-        XCTAssertEqual(badge.symbol, "checkmark.seal.fill")
+        XCTAssertEqual(badge.symbol, "checkmark.circle")
         XCTAssertNotNil(badge.detail)
     }
 
@@ -99,7 +105,7 @@ final class SkinBadgeTests: XCTestCase {
 
         let blank = catalog.resolve(SkinCreatorBadge(id: "creator.claimed", title: "  ", symbol: ""))
         XCTAssertEqual(blank.title, "Claimed profile", "blank labels fall through to the bundle")
-        XCTAssertEqual(blank.symbol, "checkmark.seal.fill")
+        XCTAssertEqual(blank.symbol, "checkmark.circle")
     }
 
     func testUnknownCreatorBadgeKeepsItsOwnLabels() {
