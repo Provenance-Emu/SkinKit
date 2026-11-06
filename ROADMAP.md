@@ -1,8 +1,8 @@
 # Roadmap
 
-Controller skins for Provenance, iFly, iCube and emuskins.com. Work is tracked as GitHub issues in this repo, one [milestone](https://github.com/Provenance-Emu/SkinKit/milestones) per stage: stage 1 is #1–#8, stage 2 #9–#21, stage 3 #22–#23, stage 4 #24–#25, and later #26. Every issue says what it touches, what it depends on, and what done looks like.
+Controller skins for Provenance, iFly, iCube and emuskins.com. Work is tracked as GitHub issues in this repo, grouped into [milestones](https://github.com/Provenance-Emu/SkinKit/milestones): stages 1–4, then one per theme (Creator features, Editing tools, RetroArch iOS, iCube NES/SNES), and Later for real deferrals. Every issue says what it touches, what it depends on, and what done looks like.
 
-The stages are ordered by what blocks app releases. Stages 1 and 2 are done (SkinKit 0.2.0, 2026-11-03); stage 3 and the stage 4 spike and design are in progress.
+Stages 1–3 are done (stage 3 shipped on the website by 2026-11-04). SkinKit 0.4.0 (2026-11-06) has the first format 2.0 modules and the creator features; app adoption of both is in progress.
 
 ## Stage 1: SkinKit shared module (done, 0.1.1)
 
@@ -37,29 +37,47 @@ Design: [`docs/specs/2026-10-23-skin-variants-design.md`](docs/specs/2026-10-23-
   - `gameOverrides` matching by md5, then crc, then filename, then title
   - fix the `sanitizeJSON` bug that cuts `//` inside JSON strings
 
-## Stage 3: RetroArch converter (in progress)
+## Stage 3: RetroArch converter (done)
 
-A standalone Delta-skin → RetroArch overlay converter page on emuskins.com, plus a "Convert to RetroArch" button on each skin. It's our own implementation, credited to warmenhoven/skin2overlay as prior art.
+A standalone Delta-skin → RetroArch overlay converter page on emuskins.com, plus a "Convert to RetroArch" button on each skin. It's our own implementation, credited to warmenhoven/skin2overlay as prior art. Shipped in skins#38, #39 and #44. The remaining check, output loading in RetroArch iOS on a device, is #84 in the RetroArch iOS milestone.
 
-## Stage 4: Skin format 2.0 (spike and design in progress; the rest after the app store releases)
+## Stage 4: Skin format 2.0 (in progress)
 
 Notes: [`docs/specs/2026-10-23-skin-format-2-notes.md`](docs/specs/2026-10-23-skin-format-2-notes.md).
 
-1. Spike: express iCube's generated GameCube skin in a draft format and render it in a throwaway SwiftUI preview.
-2. Write the design document.
-3. Swift renderer (in `SkinKitUI`) and TypeScript renderer (website), both checked against shared reference images.
+Design: [`docs/specs/2026-11-03-skin-format-2-design.md`](docs/specs/2026-11-03-skin-format-2-design.md). Issues #91–#100 and #123.
+
+1. Spike: express iCube's generated GameCube skin in a draft format and render it in a throwaway SwiftUI preview. Done.
+2. Write the design document. Done (#58).
+3. Swift model, resolver and validator (`SkinKit2Core`, #91, done in 0.4.0) and renderer (`SkinKit2Render`, #92, drawing done in 0.4.0, control host still to do). TypeScript renderer for the website (#93). Both are checked against shared reference images (#95).
 4. A baker that turns a 2.0 skin into a classic Delta/Manic skin (PDF plus `info.json`).
 5. Convert the generated default skins in all three apps to the format.
 6. Publish the format docs on the website and the wiki.
 
-## Later (each needs its own design first)
+## Creator features
 
-- Creator profiles (bio, pictures, links), following creators, gamification for creators and users.
-- Web and in-app skin editing tools, including merging split variants into one file.
-- RetroArch integration on iOS.
-- iCube accepting NES/SNES skins (Virtual Console, WiiWare, ports).
+Designs: [profiles](docs/specs/2026-11-03-creator-profiles-design.md), [follows](docs/specs/2026-11-03-follow-creators-design.md), [gamification](docs/specs/2026-11-03-gamification-design.md). Catalog, website and SkinKit parts are done: creator profiles, the claim bot, badges and stats, follows, the follow shelf and achievements (SkinKit 0.4.0). Open: app adoption (#126), iCloud entitlements (#63), achievements wiring (#70), website follows (#65), plus clean-up (#127, #128).
+
+## Editing tools
+
+Design: [`docs/specs/2026-11-03-skin-editing-tools-design.md`](docs/specs/2026-11-03-skin-editing-tools-design.md). Done: the shared client-side skin stack, the editor page, `merge_variants.py`, per-item theme artwork and layout edits. Open: in-game edit mode (#75), the merge tool in the editor (#77), link-health for theme items (#124) and on-device checks (#125).
+
+## RetroArch iOS
+
+Done: the converter and "Get for RetroArch" on the website, and `SkinKitRetroArch` (0.3.0). Open: "Send to RetroArch" from the apps (#83) and the device test plan (#84).
+
+## iCube NES/SNES
+
+Done: the NES and Super NES shelves (0.3.0), the NES fixture, and `sfc` read as Super NES (0.4.0). Open: iCube accepting the skins (#87), Virtual Console detection (#88) and button remapping (#89).
+
+## Later
+
+- Daily local notifications for followed creators (#66).
+- Upstream RetroArch iOS overlay install hand-off (#85).
 
 ## Done
 
 - 2026-10-22: catalog link-health check, zip-pack repacking, and missing-artwork hiding (skins#17, skins#20).
 - 2026-11-03: SkinKit 0.2.0 tagged. Stage 1 (#1–#8) and stage 2 (#9–#21, #34) closed: `gameOverrides` matched by md5 → crc → filename → title, `sanitizeJSON` keeps `//` in strings, Ignited `altRepresentations` with the toggle hotspot, a reachable theme picker, variant families in all three stores and pickers (SkinKit #48–#51; Provenance #3788–#3791; iFly #910; iCube #78–#80). Catalog: `variantLabel`, `variants.json`, sample variant skins, `mature` tag hidden by default, `catalog.min.json` browse index, polite deltastyles crawling, repo opt-out, the move to emuskins.com (skins #21–#33).
+- 2026-11-04: SkinKit 0.3.0 tagged: NES and Super NES shelves for iCube, `SkinKitRetroArch`, the creator directory, layout edits, theme item art and the `addedAt` Recent sort (SkinKit #101–#110). Stage 3 closed (skins #37–#39, #44). iCube pins 0.3.0.
+- 2026-11-06: SkinKit 0.4.0 tagged: `SkinKit2Core` and `SkinKit2Render`, creator follows, profiles, badges and achievements, `sfc` as Super NES, release XCFrameworks (SkinKit #112–#122). Website and catalog: creator profiles, the claim bot, badges, disputes, the editor page and merged variant families (skins #45–#55). Provenance and iFly move to 0.3.0 (Provenance #3804, iFly #915).
