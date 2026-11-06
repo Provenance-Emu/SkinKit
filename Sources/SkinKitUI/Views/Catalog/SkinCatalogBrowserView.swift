@@ -63,6 +63,11 @@ public struct SkinCatalogBrowserView: View {
     @State private var isRefreshing = false
     @State private var spinnerRotation: Double = 0
     @State private var filterTask: Task<Void, Never>?
+    /// The creator directory, once fetched, so a credit opens the claimed profile. Until then (or
+    /// offline) a credit resolves to the minimal profile from the entry's own `author`/`creator`.
+    @State private var creatorIndex: SkinCreatorIndex?
+    /// The creator whose profile sheet is open.
+    @State private var profileCreator: SkinCreator?
 
     /// Observe the skin manager so we can show which catalog skins are already installed.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
@@ -186,6 +191,14 @@ public struct SkinCatalogBrowserView: View {
                     _ = try? await skinManager.availableSkins(forceRescan: false)
                 }
             }
+        }
+        .skinCreatorProfile(
+            $profileCreator,
+            activationContextSystemIdentifier: activationContextSystemIdentifier,
+            activationContextGameId: activationContextGameId
+        )
+        .task {
+            creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
         .onChange(of: searchText) { _, _ in
             scheduleFilterUpdate()
@@ -353,10 +366,15 @@ public struct SkinCatalogBrowserView: View {
                 ForEach(families) { family in
                     let entry = family.primary
                     let isInstalled = family.members.contains(where: isSkinInstalled)
-                    NavigationLink(destination: catalogDetailDestination(for: entry, family: family)) {
-                        CatalogSkinCard(entry: entry, family: family, glowIntensity: glowIntensity, isInstalled: isInstalled)
-                    }
-                    .buttonStyle(PlainButtonStyle())
+                    CatalogSkinCard(
+                        entry: entry,
+                        family: family,
+                        glowIntensity: glowIntensity,
+                        isInstalled: isInstalled,
+                        creators: (creatorIndex ?? .empty).creators(in: family),
+                        onOpenCreator: { profileCreator = $0 },
+                        destination: { catalogDetailDestination(for: entry, family: family) }
+                    )
                 }
             }
             .padding()
@@ -531,6 +549,9 @@ public struct SkinCatalogBrowserView: View {
         await MainActor.run { isRefreshing = true }
         do {
             _ = try await SkinCatalogService.shared.catalog(forceRefresh: true)
+            // The directory is refreshed with the catalog.
+            let refreshedCreators = try? await SkinCreatorDirectory.shared.index(forceRefresh: true)
+            await MainActor.run { creatorIndex = refreshedCreators ?? creatorIndex }
             let systems = try await SkinCatalogService.shared.availableSystems()
             await MainActor.run {
                 availableSystems = systems
@@ -632,11 +653,19 @@ public struct SkinCatalogBrowserView: View {
 #if !os(tvOS)
 
 /// A grid card for one variant family (a standalone entry is a family of one).
-private struct CatalogSkinCard: View {
+///
+/// The card is not one big link: the credit line is a button of its own (it opens the creator's
+/// profile), and a button inside a `NavigationLink`'s label is unreliable, so the thumbnail, the
+/// title and the footer are each a link to the detail view and the credit sits between them.
+private struct CatalogSkinCard<Destination: View>: View {
     let entry: SkinCatalogEntry
     var family: SkinFamily?
     let glowIntensity: CGFloat
     var isInstalled: Bool = false
+    /// The creators behind the family's members, in member order. Empty for an uncredited family.
+    var creators: [SkinCreator] = []
+    let onOpenCreator: (SkinCreator) -> Void
+    @ViewBuilder let destination: () -> Destination
 
     private var title: String { family?.name ?? entry.name }
     private var credit: String { family?.creditLine ?? "by \(entry.author ?? "Unknown")" }
@@ -649,67 +678,76 @@ private struct CatalogSkinCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Thumbnail with installed badge overlay
-            thumbnailView
-                .aspectRatio(1.4, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay(alignment: .bottomLeading) {
-                    if let family {
-                        SkinFamilyBadge(family: family)
-                            .padding(6)
+            NavigationLink(destination: destination()) {
+                thumbnailView
+                    .aspectRatio(1.4, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .overlay(alignment: .bottomLeading) {
+                        if let family {
+                            SkinFamilyBadge(family: family)
+                                .padding(6)
+                        }
                     }
-                }
-                .overlay(alignment: .topTrailing) {
-                    if isInstalled {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                            .background(Color.black.opacity(0.7).clipShape(Circle()))
-                            .padding(6)
+                    .overlay(alignment: .topTrailing) {
+                        if isInstalled {
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundStyle(SkinKitTheme.current.horizontalGradient)
+                                .background(Color.black.opacity(0.7).clipShape(Circle()))
+                                .padding(6)
+                        }
                     }
-                }
+            }
+            .buttonStyle(PlainButtonStyle())
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-
-                Text(credit)
-                    .font(.system(size: 11))
-                    .foregroundColor(.white.opacity(0.6))
-                    .lineLimit(1)
-
-                HStack(spacing: 6) {
-                    // System tags (max 2, excluding legacy codes like "unofficial")
-                    let validSystems = entry.systems.filter { !SkinCatalogService.isLegacySystemCode($0) }
-                    ForEach(validSystems.prefix(2), id: \.self) { system in
-                        Text(displayName(forSystemCode: system))
-                            .font(.system(size: 9, weight: .bold, design: .rounded))
-                            .tracking(0.5)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(
-                                Capsule()
-                                    .fill(Color.black.opacity(0.5))
-                                    .overlay(Capsule().strokeBorder(SkinKitTheme.current.gradient, lineWidth: 0.5))
-                            )
-                            .foregroundColor(.white.opacity(0.8))
-                    }
-
-                    Spacer()
-
-                    // Download count (a family's members summed; each keeps its own in the detail view)
-                    if downloads > 0 {
-                        HStack(spacing: 2) {
-                            Image(systemName: "arrow.down.circle")
-                                .font(.system(size: 9))
-                            Text(formatSkinDownloadCount(downloads))
-                                .font(.system(size: 9, weight: .medium))
-                        }
-                        .foregroundColor(.white.opacity(0.5))
-                    }
+                NavigationLink(destination: destination()) {
+                    Text(title)
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(PlainButtonStyle())
+
+                creditView
+
+                NavigationLink(destination: destination()) {
+                    HStack(spacing: 6) {
+                        // System tags (max 2, excluding legacy codes like "unofficial")
+                        let validSystems = entry.systems.filter { !SkinCatalogService.isLegacySystemCode($0) }
+                        ForEach(validSystems.prefix(2), id: \.self) { system in
+                            Text(displayName(forSystemCode: system))
+                                .font(.system(size: 9, weight: .bold, design: .rounded))
+                                .tracking(0.5)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Capsule()
+                                        .fill(Color.black.opacity(0.5))
+                                        .overlay(Capsule().strokeBorder(SkinKitTheme.current.gradient, lineWidth: 0.5))
+                                )
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+
+                        Spacer()
+
+                        // Download count (a family's members summed; each keeps its own in the detail view)
+                        if downloads > 0 {
+                            HStack(spacing: 2) {
+                                Image(systemName: "arrow.down.circle")
+                                    .font(.system(size: 9))
+                                Text(formatSkinDownloadCount(downloads))
+                                    .font(.system(size: 9, weight: .medium))
+                            }
+                            .foregroundColor(.white.opacity(0.5))
+                        }
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PlainButtonStyle())
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
@@ -723,6 +761,42 @@ private struct CatalogSkinCard: View {
                 )
                 .shadow(color: isInstalled ? SkinKitTheme.current.pink.opacity(0.5) : SkinKitTheme.current.purple.opacity(0.3), radius: 6)
         )
+    }
+
+    /// The credit line. One creator: a button that opens the profile. Several (a family mixing
+    /// authors): a menu to pick which. None (no author, no `creator`): plain text.
+    @ViewBuilder
+    private var creditView: some View {
+        let label = Text(credit)
+            .font(.system(size: 11))
+            .foregroundColor(.white.opacity(0.6))
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        switch creators.count {
+        case 0:
+            label
+        case 1:
+            Button {
+                onOpenCreator(creators[0])
+            } label: {
+                label
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(credit)
+            .accessibilityHint("Opens \(creators[0].displayName)'s profile")
+        default:
+            Menu {
+                ForEach(creators) { creator in
+                    Button(creator.displayName) { onOpenCreator(creator) }
+                }
+            } label: {
+                label
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(credit)
+            .accessibilityHint("Choose a creator's profile to open")
+        }
     }
 
     @ViewBuilder

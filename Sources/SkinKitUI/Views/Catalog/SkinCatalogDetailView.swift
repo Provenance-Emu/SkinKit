@@ -43,6 +43,10 @@ public struct SkinCatalogDetailView: View {
     @State private var downloadTask: Task<Void, Never>?
     @State private var activationTask: Task<Void, Never>?
     @State private var activationState: ActivationState = .idle
+    /// The creator directory, once fetched, so the credit opens the claimed profile.
+    @State private var creatorIndex: SkinCreatorIndex?
+    /// The creator whose profile sheet is open.
+    @State private var profileCreator: SkinCreator?
 
     /// Observe the skin manager so we can detect already-installed skins.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
@@ -136,6 +140,14 @@ public struct SkinCatalogDetailView: View {
         .onDisappear {
             downloadTask?.cancel()
             activationTask?.cancel()
+        }
+        .skinCreatorProfile(
+            $profileCreator,
+            activationContextSystemIdentifier: activationContextSystemIdentifier,
+            activationContextGameId: activationContextGameId
+        )
+        .task {
+            creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
     }
 
@@ -265,13 +277,32 @@ public struct SkinCatalogDetailView: View {
                 Image(systemName: "person.fill")
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.5))
-                Text("by \(entry.author ?? "Unknown")")
-                    .font(.system(size: 14))
-                    .foregroundColor(.white.opacity(0.7))
+                creditView
             }
         }
         .padding(.horizontal, 20)
         .padding(.top, 20)
+    }
+
+    /// "by <author>". A button that opens the creator's profile when the entry resolves to a
+    /// creator (it has an author or a `creator`); the text is unchanged either way. The profile
+    /// follows the entry's `creator`, which can differ from the credited `author` (spec §6).
+    @ViewBuilder
+    private var creditView: some View {
+        let label = Text("by \(entry.author ?? "Unknown")")
+            .font(.system(size: 14))
+            .foregroundColor(.white.opacity(0.7))
+        if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
+            Button {
+                profileCreator = creator
+            } label: {
+                label.underline(pattern: .dot)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens \(creator.displayName)'s profile")
+        } else {
+            label
+        }
     }
 
     // MARK: - Description Section
