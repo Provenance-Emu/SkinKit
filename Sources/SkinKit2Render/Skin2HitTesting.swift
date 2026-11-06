@@ -25,7 +25,9 @@ public struct Skin2HitTester: Sendable {
             guard let id = r.node.id, let kind = r.node.kind, let hit = r.hitFrame else { return nil }
             return Control(id: id, kind: kind, frame: r.frame, hitFrame: hit, travel: r.travel, inputs: r.node.inputNames, input: r.node.input)
         }
-        controls = all.filter { $0.kind != .touchSurface }.reversed() + all.filter { $0.kind == .touchSurface }.reversed()
+        let buttons: [Control] = all.filter { $0.kind != .touchSurface }.reversed()
+        let surfaces: [Control] = all.filter { $0.kind == .touchSurface }.reversed()
+        controls = buttons + surfaces
     }
 
     public func control(at x: Double, _ y: Double) -> Control? {
