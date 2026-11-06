@@ -198,7 +198,7 @@ final class SkinCreatorProfileFamiliesTests: XCTestCase {
         let catalog = try SkinCatalog.decode(SkinCreatorFixture.catalogData)
         let family = try XCTUnwrap(catalog.families.first { $0.primary.id == "clear-doom" })
         XCTAssertEqual(family.authors, ["starvingartist"])
-        XCTAssertEqual(index.creators(in: family).map(\.slug), ["nostromocrew01"])
+        XCTAssertEqual(index.credits(in: family).map(\.creator.slug), ["nostromocrew01"])
     }
 
     func testCreatorsInFamilyAreDistinctAndInMemberOrder() throws {
@@ -209,13 +209,37 @@ final class SkinCreatorProfileFamiliesTests: XCTestCase {
             entry("4", author: nil, systems: ["gba"], groupId: "g", groupOrder: 4),
         ])
         let family = try XCTUnwrap(catalog.families.first)
-        XCTAssertEqual(index.creators(in: family).map(\.slug), ["janza", "starvingartist"])
+        XCTAssertEqual(index.credits(in: family).map(\.creator.slug), ["janza", "starvingartist"])
 
         let uncredited = SkinFamily(
             id: "entry:x", groupId: nil, name: "X",
             members: [entry("x", author: nil, systems: ["gba"])], labels: [:]
         )
-        XCTAssertTrue(index.creators(in: uncredited).isEmpty)
+        XCTAssertTrue(index.credits(in: uncredited).isEmpty)
+    }
+
+    /// A credit tapped before the directory loaded carries the local slug of an alias author. Resolving
+    /// the credit again through the loaded index finds the claimed creator, whose skins then match.
+    func testCreditBuiltFromTheEmptyIndexResolvesAnAliasOnceTheDirectoryLoads() throws {
+        let felix = SkinCreator(slug: "felix", displayName: "Felix", aliases: ["felix#6506"], isClaimed: true)
+        let loaded = SkinCreatorIndex(creators: [felix])
+        let catalog = SkinCatalog(skins: [entry("f", author: "felix#6506", systems: ["gba"])])
+        let family = try XCTUnwrap(catalog.families.first)
+
+        let credit = try XCTUnwrap(SkinCreatorIndex.empty.credits(in: family).first)
+        XCTAssertEqual(credit.creator.slug, "felix-6506", "no directory yet: the local slug")
+        XCTAssertTrue(loaded.families(by: credit.creator, in: catalog).isEmpty, "the slug alone matches nothing")
+
+        let resolved = loaded.resolve(credit)
+        XCTAssertEqual(resolved, felix)
+        XCTAssertEqual(ids(loaded.families(by: resolved, in: catalog)), [["f"]])
+    }
+
+    func testResolveKeepsTheCreditWhenTheDirectoryHasNothingBetter() throws {
+        let catalog = try SkinCatalog.decode(SkinCreatorFixture.catalogData)
+        let ghost = try XCTUnwrap(catalog.families.first { $0.primary.id == "creator-not-in-directory" })
+        let credit = try XCTUnwrap(SkinCreatorIndex.empty.credits(in: ghost).first)
+        XCTAssertEqual(index.resolve(credit).slug, "ghost", "the entry's own creator wins; no alias detour")
     }
 
     // MARK: - Summary

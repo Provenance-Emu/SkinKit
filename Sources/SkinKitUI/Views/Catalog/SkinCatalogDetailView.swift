@@ -46,7 +46,7 @@ public struct SkinCatalogDetailView: View {
     /// The creator directory, once fetched, so the credit opens the claimed profile.
     @State private var creatorIndex: SkinCreatorIndex?
     /// The creator whose profile sheet is open.
-    @State private var profileCreator: SkinCreator?
+    @State private var profileCreator: SkinCreatorCredit?
 
     /// Observe the skin manager so we can detect already-installed skins.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
@@ -294,7 +294,7 @@ public struct SkinCatalogDetailView: View {
             .foregroundColor(.white.opacity(0.7))
         if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
             Button {
-                profileCreator = creator
+                profileCreator = SkinCreatorCredit(creator: creator, entry: entry)
             } label: {
                 label.underline(pattern: .dot)
             }

@@ -28,13 +28,17 @@ final class SkinCreatorProfileModel: ObservableObject {
     private let directory: SkinCreatorDirectory
     private let service: SkinCatalogService
     private let isPreloaded: Bool
+    /// The credit the sheet was opened from, so the creator can be resolved again once the
+    /// directory loads (an alias author's local slug is not the claimed creator's slug).
+    private let credit: SkinCreatorCredit?
 
     init(
-        creator: SkinCreator,
+        credit: SkinCreatorCredit,
         directory: SkinCreatorDirectory = .shared,
         service: SkinCatalogService = .shared
     ) {
-        self.creator = creator
+        self.credit = credit
+        self.creator = credit.creator
         self.directory = directory
         self.service = service
         isPreloaded = false
@@ -42,6 +46,7 @@ final class SkinCreatorProfileModel: ObservableObject {
 
     /// Fixture data for previews: nothing is fetched.
     init(creator: SkinCreator, families: [SkinFamily], familyIndex: SkinFamilyIndex?) {
+        self.credit = nil
         self.creator = creator
         self.families = families
         self.familyIndex = familyIndex
@@ -65,7 +70,9 @@ final class SkinCreatorProfileModel: ObservableObject {
         } else if let cached = await directory.cachedIndex() {
             index = cached
         }
-        if let known = index.creator(for: creator.slug) {
+        if let credit {
+            creator = index.resolve(credit)
+        } else if let known = index.creator(for: creator.slug) {
             creator = known
         }
 
@@ -103,21 +110,21 @@ public struct SkinCreatorProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var safariLink: SkinCreatorSafariLink?
 
-    /// Opens the profile for `creator`, loading the directory record and the skins.
+    /// Opens the profile for `credit`, loading the directory record and the skins.
     ///
-    /// Pass the creator the store resolved for the credit that was tapped
-    /// (`SkinCreatorIndex.creator(for:)`); a minimal record is fine.
+    /// Pass the credit the store resolved for the line that was tapped
+    /// (`SkinCreatorIndex.credits(in:)`); a minimal record is fine.
     public init(
-        creator: SkinCreator,
+        credit: SkinCreatorCredit,
         activationContextSystemIdentifier: DeltaSkinSystem? = nil,
         activationContextGameId: String? = nil
     ) {
-        _model = StateObject(wrappedValue: SkinCreatorProfileModel(creator: creator))
+        _model = StateObject(wrappedValue: SkinCreatorProfileModel(credit: credit))
         self.activationContextSystemIdentifier = activationContextSystemIdentifier
         self.activationContextGameId = activationContextGameId
     }
 
-    /// A profile with its skins already chosen. Previews use this; the apps use ``init(creator:activationContextSystemIdentifier:activationContextGameId:)``.
+    /// A profile with its skins already chosen. Previews use this; the apps use ``init(credit:activationContextSystemIdentifier:activationContextGameId:)``.
     init(creator: SkinCreator, families: [SkinFamily], familyIndex: SkinFamilyIndex? = nil) {
         _model = StateObject(wrappedValue: SkinCreatorProfileModel(
             creator: creator, families: families, familyIndex: familyIndex
@@ -499,7 +506,9 @@ private struct SkinCreatorFamilyCard: View {
                 }
                 .skinKitFocusButtonStyle(focusScale: 1.03, cornerRadius: 12)
 
-                if !hasVariantsSection {
+                // A multi-file family installs from its variants section; every other family (a
+                // single file, packed variants or not) has this one button.
+                if !family.isMultiFile {
                     SkinFamilyMemberAction(family: family, member: family.primary, model: model)
                 }
             }
@@ -521,8 +530,8 @@ private struct SkinCreatorFamilyCard: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1))
         )
         .task(id: skinManager.loadedSkins.count) {
-            // The variants section does this itself; a single file has no section.
-            if !hasVariantsSection {
+            // The variants section does this itself for a multi-file family.
+            if !family.isMultiFile {
                 model.refreshInstalled(from: skinManager.loadedSkins)
             }
         }
@@ -595,16 +604,16 @@ private struct SkinCreatorFamilyCard: View {
 // MARK: - Presentation
 
 public extension View {
-    /// Presents the creator profile for `creator` when it is non-nil: a sheet on iOS, a full-screen
+    /// Presents the creator profile for `credit` when it is non-nil: a sheet on iOS, a full-screen
     /// page on tvOS. The browsers and the detail view use this for their credit lines; an app that
     /// shows a credit of its own can too.
     func skinCreatorProfile(
-        _ creator: Binding<SkinCreator?>,
+        _ credit: Binding<SkinCreatorCredit?>,
         activationContextSystemIdentifier: DeltaSkinSystem? = nil,
         activationContextGameId: String? = nil
     ) -> some View {
         modifier(SkinCreatorProfilePresentation(
-            creator: creator,
+            credit: credit,
             activationContextSystemIdentifier: activationContextSystemIdentifier,
             activationContextGameId: activationContextGameId
         ))
@@ -612,23 +621,23 @@ public extension View {
 }
 
 private struct SkinCreatorProfilePresentation: ViewModifier {
-    @Binding var creator: SkinCreator?
+    @Binding var credit: SkinCreatorCredit?
     let activationContextSystemIdentifier: DeltaSkinSystem?
     let activationContextGameId: String?
 
     func body(content: Content) -> some View {
         #if os(tvOS)
-        content.fullScreenCover(item: $creator) { creator in
+        content.fullScreenCover(item: $credit) { credit in
             SkinCreatorProfileView(
-                creator: creator,
+                credit: credit,
                 activationContextSystemIdentifier: activationContextSystemIdentifier,
                 activationContextGameId: activationContextGameId
             )
         }
         #else
-        content.sheet(item: $creator) { creator in
+        content.sheet(item: $credit) { credit in
             SkinCreatorProfileView(
-                creator: creator,
+                credit: credit,
                 activationContextSystemIdentifier: activationContextSystemIdentifier,
                 activationContextGameId: activationContextGameId
             )

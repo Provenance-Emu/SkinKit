@@ -67,7 +67,7 @@ public struct SkinCatalogBrowserView: View {
     /// offline) a credit resolves to the minimal profile from the entry's own `author`/`creator`.
     @State private var creatorIndex: SkinCreatorIndex?
     /// The creator whose profile sheet is open.
-    @State private var profileCreator: SkinCreator?
+    @State private var profileCreator: SkinCreatorCredit?
 
     /// Observe the skin manager so we can show which catalog skins are already installed.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
@@ -371,7 +371,7 @@ public struct SkinCatalogBrowserView: View {
                         family: family,
                         glowIntensity: glowIntensity,
                         isInstalled: isInstalled,
-                        creators: (creatorIndex ?? .empty).creators(in: family),
+                        creators: (creatorIndex ?? .empty).credits(in: family),
                         onOpenCreator: { profileCreator = $0 },
                         destination: { catalogDetailDestination(for: entry, family: family) }
                     )
@@ -663,8 +663,8 @@ private struct CatalogSkinCard<Destination: View>: View {
     let glowIntensity: CGFloat
     var isInstalled: Bool = false
     /// The creators behind the family's members, in member order. Empty for an uncredited family.
-    var creators: [SkinCreator] = []
-    let onOpenCreator: (SkinCreator) -> Void
+    var creators: [SkinCreatorCredit] = []
+    let onOpenCreator: (SkinCreatorCredit) -> Void
     @ViewBuilder let destination: () -> Destination
 
     private var title: String { family?.name ?? entry.name }
@@ -784,11 +784,11 @@ private struct CatalogSkinCard<Destination: View>: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(credit)
-            .accessibilityHint("Opens \(creators[0].displayName)'s profile")
+            .accessibilityHint("Opens \(creators[0].creator.displayName)'s profile")
         default:
             Menu {
                 ForEach(creators) { creator in
-                    Button(creator.displayName) { onOpenCreator(creator) }
+                    Button(creator.creator.displayName) { onOpenCreator(creator) }
                 }
             } label: {
                 label

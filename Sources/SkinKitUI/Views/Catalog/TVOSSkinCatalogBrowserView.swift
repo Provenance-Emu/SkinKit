@@ -45,7 +45,7 @@ public struct TVOSSkinCatalogBrowserView: View {
     /// offline) it is the minimal profile from the entry's own `author`/`creator`.
     @State private var creatorIndex: SkinCreatorIndex?
     /// The creator whose profile page is open.
-    @State private var profileCreator: SkinCreator?
+    @State private var profileCreator: SkinCreatorCredit?
 
     // MARK: - Init
 
@@ -76,11 +76,11 @@ public struct TVOSSkinCatalogBrowserView: View {
     /// way in.
     @ViewBuilder
     private func creatorProfileMenu(for family: SkinFamily) -> some View {
-        ForEach((creatorIndex ?? SkinCreatorIndex.empty).creators(in: family)) { creator in
+        ForEach((creatorIndex ?? SkinCreatorIndex.empty).credits(in: family)) { credit in
             Button {
-                profileCreator = creator
+                profileCreator = credit
             } label: {
-                Label("View \(creator.displayName)'s profile", systemImage: "person.crop.circle")
+                Label("View \(credit.creator.displayName)'s profile", systemImage: "person.crop.circle")
             }
         }
     }
