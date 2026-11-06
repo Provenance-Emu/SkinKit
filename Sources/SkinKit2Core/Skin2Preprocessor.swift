@@ -183,9 +183,33 @@ public struct Skin2Preprocessor {
 
     // MARK: Expansion
 
+    /// Counts nodes as one expansion builds them. The part depth limit doesn't bound branching (a part with ten
+    /// children that each use a part with ten children…), so expansion stops at the node limit instead of
+    /// building the whole tree and counting afterwards.
+    final class NodeBudget {
+        let limit: Int
+        private(set) var count = 0
+        init(limit: Int = Skin2Document.maxNodes) { self.limit = limit }
+
+        func take(at pointer: String) throws {
+            count += 1
+            if count > limit {
+                throw Skin2Error(pointer, "the skin has more than \(limit) nodes after expanding parts; the limit is \(limit)")
+            }
+        }
+    }
+
     struct Scope {
         var params: [String: Skin2JSON]?
         var parts: [String] = []
+        /// Shared by every scope of one expansion.
+        var budget: NodeBudget
+        /// The outermost part instance being expanded, in the document's own tree: where a budget error points.
+        var site: String?
+
+        init(params: [String: Skin2JSON]? = nil, parts: [String] = [], budget: NodeBudget, site: String? = nil) {
+            self.params = params; self.parts = parts; self.budget = budget; self.site = site
+        }
     }
 
     /// The expanded document.
@@ -199,9 +223,10 @@ public struct Skin2Preprocessor {
         out.removeValue(forKey: "tokens")
         out.removeValue(forKey: "parts")
         guard let root = source["root"] else { throw Skin2Error("", "missing required key \"root\"") }
-        var expandedRoot = try expand(root, at: "/root", scope: Scope(), tokens: tokens)
+        let budget = NodeBudget()
+        var expandedRoot = try expand(root, at: "/root", scope: Scope(budget: budget), tokens: tokens, isNode: true)
         if let variants = source["variants"] {
-            let expandedVariants = try expand(variants, at: "/variants", scope: Scope(), tokens: tokens)
+            let expandedVariants = try expand(variants, at: "/variants", scope: Scope(budget: budget), tokens: tokens)
             out["variants"] = expandedVariants
             if let variant {
                 try Self.apply(variant: variant, from: expandedVariants, to: &expandedRoot)
@@ -213,7 +238,8 @@ public struct Skin2Preprocessor {
         return .object(out)
     }
 
-    func expand(_ value: Skin2JSON, at p: String, scope: Scope, tokens: [String: Skin2Token]) throws -> Skin2JSON {
+    /// `isNode`: `value` sits where a node goes (the root, a part's node, an element of `children`).
+    func expand(_ value: Skin2JSON, at p: String, scope: Scope, tokens: [String: Skin2Token], isNode: Bool = false) throws -> Skin2JSON {
         switch value {
         case .string(let s):
             guard s.range(of: Self.referencePattern, options: .regularExpression) != nil else { return value }
@@ -231,8 +257,18 @@ public struct Skin2Preprocessor {
             return .array(try a.enumerated().map { try expand($1, at: Skin2Pointer.appending(p, $0), scope: scope, tokens: tokens) })
         case .object(let o):
             if o["use"] != nil { return try instantiate(o, at: p, scope: scope, tokens: tokens) }
+            if isNode { try scope.budget.take(at: scope.site ?? p) }
             var out: [String: Skin2JSON] = [:]
-            for (k, v) in o { out[k] = try expand(v, at: Skin2Pointer.appending(p, k), scope: scope, tokens: tokens) }
+            // Children first, so a runaway tree stops before the rest of each node is expanded.
+            if case .array(let children)? = o["children"] {
+                let cp = Skin2Pointer.appending(p, "children")
+                out["children"] = .array(try children.enumerated().map {
+                    try expand($1, at: Skin2Pointer.appending(cp, $0), scope: scope, tokens: tokens, isNode: true)
+                })
+            }
+            for (k, v) in o where out[k] == nil {
+                out[k] = try expand(v, at: Skin2Pointer.appending(p, k), scope: scope, tokens: tokens)
+            }
             return .object(out)
         default:
             return value
@@ -251,6 +287,7 @@ public struct Skin2Preprocessor {
             throw Skin2Error(p + "/use", "parts nest at most \(Self.maxPartDepth) deep")
         }
         let part = try part(named: name, at: p + "/use")
+        let site = scope.site ?? p
 
         // Arguments in the caller's scope, then defaults (tokens only), then type checks.
         var args: [String: Skin2JSON] = [:]
@@ -264,7 +301,7 @@ public struct Skin2Preprocessor {
         for (key, spec) in part.params where args[key] == nil {
             let dp = Skin2Pointer.appending(part.pointer + "/params", key)
             guard let def = spec.defaultValue else { throw Skin2Error(p + "/with", "part \(name) needs \"\(key)\"") }
-            args[key] = try expand(def, at: dp + "/default", scope: Scope(), tokens: tokens)
+            args[key] = try expand(def, at: dp + "/default", scope: Scope(budget: scope.budget, site: site), tokens: tokens)
         }
         for (key, value) in args {
             if let message = Self.typeError(value, part.params[key]!.type) {
@@ -274,7 +311,8 @@ public struct Skin2Preprocessor {
             }
         }
 
-        var body = try expand(part.node, at: part.pointer + "/node", scope: Scope(params: args, parts: scope.parts + [name]), tokens: tokens)
+        var body = try expand(part.node, at: part.pointer + "/node",
+                              scope: Scope(params: args, parts: scope.parts + [name], budget: scope.budget, site: site), tokens: tokens, isNode: true)
         guard case .object(var node) = body else { throw Skin2Error(part.pointer + "/node", "a part's node is an object") }
 
         // Scope the part's inner ids to this instance.

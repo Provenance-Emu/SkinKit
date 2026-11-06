@@ -142,4 +142,31 @@ struct PreprocessorTests {
             #expect(e.pointer == "/variants/bad/patch/0/target")
         }
     }
+
+    @Test("Expansion stops at the node limit: branching parts can't build a huge tree")
+    func nodeBudget() throws {
+        // Eight levels of parts with ten children each: 10^8 leaves from about 2 KB of JSON.
+        var parts: [String] = []
+        for level in 0..<8 {
+            let child = level == 7 ? #"{ "type": "group" }"# : "{ \"use\": \"p\(level + 1)\" }"
+            parts.append("\"p\(level)\": { \"node\": { \"type\": \"group\", \"children\": [ \(Array(repeating: child, count: 10).joined(separator: ", ")) ] } }")
+        }
+        let extra = "\"parts\": { \(parts.joined(separator: ", ")) }"
+        let json = skinJSON(children: #"{ "type": "group" }, { "use": "p0" }"#, extra: extra)
+        #expect(json.utf8.count < 2500)
+        let clock = ContinuousClock()
+        var caught: Skin2Error?
+        let elapsed = clock.measure {
+            do { _ = try Skin2Document.inline(json) } catch { caught = error as? Skin2Error }
+        }
+        #expect(caught?.pointer == "/root/children/1", "the error points at the instance in the document")
+        #expect(caught?.message.contains("more than 2000 nodes") == true)
+        #expect(elapsed < .seconds(5))
+        // The validator reports it as an error with the same path.
+        let report = Skin2Validator.validate(data: Data(json.utf8))
+        #expect(report.errors.map(\.pointer) == ["/root/children/1"])
+        // Two levels (111 nodes) still expand.
+        let small = skinJSON(children: #"{ "use": "p6" }"#, extra: extra)
+        #expect(try Skin2Document.inline(small).root.nodeCount == 1 + 1 + 10 + 100)
+    }
 }

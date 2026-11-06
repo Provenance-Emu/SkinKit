@@ -137,8 +137,13 @@ struct ValidatorTests {
         let big = Skin2Validator.validate(data: Data(count: Skin2Document.maxFileBytes + 1))
         #expect(Self.has(big.errors, "the limit is"))
         #expect(Self.has(Skin2Validator.validate(data: Data("{".utf8)).errors, "not valid JSON"))
-        let many = (0..<2001).map { _ in #"{ "type": "group" }"# }.joined(separator: ",")
-        #expect(Self.has(Self.report(many).errors, at: "/root", "the limit is 2000"))
+        // The root plus 1,999 children is the limit; one more stops expansion at that child.
+        let atLimit = (0..<1999).map { _ in #"{ "type": "group" }"# }.joined(separator: ",")
+        #expect(!Self.has(Self.report(atLimit).errors, "the limit is 2000"))
+        let many = (0..<2000).map { _ in #"{ "type": "group" }"# }.joined(separator: ",")
+        let over = Self.report(many)
+        #expect(Self.has(over.errors, at: "/root/children/1999", "the limit is 2000"))
+        #expect(over.document == nil)
         let decode = Self.report(#"{ "type": "group", "opacity": 2 }"#)
         #expect(decode.document == nil)
         #expect(decode.errors.first?.pointer == "/root/children/0/opacity")
@@ -168,5 +173,41 @@ struct ValidatorTests {
         let badVariant = Self.report(Self.button("a", frame: "[0, 0, 60, 60]"),
                                      extra: ##""variants": { "v": { "patch": [ { "target": "#nope", "opacity": 1 } ] } }"##, requires: ##"["variants"]"##)
         #expect(Self.has(badVariant.errors, at: "/variants/v/patch/0/target", "variant v"))
+    }
+
+    @Test("A theme's string tokens reach ids and inputs: each themed tree gets the tree checks")
+    func themedTrees() {
+        let children = #"""
+            { "type": "control", "id": "a", "kind": "button", "input": "a", "layout": { "frame": [0, 0, 60, 60] } },
+            { "type": "control", "id": "$secondID", "kind": "button", "input": "$secondInput", "layout": { "frame": [100, 0, 60, 60] } }
+            """#
+        let extra = #"""
+            "tokens": { "secondID": { "string": "b" }, "secondInput": { "string": "b" } },
+            "themes": { "clash": { "secondID": { "string": "a" } }, "wrong": { "secondInput": { "string": "c" } }, "fine": { "secondInput": { "string": "y" } } }
+            """#
+        let r = Self.report(children, extra: extra, requires: #"["tokens", "themes"]"#)
+        #expect(Self.has(r.errors, at: "/root/children/1/id", "already used at /root/children/0 (theme clash)"))
+        #expect(Self.has(r.errors, at: "/root/children/1", "\"c\" is not an input of game type com.rileytestut.delta.game.snes (theme wrong)"))
+        #expect(!Self.has(r.issues, "theme fine"))
+        #expect(r.errors.count == 2, "\(r.errors.map(\.description))")
+        // A problem the base tree already has is reported once, not again per theme.
+        let base = Self.report(Self.button("c", frame: "[0, 0, 60, 60]"), extra: #""tokens": { "n": 1 }, "themes": { "t": { "n": 2 } }"#,
+                               requires: #"["tokens", "themes"]"#)
+        #expect(base.errors.map(\.pointer) == ["/root/children/0"])
+    }
+
+    @Test("Asset paths are checked in when and state patches too")
+    func patchedAssetPaths() {
+        let children = ##"""
+            { "type": "shape", "shape": { "kind": "rect" }, "layout": { "frame": [0, 0, 60, 60] },
+              "when": [ { "orientation": "landscape", "fills": [ { "type": "image", "src": "../secret.png" } ] } ] },
+            { "type": "control", "id": "b", "kind": "button", "input": "b", "layout": { "frame": [100, 0, 60, 60] },
+              "states": { "pressed": { "patch": [ { "target": "#body", "fills": [ { "type": "solid", "color": "#000000" }, { "type": "image", "src": "https://example.com/x.png" } ] } ] } },
+              "children": [ { "type": "shape", "id": "body", "shape": { "kind": "ellipse" }, "fills": [ { "type": "image", "src": "art/b.png" } ] } ] }
+            """##
+        let r = Self.report(children, requires: #"["shapes.parametric", "paint.image", "states"]"#)
+        #expect(Self.has(r.errors, at: "/root/children/0/when/0/fills/0/src", "without .."))
+        #expect(Self.has(r.errors, at: "/root/children/1/states/pressed/patch/0/fills/1/src", "no remote"))
+        #expect(r.errors.count == 2, "\(r.errors.map(\.description))")
     }
 }

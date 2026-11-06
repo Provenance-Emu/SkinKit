@@ -66,8 +66,18 @@ public enum Skin2Validator {
         }
 
         v.checkDocumentKeys(base, json: json, documents: docs.map(\.doc))
-        for (label, doc) in docs where label.isEmpty || label.hasPrefix("variant") {
-            v.checkTree(doc, label: label)
+        // Every tree: a theme's string tokens can reach ids, inputs and asset paths, a variant's patches anything.
+        // A themed or variant tree reports only what the base tree doesn't already.
+        v.checkTree(base, label: "")
+        let reported = Set(v.issues.map { [$0.pointer, $0.message] })
+        for (label, doc) in docs where !label.isEmpty {
+            var t = Run()
+            t.checkTree(doc, label: label)
+            let suffix = " (\(label))"
+            for issue in t.issues {
+                let plain = issue.message.hasSuffix(suffix) ? String(issue.message.dropLast(suffix.count)) : issue.message
+                if !reported.contains([issue.pointer, plain]) { v.add(issue) }
+            }
         }
         for (label, doc) in docs {
             v.checkLayout(doc, label: label)
@@ -177,8 +187,18 @@ public enum Skin2Validator {
             case .shape:
                 break
             }
-            for (i, paint) in n.fills.enumerated() {
-                if let src = paint.src, let problem = Self.assetPathProblem(src) { error("\(p)/fills/\(i)/src", problem + suffix) }
+            // Every paint the node can show: its own fills and those its `when` and state patches set.
+            var paints: [(String, [Skin2Paint])] = [(p, n.fills)]
+            for (i, w) in n.when.enumerated() { paints.append(("\(p)/when/\(i)", w.patch.fills ?? [])) }
+            for name in n.states.keys.sorted() {
+                for (j, patch) in (n.states[name]?.patch ?? []).enumerated() {
+                    paints.append((Skin2Pointer.appending(p + "/states", name) + "/patch/\(j)", patch.fills ?? []))
+                }
+            }
+            for (base, fills) in paints {
+                for (i, paint) in fills.enumerated() {
+                    if let src = paint.src, let problem = Self.assetPathProblem(src) { error("\(base)/fills/\(i)/src", problem + suffix) }
+                }
             }
             checkPaintLengths(n, at: p, suffix: suffix)
 
