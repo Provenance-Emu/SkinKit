@@ -278,10 +278,20 @@ public struct SkinCatalogDetailView: View {
                     .font(.system(size: 12))
                     .foregroundColor(.white.opacity(0.5))
                 creditView
+                followButton
             }
         }
         .padding(.horizontal, 20)
         .padding(.top, 20)
+    }
+
+    /// Follow / Following for the entry's creator (follow creators spec §3), on the credit row.
+    @ViewBuilder
+    private var followButton: some View {
+        if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
+            SkinCreatorFollowButton(slug: creator.slug, displayName: creator.displayName)
+                .padding(.leading, 6)
+        }
     }
 
     /// "by <author>". A button that opens the creator's profile when the entry resolves to a
