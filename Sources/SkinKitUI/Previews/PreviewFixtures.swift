@@ -112,6 +112,41 @@ enum PreviewFixtures {
         downloadURL: URL(string: "https://example.invalid/ds-dual.deltaskin")!,
         variants: [SkinCatalogVariant(kind: .alt, key: "alt", label: "Alternate layout")]
     )
+
+    // MARK: - Creator profile
+
+    /// A claimed profile with a bio, socials and links. The avatar URL is unreachable on purpose, so
+    /// the preview shows the initial fallback.
+    static let claimedCreator = SkinCreator(
+        slug: "alice",
+        displayName: "Alice",
+        aliases: ["Alice"],
+        isClaimed: true,
+        githubLogin: "alice",
+        bio: "Jaguar and DS skins with a soft hardware look. Requests on Discord.",
+        avatarURL: URL(string: "https://example.invalid/alice.png"),
+        links: [
+            SkinCreatorLink(label: "Website", url: URL(string: "https://example.invalid/alice")!),
+            SkinCreatorLink(label: "Commissions", url: URL(string: "https://example.invalid/alice/commissions")!),
+        ],
+        socials: [
+            SkinCreatorSocial(platform: .github, handle: "alice"),
+            SkinCreatorSocial(platform: .discord, handle: "alice#0001"),
+            SkinCreatorSocial(platform: .bluesky, handle: "alice.bsky.social"),
+            SkinCreatorSocial(platform: .kofi, handle: "alice"),
+        ].compactMap(\.self)
+    )
+
+    /// What the directory has for an author nobody claimed: a name and nothing else.
+    static let unclaimedCreator = SkinCreator.minimal(slug: "bob", displayName: "Bob")
+
+    /// The families a creator's profile lists: a mixed-author split family, a single-file skin with
+    /// packed variants, and a standalone skin.
+    static let creatorProfileFamilies: [SkinFamily] = [
+        catalogFamily,
+        SkinFamily.families(from: [catalogSingleFileEntry])[0],
+        SkinFamily.families(from: [catalogEntry])[0],
+    ]
 }
 #endif
 

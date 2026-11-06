@@ -41,6 +41,11 @@ public struct TVOSSkinCatalogBrowserView: View {
     @State private var glowIntensity: CGFloat = 0.5
     @State private var spinnerRotation: Double = 0
     @State private var searchTask: Task<Void, Never>?
+    /// The creator directory, once fetched, so the profile is the claimed one. Until then (or
+    /// offline) it is the minimal profile from the entry's own `author`/`creator`.
+    @State private var creatorIndex: SkinCreatorIndex?
+    /// The creator whose profile page is open.
+    @State private var profileCreator: SkinCreatorCredit?
 
     // MARK: - Init
 
@@ -64,6 +69,20 @@ public struct TVOSSkinCatalogBrowserView: View {
             activationContextSystemIdentifier: activationContextSystemIdentifier,
             activationContextGameId: activationContextGameId
         )
+    }
+
+    /// "View <creator>'s profile" for a long press on a card. A card is one focus target, so the
+    /// credit line on it cannot be a button of its own; the detail view's credit row is the other
+    /// way in.
+    @ViewBuilder
+    private func creatorProfileMenu(for family: SkinFamily) -> some View {
+        ForEach((creatorIndex ?? SkinCreatorIndex.empty).credits(in: family)) { credit in
+            Button {
+                profileCreator = credit
+            } label: {
+                Label("View \(credit.creator.displayName)'s profile", systemImage: "person.crop.circle")
+            }
+        }
     }
 
     // MARK: - Derived data
@@ -149,6 +168,14 @@ public struct TVOSSkinCatalogBrowserView: View {
                 glowIntensity = 0.8
             }
             Task { await loadCatalog() }
+        }
+        .skinCreatorProfile(
+            $profileCreator,
+            activationContextSystemIdentifier: activationContextSystemIdentifier,
+            activationContextGameId: activationContextGameId
+        )
+        .task {
+            creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
         .onChange(of: searchText) { _ in
             scheduleSearchUpdate()
@@ -248,6 +275,7 @@ public struct TVOSSkinCatalogBrowserView: View {
                             TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                         }
                         .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
+                        .contextMenu { creatorProfileMenu(for: family) }
                     }
                 }
                 .padding(.horizontal, 60)
@@ -273,6 +301,7 @@ public struct TVOSSkinCatalogBrowserView: View {
                                 TVOSSkinCard(family: family, glowIntensity: glowIntensity)
                             }
                             .skinKitFocusButtonStyle(focusScale: 1.08, cornerRadius: 16)
+                            .contextMenu { creatorProfileMenu(for: family) }
                         }
                     }
                     .padding(60)

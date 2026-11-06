@@ -99,6 +99,25 @@ import SkinCatalogKit
     }
 }
 
+#Preview("Creator profile: claimed") {
+    SkinCreatorProfileView(
+        creator: PreviewFixtures.claimedCreator,
+        families: PreviewFixtures.creatorProfileFamilies,
+        familyIndex: SkinFamilyIndex(entries: PreviewFixtures.creatorProfileFamilies.flatMap(\.members))
+    )
+}
+
+#Preview("Creator profile: unclaimed (minimal)") {
+    SkinCreatorProfileView(
+        creator: PreviewFixtures.unclaimedCreator,
+        families: [PreviewFixtures.creatorProfileFamilies[2]]
+    )
+}
+
+#Preview("Creator profile: no skins in this store") {
+    SkinCreatorProfileView(creator: PreviewFixtures.claimedCreator, families: [])
+}
+
 #Preview("Catalog single-file variants") {
     NavigationStack {
         SkinCatalogDetailView(entry: PreviewFixtures.catalogSingleFileEntry)

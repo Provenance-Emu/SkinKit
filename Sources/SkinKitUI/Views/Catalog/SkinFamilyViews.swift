@@ -137,7 +137,6 @@ struct SkinFamilyVariantsSection: View {
     let current: SkinCatalogEntry
     @ObservedObject var model: SkinFamilyInstallModel
     @ObservedObject private var skinManager = DeltaSkinManager.shared
-    @ObservedObject private var installTracker = SkinCatalogInstallTracker.shared
     let destination: (SkinCatalogEntry) -> AnyView
 
     var body: some View {
@@ -223,7 +222,7 @@ struct SkinFamilyVariantsSection: View {
             }
             .buttonStyle(.plain)
 
-            memberAction(member)
+            SkinFamilyMemberAction(family: family, member: member, model: model)
         }
         .padding(10)
         .background(
@@ -236,8 +235,51 @@ struct SkinFamilyVariantsSection: View {
         )
     }
 
-    @ViewBuilder
-    private func memberAction(_ member: SkinCatalogEntry) -> some View {
+    private func packedVariants(_ entry: SkinCatalogEntry) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if family.isMultiFile {
+                Text("\(family.label(for: entry)) also includes:")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            ForEach(entry.variants) { variant in
+                HStack(spacing: 8) {
+                    Image(systemName: Self.icon(for: variant.kind))
+                        .frame(width: 18)
+                        .foregroundStyle(SkinKitTheme.current.horizontalGradient)
+                    Text(variant.label)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.85))
+                }
+            }
+            Text("One download brings all of these.")
+                .font(.system(size: 11))
+                .foregroundColor(.white.opacity(0.45))
+        }
+    }
+
+    static func icon(for kind: SkinCatalogVariant.Kind) -> String {
+        switch kind {
+        case .alt: "rectangle.2.swap"
+        case .theme: "paintpalette"
+        case .game: "gamecontroller"
+        case .other: "square.stack"
+        }
+    }
+}
+
+// MARK: - Member install action
+
+/// The trailing control of a family member's row: install, progress, installed check or retry.
+/// Shared by the variants section and the creator profile sheet's single-file cards, so both
+/// install through the same ``SkinFamilyInstallModel``.
+struct SkinFamilyMemberAction: View {
+    let family: SkinFamily
+    let member: SkinCatalogEntry
+    @ObservedObject var model: SkinFamilyInstallModel
+    @ObservedObject private var installTracker = SkinCatalogInstallTracker.shared
+
+    var body: some View {
         switch model.state(for: member) {
         case .idle where installTracker.isInFlight(member.id):
             // Installing from the detail view's own button.
@@ -279,38 +321,6 @@ struct SkinFamilyVariantsSection: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Retry \(family.label(for: member))")
-        }
-    }
-
-    private func packedVariants(_ entry: SkinCatalogEntry) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if family.isMultiFile {
-                Text("\(family.label(for: entry)) also includes:")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.5))
-            }
-            ForEach(entry.variants) { variant in
-                HStack(spacing: 8) {
-                    Image(systemName: Self.icon(for: variant.kind))
-                        .frame(width: 18)
-                        .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                    Text(variant.label)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
-                }
-            }
-            Text("One download brings all of these.")
-                .font(.system(size: 11))
-                .foregroundColor(.white.opacity(0.45))
-        }
-    }
-
-    static func icon(for kind: SkinCatalogVariant.Kind) -> String {
-        switch kind {
-        case .alt: "rectangle.2.swap"
-        case .theme: "paintpalette"
-        case .game: "gamecontroller"
-        case .other: "square.stack"
         }
     }
 }
