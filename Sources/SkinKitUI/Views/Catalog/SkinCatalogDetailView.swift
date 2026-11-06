@@ -341,9 +341,9 @@ public struct SkinCatalogDetailView: View {
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
                 statCard(
-                    icon: "arrow.down.circle.fill",
+                    icon: "eye.fill",
                     value: entry.downloadCount.map { formatSkinDownloadCount($0) } ?? "—",
-                    label: "Downloads"
+                    label: "Views"
                 )
                 statCard(
                     icon: "star.fill",

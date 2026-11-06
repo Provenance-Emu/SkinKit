@@ -223,15 +223,19 @@ public struct TVOSSkinCatalogBrowserView: View {
                     followRow
                 }
 
-                // Popular section
+                // Most viewed section
                 if !popularFamilies.isEmpty {
-                    sectionRow(title: "POPULAR", families: popularFamilies)
+                    sectionRow(title: "MOST VIEWED", families: popularFamilies)
                 }
 
                 // New / Recently Updated section
                 if !newFamilies.isEmpty {
                     sectionRow(title: "NEW & UPDATED", families: newFamilies)
                 }
+
+                // Your skins: stats and badges, above the long by-system rows
+                SkinAchievementsCard()
+                    .padding(.horizontal, 60)
 
                 // By System sections
                 ForEach(familiesBySystem, id: \.system) { item in
@@ -652,7 +656,7 @@ private struct TVOSSkinCard: View {
                     if family.totalDownloadCount > 0 {
                         let count = family.totalDownloadCount
                         HStack(spacing: 4) {
-                            Image(systemName: "arrow.down.circle")
+                            Image(systemName: "eye")
                                 .font(.system(size: 14))
                             Text(formatSkinDownloadCount(count))
                                 .font(.system(size: 14, weight: .medium))
