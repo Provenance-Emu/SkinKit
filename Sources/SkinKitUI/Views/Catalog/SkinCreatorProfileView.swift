@@ -109,6 +109,7 @@ public struct SkinCreatorProfileView: View {
     @Environment(\.skinStorePolicy) private var policy
     @Environment(\.dismiss) private var dismiss
     @State private var safariLink: SkinCreatorSafariLink?
+    @ObservedObject private var followStore = CreatorFollowStore.shared
 
     /// Opens the profile for `credit`, loading the directory record and the skins.
     ///
@@ -249,10 +250,18 @@ public struct SkinCreatorProfileView: View {
 
     // MARK: - Slots for sibling features
 
-    /// Where the Follow button goes (follow creators design, SkinKit#64). Empty until that lands.
-    @ViewBuilder
+    /// The Follow toggle (follow creators spec §3), with the empty-state line until the user follows.
     private var followSlot: some View {
-        EmptyView()
+        HStack(spacing: 12) {
+            SkinCreatorFollowButton(slug: model.creator.slug, displayName: model.creator.displayName)
+            if !followStore.isFollowing(model.creator.slug) {
+                Text("Follow to see new skins here")
+                    .font(.system(size: 12))
+                    .foregroundColor(.white.opacity(0.5))
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, horizontalInset)
     }
 
     /// Where the creator's badges row goes (gamification design, SkinKit#69 and #70). `creator.badges`

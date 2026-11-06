@@ -71,6 +71,15 @@ public struct SkinCatalogBrowserView: View {
 
     /// Observe the skin manager so we can show which catalog skins are already installed.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
+    /// The creators the user follows, for the shelf and the Following chip.
+    @ObservedObject private var followStore = CreatorFollowStore.shared
+    /// The host store's policy, when it sets one (`.environment(\.skinStorePolicy, ...)`): the shelf
+    /// lists only what the policy can install.
+    @Environment(\.skinStorePolicy) private var storePolicy
+    /// "New from creators you follow", independent of the search and filters.
+    @State private var followFeed = SkinFollowFeed(items: [])
+    /// The Following filter chip: only skins by creators the user follows.
+    @State private var followingOnly = false
 
     // MARK: - Filter Options
 
@@ -200,6 +209,18 @@ public struct SkinCatalogBrowserView: View {
         .task {
             creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
+        .task(id: followShelfKey) {
+            await refreshFollowShelf()
+        }
+        .onChange(of: followingOnly) { _, _ in
+            scheduleFilterUpdate()
+        }
+        .onChange(of: followStore.followedSlugs) { _, _ in
+            if followingOnly { scheduleFilterUpdate() }
+        }
+        .onChange(of: creatorIndex?.creators.count) { _, _ in
+            if followingOnly { scheduleFilterUpdate() }
+        }
         .onChange(of: searchText) { _, _ in
             scheduleFilterUpdate()
         }
@@ -307,6 +328,13 @@ public struct SkinCatalogBrowserView: View {
                                 selectedDevice = option.value
                             }
                         }
+                        // Only creators the user follows. Shown once they follow someone (or while it is on).
+                        if followingOnly || !followStore.followedSlugs.isEmpty {
+                            filterChip("Following", isSelected: followingOnly) {
+                                followingOnly.toggle()
+                                if followingOnly { markShelfSeen() }
+                            }
+                        }
                     }
                     .padding(.horizontal)
                 }
@@ -359,6 +387,9 @@ public struct SkinCatalogBrowserView: View {
 
     private var catalogGridView: some View {
         ScrollView {
+            if showsFollowShelf {
+                followShelfView
+            }
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: horizontalSizeClass == .regular ? 200 : 160), spacing: 16)],
                 spacing: 20
@@ -380,6 +411,126 @@ public struct SkinCatalogBrowserView: View {
             .padding()
         }
         .scrollIndicators(.hidden)
+    }
+
+    // MARK: - Follow shelf
+
+    /// The shelf sits above the grid while nothing narrows it: no search, system or Following filter.
+    private var showsFollowShelf: Bool {
+        !followFeed.isEmpty && !followingOnly && selectedSystem == nil
+            && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var followShelfView: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text("NEW FROM CREATORS YOU FOLLOW")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .tracking(1)
+                    .foregroundStyle(SkinKitTheme.current.horizontalGradient)
+                if followFeed.unseenCount > 0 {
+                    Text("\(followFeed.unseenCount)")
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(SkinKitTheme.current.pink))
+                        .accessibilityLabel("\(followFeed.unseenCount) new")
+                }
+                Spacer()
+                Button("See all") {
+                    showingFilters = true
+                    followingOnly = true
+                    markShelfSeen()
+                }
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(.white.opacity(0.7))
+            }
+            .padding(.horizontal)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(alignment: .top, spacing: 12) {
+                    ForEach(followFeed.items.prefix(12)) { item in
+                        let family = item.family
+                        CatalogSkinCard(
+                            entry: family.primary,
+                            family: family,
+                            glowIntensity: glowIntensity,
+                            isInstalled: family.members.contains(where: isSkinInstalled),
+                            creators: (creatorIndex ?? .empty).credits(in: family),
+                            onOpenCreator: { profileCreator = $0 },
+                            destination: {
+                                // Opening a card from the shelf counts as having looked at it.
+                                catalogDetailDestination(for: family.primary, family: family)
+                                    .onAppear { markShelfSeen() }
+                            }
+                        )
+                        .frame(width: 170)
+                        .overlay(alignment: .topLeading) {
+                            if item.isUnseen {
+                                Circle()
+                                    .fill(SkinKitTheme.current.pink)
+                                    .frame(width: 10, height: 10)
+                                    .padding(8)
+                                    .accessibilityLabel("New")
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+        .padding(.top, 12)
+    }
+
+    /// Everything the shelf depends on, so `.task(id:)` rebuilds it when any of it changes.
+    private struct FollowShelfKey: Hashable {
+        var followed: Set<String>
+        var seenThrough: Date?
+        var installedCount: Int
+        var skinsAreLoaded: Bool
+        var creatorCount: Int
+        var isLoading: Bool
+        var isRefreshing: Bool
+        var policyShelves: [String]
+    }
+
+    private var followShelfKey: FollowShelfKey {
+        FollowShelfKey(
+            followed: followStore.followedSlugs,
+            seenThrough: followStore.shelfSeenThrough,
+            installedCount: skinManager.loadedSkins.count,
+            skinsAreLoaded: skinManager.skinsAreLoaded,
+            creatorCount: creatorIndex?.creators.count ?? -1,
+            isLoading: isLoading,
+            isRefreshing: isRefreshing,
+            policyShelves: storePolicy?.sections.map(\.id) ?? []
+        )
+    }
+
+    @MainActor
+    private func refreshFollowShelf() async {
+        guard !followStore.followedSlugs.isEmpty else {
+            followFeed = SkinFollowFeed(items: [])
+            return
+        }
+        // Until the local skins are scanned the shelf can't tell what is installed.
+        guard skinManager.skinsAreLoaded else { return }
+        guard let catalog = try? await SkinCatalogService.shared.catalog() else { return }
+        followFeed = SkinFollowShelf.feed(
+            catalog: catalog,
+            creators: creatorIndex,
+            store: followStore,
+            policy: storePolicy,
+            loadedSkins: skinManager.loadedSkins
+        )
+    }
+
+    /// The user opened the shelf: the badge clears. Not called on appear, or it could never show.
+    private func markShelfSeen() {
+        if let newest = followFeed.newestDate {
+            followStore.markShelfSeen(through: newest)
+        }
     }
 
     private var loadingView: some View {
@@ -480,11 +631,12 @@ public struct SkinCatalogBrowserView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
 
-            if !searchText.isEmpty || selectedSystem != nil || selectedDevice != nil {
+            if !searchText.isEmpty || selectedSystem != nil || selectedDevice != nil || followingOnly {
                 Button {
                     searchText = ""
                     selectedSystem = nil
                     selectedDevice = nil
+                    followingOnly = false
                     Task { await applyFilters() }
                 } label: {
                     Text("CLEAR FILTERS")
@@ -615,6 +767,14 @@ public struct SkinCatalogBrowserView: View {
                     }
                 }
                 results = sortLocally(results, by: sortOption)
+            }
+
+            // The Following chip keeps the creators the user follows, resolved the way the profile
+            // sheet and the shelf resolve them.
+            if followingOnly {
+                let following = await MainActor.run { followStore.followedSlugs }
+                let directory = await MainActor.run { creatorIndex ?? .empty }
+                results = results.filter { directory.slug(for: $0).map(following.contains) ?? false }
             }
 
             guard !Task.isCancelled else { return }
