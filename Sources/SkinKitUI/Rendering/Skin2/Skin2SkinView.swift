@@ -99,8 +99,8 @@ public struct Skin2SkinView: View {
                 s.scaleProgress = eased
                 out[id] = s
             } else if t < 1 {
-                // Released: keep the pressed scale easing back out, with the art already at rest.
-                out[id] = Skin2ControlState(pressed: true, scaleProgress: 1 - eased)
+                // Released: the pressed scale eases back out; the art is already at rest.
+                out[id] = Skin2ControlState(scaleProgress: 1 - eased, easingOut: true)
             }
         }
         return out

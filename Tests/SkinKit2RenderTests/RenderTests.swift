@@ -129,6 +129,10 @@ struct RenderTests {
         // Halfway through the 80 ms ease: scale 0.75.
         let easing = try render(doc, states: ["a": Skin2ControlState(pressed: true, scaleProgress: 0.5)])
         #expect(easing[15, 15].b == 255 && easing[10, 10].a == 0)
+        // Easing back out after release: only the scale remains; the art is at rest (red, no highlight).
+        let release = try render(doc, states: ["a": Skin2ControlState(scaleProgress: 0.5, easingOut: true)])
+        #expect(release[15, 15].r == 255 && release[10, 10].a == 0)
+        #expect(release[50, 50].r == 255 && release[50, 50].g == 0)
     }
 
     @Test("Repeat copies take per-copy state patches (#arrow[i])")

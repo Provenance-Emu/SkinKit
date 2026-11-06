@@ -152,6 +152,7 @@ private struct Painter {
                     patches[target.id, default: []].append((target.copy, p))
                 }
             }
+            if state.easingOut, !state.isPressed, let v = n.states["pressed"]?.scale { scale *= v }
             scale = 1 + (scale - 1) * min(max(state.scaleProgress, 0), 1)
             if scale != 1 {
                 ctx.translateBy(x: frame.midX, y: frame.midY)

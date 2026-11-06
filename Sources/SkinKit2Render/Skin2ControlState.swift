@@ -18,11 +18,14 @@ public struct Skin2ControlState: Equatable, Hashable, Sendable {
     /// How far the pressed `scale` has eased in, 0 to 1. Hosts animate it over 80 ms (6.4); everything else in a
     /// state switches at once.
     public var scaleProgress: Double
+    /// Just released: only the `pressed` scale is still drawn, at `scaleProgress` (easing from 1 to 0); patches,
+    /// opacity and highlight art are already at rest.
+    public var easingOut: Bool
 
     public init(pressed: Bool = false, selected: Bool = false, directions: Set<Skin2Direction> = [],
-                stick: Skin2StickValue = .zero, scaleProgress: Double = 1) {
+                stick: Skin2StickValue = .zero, scaleProgress: Double = 1, easingOut: Bool = false) {
         self.pressed = pressed; self.selected = selected; self.directions = directions; self.stick = stick
-        self.scaleProgress = scaleProgress
+        self.scaleProgress = scaleProgress; self.easingOut = easingOut
     }
 
     /// Pressed, or a d-pad with a direction held.
