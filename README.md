@@ -12,7 +12,7 @@ The Swift package arrives in stage 1. Work is tracked in this repo's issues.
 ## GitHub repair agent
 
 After `codex-repair.yml` is merged, maintainers with write access can comment
-`@codex fix <instructions>` on an open issue or PR, apply the `codex` label, or run
+`@codex fix <instructions>` on an open issue or PR, apply the `codex` label to an issue, or run
 **Codex repair** manually with an issue number. Failed pushes to `main` in **CI**
 also start a repair. The agent reads the issue and failed job logs, tests a scoped
 patch, and opens a draft PR. An existing repair PR suppresses duplicate runs.
