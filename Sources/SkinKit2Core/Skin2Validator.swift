@@ -33,7 +33,27 @@ public enum Skin2Validator {
     /// The size controls should reach on their short side at unit 1 (a warning).
     public static let minimumControlSide = 44.0
 
-    public static func validate(data: Data, library: [String: Skin2JSON] = [:]) -> Skin2ValidationReport {
+    /// Reads an image the skin names, by its `src` as written (a path under `assets/`), or nil when the bundle
+    /// doesn't have it.
+    public typealias AssetReader = (String) -> Data?
+
+    /// Longest side of a raster image, in pixels: the classic skin renderer's cap (section 11).
+    public static let maxImageSide = 4096
+    /// Decoded size of all the skin's raster images together, at 4 bytes per pixel (section 11).
+    public static let maxImageBytes = 64 * 1024 * 1024
+
+    /// A reader for the `assets/` folder of an unpacked bundle. Paths that leave the folder read as missing.
+    public static func assetReader(directory: URL) -> AssetReader {
+        let root = directory.standardizedFileURL
+        return { src in
+            let url = root.appendingPathComponent(src).standardizedFileURL
+            guard url.path.hasPrefix(root.path + "/") else { return nil }
+            return try? Data(contentsOf: url)
+        }
+    }
+
+    /// `assets`: pass a reader to check the image limits (section 11); without one the images aren't opened.
+    public static func validate(data: Data, library: [String: Skin2JSON] = [:], assets: AssetReader? = nil) -> Skin2ValidationReport {
         guard data.count <= Skin2Document.maxFileBytes else {
             return Skin2ValidationReport(issues: [Skin2Issue(.error, "", "skin.json is \(data.count) bytes; the limit is \(Skin2Document.maxFileBytes)")])
         }
@@ -41,10 +61,10 @@ public enum Skin2Validator {
         do { json = try Skin2JSON.parse(data) } catch {
             return Skin2ValidationReport(issues: [Skin2Issue(.error, "", "not valid JSON: \(error.localizedDescription)")])
         }
-        return validate(json: json, library: library)
+        return validate(json: json, library: library, assets: assets)
     }
 
-    public static func validate(json: Skin2JSON, library: [String: Skin2JSON] = [:]) -> Skin2ValidationReport {
+    public static func validate(json: Skin2JSON, library: [String: Skin2JSON] = [:], assets: AssetReader? = nil) -> Skin2ValidationReport {
         var v = Run()
         let base: Skin2Document
         do { base = try Skin2Document.load(json: json, library: library) } catch let e as Skin2Error {
@@ -78,15 +98,20 @@ public enum Skin2Validator {
                 let plain = issue.message.hasSuffix(suffix) ? String(issue.message.dropLast(suffix.count)) : issue.message
                 if !reported.contains([issue.pointer, plain]) { v.add(issue) }
             }
+            // A theme's string tokens and a variant's patches can name other images.
+            v.sources.append(contentsOf: t.sources)
         }
         for (label, doc) in docs {
             v.checkLayout(doc, label: label)
         }
+        if let assets { v.checkImages(assets) }
         return Skin2ValidationReport(issues: v.issues, document: base)
     }
 
     struct Run {
         var issues: [Skin2Issue] = []
+        /// Every image `src` the tree names (valid paths only) and where, for the image limits.
+        var sources: [(src: String, pointer: String)] = []
 
         mutating func add(_ i: Skin2Issue) { if !issues.contains(i) { issues.append(i) } }
         mutating func error(_ p: String, _ m: String) { add(Skin2Issue(.error, p, m)) }
@@ -178,7 +203,9 @@ public enum Skin2Validator {
                     warn(p + "/stack/distribute", "spaceBetween has no room to spread into unless the group has a frame or an inset\(suffix)")
                 }
             case .image:
-                if let src = n.src, let problem = Self.assetPathProblem(src) { error(p + "/src", problem + suffix) }
+                if let src = n.src {
+                    if let problem = Self.assetPathProblem(src) { error(p + "/src", problem + suffix) } else { sources.append((src, p + "/src")) }
+                }
             case .text:
                 if let family = n.font?.family, family.contains("/") || family.contains("..") || family.contains(":") {
                     error(p + "/font/family", "a font family names a file in assets/fonts/, not a path or URL\(suffix)")
@@ -197,7 +224,13 @@ public enum Skin2Validator {
             }
             for (base, fills) in paints {
                 for (i, paint) in fills.enumerated() {
-                    if let src = paint.src, let problem = Self.assetPathProblem(src) { error("\(base)/fills/\(i)/src", problem + suffix) }
+                    if let src = paint.src {
+                        if let problem = Self.assetPathProblem(src) {
+                            error("\(base)/fills/\(i)/src", problem + suffix)
+                        } else {
+                            sources.append((src, "\(base)/fills/\(i)/src"))
+                        }
+                    }
                 }
             }
             checkPaintLengths(n, at: p, suffix: suffix)
@@ -294,6 +327,22 @@ public enum Skin2Validator {
                 }
             }
 
+            // A thumbstick's click (6.1): a classic input of the game type, sent by the stick's press.
+            if let click = n.click {
+                if kind != .thumbstick {
+                    error(p + "/click", "click belongs to a thumbstick: a \(kind.rawValue) lists its inputs in input or inputs\(suffix)")
+                } else {
+                    if click.isEmpty { error(p + "/click", "click names an input, like l3 or r3\(suffix)") }
+                    if names.contains(click) { error(p + "/click", "click \"\(click)\" is also one of the stick's axes\(suffix)") }
+                    for gt in doc.gameTypes {
+                        guard let system = Skin2Inputs.inputs(forGameType: gt) else { continue }
+                        if !click.isEmpty, !system.contains(click), !Skin2Inputs.common.contains(click), !Skin2Inputs.actions.contains(click) {
+                            error(p + "/click", "\"\(click)\" is not an input of game type \(gt)\(suffix)")
+                        }
+                    }
+                }
+            }
+
             // States: names per kind, targets inside this control.
             var inner: [String: Skin2Node] = [:]
             for child in n.children { child.preorder { if let id = $0.id { inner[id] = $0 } } }
@@ -317,6 +366,42 @@ public enum Skin2Validator {
                 }
             }
         }
+
+        // MARK: Image limits (section 11)
+
+        /// Every raster image is at most `maxImageSide` px on a side and all together decode to at most
+        /// `maxImageBytes` (4 bytes a pixel, each file once however often it is used). PDF and SVG have no pixel
+        /// size and are not measured.
+        mutating func checkImages(_ read: AssetReader) {
+            var seen: Set<String> = []
+            var total = 0
+            var largest: (src: String, bytes: Int, width: Int, height: Int)?
+            for (src, pointer) in sources where seen.insert(src).inserted {
+                let name = "assets/" + src
+                guard let data = read(src) else {
+                    error(pointer, "\(name) is not in the bundle")
+                    continue
+                }
+                guard let size = Skin2ImageProbe.pixelSize(of: data) else {
+                    if !Skin2ImageProbe.isVector(path: src) {
+                        warn(pointer, "could not read the size of \(name); images are PNG, JPEG, GIF, PDF or SVG, and its size limits were not checked")
+                    }
+                    continue
+                }
+                if max(size.width, size.height) > maxImageSide {
+                    error(pointer, "\(name) is \(size.width) × \(size.height) px; the longest side may be \(maxImageSide) px")
+                }
+                let bytes = size.width * size.height * 4
+                total += bytes
+                if bytes > (largest?.bytes ?? 0) { largest = (src, bytes, size.width, size.height) }
+            }
+            if total > maxImageBytes, let largest {
+                error("", "the skin's images decode to \(Self.megabytes(total)) MB; the limit is \(maxImageBytes / 1_048_576) MB "
+                    + "(largest: assets/\(largest.src), \(largest.width) × \(largest.height) px, \(Self.megabytes(largest.bytes)) MB)")
+            }
+        }
+
+        static func megabytes(_ bytes: Int) -> String { String(format: "%.2f", Double(bytes) / 1_048_576) }
 
         // MARK: Layout on the bake trait sets
 

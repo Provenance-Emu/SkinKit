@@ -53,7 +53,8 @@ let package = Package(
             dependencies: ["SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
             resources: [.copy("Resources/retroarch-input-map.json")]
         ),
-        .target(name: "SkinKit2Core"),
+        // The standard parts library (parts.std@2.0) is JSON; the TypeScript port vendors the same files.
+        .target(name: "SkinKit2Core", resources: [.copy("Resources/parts")]),
         // The bundled default font (Outfit, OFL) is a resource; the TypeScript renderer ships the same files.
         .target(name: "SkinKit2Render", dependencies: ["SkinKit2Core"], resources: [.copy("Resources/Fonts")]),
 
