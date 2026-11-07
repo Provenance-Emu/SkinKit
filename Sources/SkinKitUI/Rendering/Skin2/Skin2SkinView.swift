@@ -183,6 +183,13 @@ final class Skin2TouchUIView: UIView {
         guard tester != tracker.tester else { return }
         // A relayout from rotation or a resize moves every control: let go of the fingers.
         if bounds.size != lastSize, !tracker.isEmpty { releaseAll(); return }
+        // A held control the new layout no longer has (hidden by a flag, a document change) would get no
+        // release event from the new tester: let go of every finger, which also releases the host's inputs.
+        if current.holdsControls(missingFrom: tester) {
+            releaseAll()
+            tracker.setTester(tester)
+            return
+        }
         tracker.setTester(tester)
         if !tracker.isEmpty { emit() }
     }

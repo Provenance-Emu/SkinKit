@@ -34,6 +34,14 @@ public func skin2InputEvents(from old: Skin2TouchSnapshot, to new: Skin2TouchSna
     return out.filter { !$0.state.isPressed } + out.filter { $0.state.isPressed }
 }
 
+extension Skin2TouchSnapshot {
+    /// `true` when a control this snapshot presses is not in `tester`. A layout change that hides a held control
+    /// (a flag, a new document) gives that control no release event, so the host lets go of everything instead.
+    public func holdsControls(missingFrom tester: Skin2HitTester) -> Bool {
+        states.contains { $0.value.isPressed && tester.control(id: $0.key) == nil }
+    }
+}
+
 /// Where a host sends input. Sticks are in screen axes (+y down); a sink for a y-up engine negates `y`.
 public protocol Skin2InputSink: AnyObject {
     func press(_ input: String)
@@ -47,9 +55,12 @@ public protocol Skin2InputSink: AnyObject {
 }
 
 /// Turns control events into press, release, stick, surface and action calls. It remembers what each control held,
-/// so a d-pad rolling up, then up + right, then right releases `up` and nothing else.
+/// so a d-pad rolling up, then up + right, then right releases `up` and nothing else. An input held by several
+/// controls at once (an `a` button and an `a`+`b` combo) is pressed by the first and released by the last.
 public struct Skin2InputBridge {
     private var held: [String: [String]] = [:]
+    /// How many held controls press each input.
+    private var owners: [String: Int] = [:]
     private var sticks: [String: (input: String, value: Skin2StickValue)] = [:]
     private var firedActions: Set<String> = []
 
@@ -75,16 +86,37 @@ public struct Skin2InputBridge {
         case .touchSurface:
             for name in c.inputs { sink.surface(name, point: event.state.isPressed ? event.surfacePoint : nil) }
         default:
-            let before = held[c.id] ?? [], after = event.inputs
-            for name in before where !after.contains(name) { sink.release(name) }
-            for name in after where !before.contains(name) { sink.press(name) }
+            let before = held[c.id] ?? [], after = Self.unique(event.inputs)
+            for name in before where !after.contains(name) { letGo(name, sink: sink) }
+            for name in after where !before.contains(name) { take(name, sink: sink) }
             held[c.id] = after.isEmpty ? nil : after
         }
     }
 
+    private mutating func take(_ name: String, sink: Skin2InputSink) {
+        owners[name, default: 0] += 1
+        if owners[name] == 1 { sink.press(name) }
+    }
+
+    private mutating func letGo(_ name: String, sink: Skin2InputSink) {
+        guard let count = owners[name] else { return }
+        if count > 1 {
+            owners[name] = count - 1
+        } else {
+            owners.removeValue(forKey: name)
+            sink.release(name)
+        }
+    }
+
+    private static func unique(_ names: [String]) -> [String] {
+        var seen: Set<String> = []
+        return names.filter { seen.insert($0).inserted }
+    }
+
     /// Lets go of everything (rotation, edit mode, the view going away).
     public mutating func releaseAll(sink: Skin2InputSink) {
-        for names in held.values { for name in names { sink.release(name) } }
+        for name in owners.keys.sorted() { sink.release(name) }
+        owners.removeAll()
         held.removeAll()
         for entry in sticks.values { sink.stick(entry.input, x: 0, y: 0) }
         sticks.removeAll()

@@ -40,7 +40,7 @@ struct Format2SwitchTests {
         #expect(doc.identifier == "f2")
     }
 
-    @Test("A classic skin, an unsupported feature, a missing source and a broken source all stay classic")
+    @Test("A classic skin, an unsupported feature, a missing, broken or invalid source all stay classic")
     func fallsBack() throws {
         #expect(DeltaSkinFormat2.document(for: try makeSkin(format2: nil)) == nil)
         #expect(DeltaSkinFormat2.document(for: try makeSkin(format2: #"{ "formatVersion": "2.0", "requires": ["quantum.foam"] }"#)) == nil)
@@ -51,6 +51,13 @@ struct Format2SwitchTests {
         // skin.json itself asks for more than info.json admitted.
         let greedy = Self.skinJSON.replacingOccurrences(of: "\"layout.anchors\"", with: "\"effects.ci\"")
         #expect(DeltaSkinFormat2.document(for: try makeSkin(format2: #"{ "requires": [] }"#, skin: greedy)) == nil)
+        // Decodes, but fails validation: two controls share an id.
+        let twin = #"{ "type": "control", "id": "a", "kind": "button", "input": "b", "layout": { "frame": [200, 600, 60, 60] } }"#
+        let duplicate = Self.skinJSON.replacingOccurrences(of: "] } ] } }", with: "] }, \(twin) ] } }")
+        #expect(duplicate != Self.skinJSON)
+        #expect((try? Skin2Document.load(data: Data(duplicate.utf8))) != nil, "the shape is fine")
+        #expect(!Skin2Validator.validate(data: Data(duplicate.utf8)).isValid, "the validator rejects it")
+        #expect(DeltaSkinFormat2.document(for: try makeSkin(format2: #"{ "requires": [] }"#, skin: duplicate)) == nil)
     }
 
     @Test("The sink negates stick y, maps touchScreen to the DS screen, and routes the alt toggle")

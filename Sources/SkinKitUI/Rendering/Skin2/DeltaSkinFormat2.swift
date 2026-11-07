@@ -32,6 +32,13 @@ enum DeltaSkinFormat2 {
     private static func load(_ skin: any DeltaSkinProtocol) -> Skin2Document? {
         guard let info = Skin2SourceInfo(infoJSON: skin.jsonRepresentation), info.isRenderable,
               let data = try? skin.loadAssetData(info.source) else { return nil }
+        // Decoding only checks shape. Duplicate control ids, overlapping hit frames or content beyond `requires`
+        // make a 2.0 source unsafe to drive input from, and the baked classic part is still a working skin.
+        let report = Skin2Validator.validate(data: data)
+        guard report.isValid else {
+            WLOG("DeltaSkinFormat2: \(skin.identifier) skin.json has \(report.errors.count) validation error(s); drawing the classic skin. First: \(report.errors.first.map { "\($0.pointer) \($0.message)" } ?? "")")
+            return nil
+        }
         // A classic theme id the 2.0 source doesn't define is not an error; draw the default.
         let loaded = (skin.selectedThemeId.flatMap { try? Skin2Document.load(data: data, theme: $0) })
             ?? (try? Skin2Document.load(data: data))

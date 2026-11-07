@@ -222,6 +222,67 @@ struct InputBridgeTests {
     }
 }
 
+@Suite("Input bridge: shared inputs and removed controls")
+struct InputBridgeSharingTests {
+    /// An `a` button and an `a` + `b` combo side by side.
+    private func comboPad() throws -> Skin2HitTester {
+        let doc = try renderSkin(##"""
+        { "type": "control", "id": "a", "kind": "button", "input": "a", "layout": { "frame": [0, 0, 50, 50] } },
+        { "type": "control", "id": "ab", "kind": "button", "inputs": ["a", "b"], "layout": { "frame": [50, 0, 50, 50] } }
+        """##)
+        return Skin2HitTester(Skin2Resolver.resolve(doc, in: Skin2Environment(size: Skin2Size(width: 100, height: 100))))
+    }
+
+    @Test("An input two held controls share is released only when the last one lets go")
+    func sharedInput() throws {
+        let tester = try comboPad()
+        var tracker = Skin2TouchTracker<Int>(tester: tester)
+        var bridge = Skin2InputBridge()
+        let sink = RecordingSink()
+        var old = Skin2TouchSnapshot.empty
+        func step(_ change: (inout Skin2TouchTracker<Int>) -> Void) {
+            change(&tracker)
+            let new = tracker.snapshot()
+            for e in skin2InputEvents(from: old, to: new, tester: tester) { bridge.handle(e, sink: sink) }
+            old = new
+        }
+        step { $0.began(1, x: 25, y: 25) }   // a
+        step { $0.began(2, x: 75, y: 25) }   // a + b: only b is new
+        step { $0.ended(1) }                 // the combo still holds a
+        #expect(sink.log == ["+a", "+b"])
+        step { $0.ended(2) }
+        #expect(sink.log == ["+a", "+b", "-a", "-b"])
+    }
+
+    @Test("releaseAll releases a shared input once")
+    func sharedReleaseAll() throws {
+        let tester = try comboPad()
+        var tracker = Skin2TouchTracker<Int>(tester: tester)
+        var bridge = Skin2InputBridge()
+        let sink = RecordingSink()
+        tracker.began(1, x: 25, y: 25)
+        tracker.began(2, x: 75, y: 25)
+        for e in skin2InputEvents(from: .empty, to: tracker.snapshot(), tester: tester) { bridge.handle(e, sink: sink) }
+        sink.log.removeAll()
+        bridge.releaseAll(sink: sink)
+        #expect(sink.log == ["-a", "-b"])
+    }
+
+    @Test("A snapshot knows when a held control is gone from a new layout")
+    func heldControlRemoved() throws {
+        let tester = try comboPad()
+        var tracker = Skin2TouchTracker<Int>(tester: tester)
+        tracker.began(1, x: 75, y: 25)
+        let held = tracker.snapshot()
+        let onlyA = Skin2HitTester(Skin2Resolver.resolve(
+            try renderSkin(##"{ "type": "control", "id": "a", "kind": "button", "input": "a", "layout": { "frame": [0, 0, 50, 50] } }"##),
+            in: Skin2Environment(size: Skin2Size(width: 100, height: 100))))
+        #expect(held.holdsControls(missingFrom: onlyA))
+        #expect(!held.holdsControls(missingFrom: tester))
+        #expect(!Skin2TouchSnapshot.empty.holdsControls(missingFrom: onlyA))
+    }
+}
+
 @Suite("Haptics")
 struct HapticTests {
     @Test("A press plays the control's haptic, the default otherwise; holding and releasing are silent")
