@@ -99,7 +99,8 @@ struct PreprocessorTests {
         (#"{ "use": "button", "id": "a", "with": { "input": "a", "extra": 1 } }"#, "no parameter"),
         (#"{ "use": "button", "with": { "input": "a" } }"#, "give this instance an id"),
         (#"{ "use": "button", "id": "a", "with": { "input": "a" }, "opacity": 0.5 }"#, "takes only"),
-        (#"{ "use": "std.faceButton", "id": "a" }"#, "standard parts library"),
+        (#"{ "use": "std.nope", "id": "a" }"#, "standard parts library"),
+        (#"{ "use": "std.faceButton", "id": "a" }"#, "needs \"input\""),
     ])
     func partErrors(_ child: String, _ message: String) {
         let e = Self.error(child)

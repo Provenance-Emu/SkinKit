@@ -13,12 +13,14 @@ struct FixtureTests {
     @Test("The fixture set is complete")
     func fixtureSet() {
         #expect(Skin2Paths.fixtureNames == ["dual-screen", "effects", "gamecube-icube", "layout", "paint", "paths", "shapes", "stacks-grids",
-                                            "states", "strokes", "text", "variants"])
+                                            "states", "std-keypad", "std-parts", "strokes", "text", "variants"])
     }
 
     @Test("Validates with no errors or warnings", arguments: Skin2Paths.fixtureNames)
     func validates(_ name: String) throws {
-        let report = Skin2Validator.validate(data: try Skin2Paths.skinData(name))
+        // With the fixture's assets/ folder, so the image limits (section 11) are checked too.
+        let assets = Skin2Validator.assetReader(directory: Skin2Paths.fixtures.appendingPathComponent("\(name)/assets", isDirectory: true))
+        let report = Skin2Validator.validate(data: try Skin2Paths.skinData(name), assets: assets)
         #expect(report.errors.isEmpty, "\(report.errors.map(\.description).joined(separator: "\n"))")
         #expect(report.warnings.isEmpty, "\(report.warnings.map(\.description).joined(separator: "\n"))")
     }
