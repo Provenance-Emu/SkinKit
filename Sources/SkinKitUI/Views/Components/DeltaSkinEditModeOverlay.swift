@@ -140,6 +140,19 @@ final class DeltaSkinEditSession: ObservableObject {
 
     // MARK: Commits (saved)
 
+    /// Saves a finished gesture: a drag, a pinch, or both at once. It applies the pinch, then the drag, from the
+    /// edit the gesture started at, the same order as ``liveEdit(for:baseFrame:translation:magnification:geometry:)``,
+    /// so what is saved is exactly what was shown. (Clamping makes the two orders differ near an edge.)
+    func commitGesture(
+        _ buttonId: String,
+        translation: CGSize,
+        magnification: Double,
+        baseFrame: CGRect,
+        geometry: DeltaSkinEditGeometry
+    ) {
+        save(liveEdit(for: buttonId, baseFrame: baseFrame, translation: translation, magnification: magnification, geometry: geometry), for: buttonId)
+    }
+
     /// Saves a finished drag.
     func commitDrag(_ buttonId: String, translation: CGSize, baseFrame: CGRect, geometry: DeltaSkinEditGeometry) {
         save(geometry.dragged(edit(for: buttonId), by: translation, baseFrame: baseFrame), for: buttonId)
@@ -303,6 +316,9 @@ private struct DeltaSkinLayoutEditCanvas: View {
     @StateObject private var session: DeltaSkinEditSession
     @State private var liveTranslations: [String: CGSize] = [:]
     @State private var liveMagnifications: [String: Double] = [:]
+    /// Buttons with a drag or pinch still in progress. A gesture is saved once neither is.
+    @State private var activeDrags: Set<String> = []
+    @State private var activePinches: Set<String> = []
     @State private var confirmsResetAll = false
 
     init(
@@ -373,26 +389,50 @@ private struct DeltaSkinLayoutEditCanvas: View {
                 .clipShape(Circle())
         }
         .frame(width: target.width, height: target.height)
-        .position(x: rect.midX, y: rect.midY)
+        // Gestures go on the target-sized view, before `position`: `position` takes the whole container, so
+        // gestures attached after it would make every handle's hit area the full canvas.
         .modifier(EditGestures(
             isSelected: isSelected,
             select: { session.select(button.id) },
-            dragChanged: { liveTranslations[button.id] = $0 },
-            dragEnded: { translation in
-                session.commitDrag(button.id, translation: translation, baseFrame: button.frame, geometry: geometry)
-                liveTranslations.removeValue(forKey: button.id)
-                onEditsChanged?()
+            dragChanged: {
+                activeDrags.insert(button.id)
+                liveTranslations[button.id] = $0
             },
-            pinchChanged: { liveMagnifications[button.id] = $0 },
+            dragEnded: { translation in
+                liveTranslations[button.id] = translation
+                activeDrags.remove(button.id)
+                commitIfIdle(button)
+            },
+            pinchChanged: {
+                activePinches.insert(button.id)
+                liveMagnifications[button.id] = $0
+            },
             pinchEnded: { magnification in
-                session.commitPinch(button.id, magnification: magnification, baseFrame: button.frame, geometry: geometry)
-                liveMagnifications.removeValue(forKey: button.id)
-                onEditsChanged?()
+                liveMagnifications[button.id] = magnification
+                activePinches.remove(button.id)
+                commitIfIdle(button)
             }
         ))
         .accessibilityLabel("\(button.id) button")
         .accessibilityHint("Drag to move, pinch to resize")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .position(x: rect.midX, y: rect.midY)
+    }
+
+    /// Saves a button's drag and pinch as one edit once both have ended, so a simultaneous drag and pinch
+    /// saves the combined result the preview showed, whichever gesture ends first.
+    private func commitIfIdle(_ button: DeltaSkinButton) {
+        guard !activeDrags.contains(button.id), !activePinches.contains(button.id) else { return }
+        session.commitGesture(
+            button.id,
+            translation: liveTranslations[button.id] ?? .zero,
+            magnification: liveMagnifications[button.id] ?? 1,
+            baseFrame: button.frame,
+            geometry: geometry
+        )
+        liveTranslations.removeValue(forKey: button.id)
+        liveMagnifications.removeValue(forKey: button.id)
+        onEditsChanged?()
     }
 
     // MARK: Bar
@@ -434,6 +474,8 @@ private struct DeltaSkinLayoutEditCanvas: View {
                 session.resetAllInTrait()
                 liveTranslations.removeAll()
                 liveMagnifications.removeAll()
+                activeDrags.removeAll()
+                activePinches.removeAll()
                 onEditsChanged?()
             }
             Button("Cancel", role: .cancel) {}

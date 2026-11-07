@@ -183,6 +183,23 @@ struct DeltaSkinEditSessionTests {
         #expect(!store.hasEdits(skinIdentifier: skin))
     }
 
+    @Test("A simultaneous drag and pinch saves exactly what the preview showed, even at an edge")
+    func combinedGestureMatchesPreview() {
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = DeltaSkinLayoutEdits(editsDirectory: directory)
+        let session = makeSession(store, trait: portrait)
+        // A button at the right edge of the 100-point-wide mapping area, grown 2x and dragged 20 mapping points left.
+        let edgeFrame = CGRect(x: 80, y: 80, width: 20, height: 20)
+        let drag = CGSize(width: -40, height: 0)  // screen points; the container is drawn at 2x
+        let preview = session.liveEdit(for: "a", baseFrame: edgeFrame, translation: drag, magnification: 2, geometry: geometry)
+        // Committing the two gestures one after the other, in either order, would clamp differently.
+        let dragThenPinch = geometry.pinched(geometry.dragged(.identity, by: drag, baseFrame: edgeFrame), by: 2, baseFrame: edgeFrame)
+        #expect(dragThenPinch != preview, "the fixture really is order-sensitive")
+        session.commitGesture("a", translation: drag, magnification: 2, baseFrame: edgeFrame, geometry: geometry)
+        #expect(session.edit(for: "a") == preview.normalized)
+        #expect(preview.applying(to: edgeFrame).maxX <= 100)
+    }
+
     @Test("A failed save is kept, logged and does not change what is shown")
     func saveFailure() throws {
         // The edits "folder" is a file, so creating the directory under it fails.
