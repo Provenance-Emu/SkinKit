@@ -555,6 +555,17 @@ public struct DeltaSkinView: View {
     }
 
     public var body: some View {
+        // Format 2.0 (section 1): a bundle with a supported `format2` entry draws its `skin.json`; edit mode and
+        // the classic per-button options don't apply to it yet. Everything else draws the classic part below.
+        if !isEditMode, let document = DeltaSkinFormat2.document(for: skin) {
+            DeltaSkinFormat2View(skin: skin, document: document, traits: traits, isInEmulator: isInEmulator,
+                                 inputHandler: inputHandler, onViewportFrameChange: onViewportFrameChange)
+        } else {
+            classicBody
+        }
+    }
+
+    private var classicBody: some View {
         GeometryReader { geometry in
             // Store the geometry size and safe area insets for coordinate transformations
             Color.clear.onAppear {

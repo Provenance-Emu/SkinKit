@@ -4,7 +4,7 @@ import SkinKit2Core
 /// Control hit testing (6.1, 6.3): frames only, never shapes. A touch lands on the last control in document order
 /// whose hit frame contains it; touch surfaces sit under every other control. Repeat copies are not hit-tested
 /// (controls can't repeat).
-public struct Skin2HitTester: Sendable {
+public struct Skin2HitTester: Equatable, Sendable {
     public struct Control: Equatable, Sendable {
         public var id: String
         public var kind: Skin2ControlKind
@@ -15,6 +15,8 @@ public struct Skin2HitTester: Sendable {
         /// Every input the control sends (`input` plus `inputs`; a d-pad's four directions).
         public var inputs: [String]
         public var input: Skin2Input?
+        /// The control's `haptic`, or nil for the default.
+        public var haptic: Skin2Haptic?
     }
 
     /// Controls in hit order: the first that contains a point wins.
@@ -23,7 +25,8 @@ public struct Skin2HitTester: Sendable {
     public init(_ resolution: Skin2Resolution) {
         let all = resolution.controls.compactMap { r -> Control? in
             guard let id = r.node.id, let kind = r.node.kind, let hit = r.hitFrame else { return nil }
-            return Control(id: id, kind: kind, frame: r.frame, hitFrame: hit, travel: r.travel, inputs: r.node.inputNames, input: r.node.input)
+            return Control(id: id, kind: kind, frame: r.frame, hitFrame: hit, travel: r.travel, inputs: r.node.inputNames, input: r.node.input,
+                               haptic: r.node.haptic)
         }
         let buttons: [Control] = all.filter { $0.kind != .touchSurface }.reversed()
         let surfaces: [Control] = all.filter { $0.kind == .touchSurface }.reversed()
@@ -40,16 +43,23 @@ public struct Skin2HitTester: Sendable {
         x >= r.minX && x < r.maxX && y >= r.minY && y < r.maxY
     }
 
+    /// How far a held d-pad direction reaches back into the dead zone before it lets go, as a fraction of the side.
+    /// A finger rolling between zones doesn't flicker at the boundary.
+    static let dpadHysteresis = 0.03
+
     /// The d-pad directions a point presses: the hit frame split 3 × 3 around a centre dead zone 20 % of the side
     /// (6.1). A corner zone presses two directions. Points outside the hit frame clamp to its edge, so a finger
-    /// that slides off keeps the direction it rolled to.
-    public static func dpadDirections(in hitFrame: Skin2Rect, x: Double, y: Double) -> Set<Skin2Direction> {
+    /// that slides off keeps the direction it rolled to. `previous` is what the same touch held a moment ago: a
+    /// direction it holds stays held until the finger is `dpadHysteresis` of the side back inside the dead zone.
+    public static func dpadDirections(in hitFrame: Skin2Rect, x: Double, y: Double,
+                                      previous: Set<Skin2Direction> = []) -> Set<Skin2Direction> {
         guard hitFrame.width > 0, hitFrame.height > 0 else { return [] }
         let dx = (x - hitFrame.midX) / hitFrame.width, dy = (y - hitFrame.midY) / hitFrame.height
         let dead = 0.1
+        func edge(_ held: Bool) -> Double { held ? dead - dpadHysteresis : dead }
         var out: Set<Skin2Direction> = []
-        if dx < -dead { out.insert(.left) } else if dx > dead { out.insert(.right) }
-        if dy < -dead { out.insert(.up) } else if dy > dead { out.insert(.down) }
+        if dx < -edge(previous.contains(.left)) { out.insert(.left) } else if dx > edge(previous.contains(.right)) { out.insert(.right) }
+        if dy < -edge(previous.contains(.up)) { out.insert(.up) } else if dy > edge(previous.contains(.down)) { out.insert(.down) }
         return out
     }
 
