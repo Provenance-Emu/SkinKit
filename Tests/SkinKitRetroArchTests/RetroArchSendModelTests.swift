@@ -169,6 +169,60 @@ struct RetroArchSendModelTests {
         model.cleanUp()
     }
 
+    @Test("cleanUp() during an export discards the folder when the export finishes")
+    @MainActor
+    func cleanUpWhileExporting() async throws {
+        let gate = DispatchSemaphore(value: 0)
+        let entered = Counter()
+        let made = FolderBox()
+        let report = try Self.report()
+        let model = RetroArchSendModel {
+            entered.increment()
+            gate.wait()
+            let folder = try Self.fakeFolder()
+            made.set(folder)
+            return RetroArchSendResult(folder: folder, report: report)
+        }
+        let run = Task { await model.start() }
+        while entered.value == 0 { try await Task.sleep(nanoseconds: 1_000_000) }
+        #expect(model.state == .exporting)
+        model.cleanUp()  // the sheet closes mid-export
+        #expect(model.state == .idle)
+        gate.signal()
+        await run.value
+        #expect(model.state == .idle, "a stale export never publishes")
+        let folder = try #require(made.value)
+        #expect(!FileManager.default.fileExists(atPath: folder.deletingLastPathComponent().path))
+    }
+
+    @Test("reset() then start() during an export: only the second run publishes")
+    @MainActor
+    func restartWhileExporting() async throws {
+        let gate = DispatchSemaphore(value: 0)
+        let entered = Counter()
+        let made = FolderBox()
+        let report = try Self.report()
+        let model = RetroArchSendModel {
+            entered.increment()
+            let run = entered.value  // the second run starts only once the first is parked
+            if run == 1 { gate.wait() }  // only the first run blocks
+            let folder = try Self.fakeFolder(name: "Run_\(run)")
+            if run == 1 { made.set(folder) }
+            return RetroArchSendResult(folder: folder, report: report)
+        }
+        let first = Task { await model.start() }
+        while entered.value == 0 { try await Task.sleep(nanoseconds: 1_000_000) }
+        model.reset()
+        await model.start()
+        let second = try #require(model.folder)
+        gate.signal()
+        await first.value
+        #expect(model.folder == second, "the stale first run does not replace the second")
+        let stale = try #require(made.value)
+        #expect(!FileManager.default.fileExists(atPath: stale.deletingLastPathComponent().path))
+        model.cleanUp()
+    }
+
     @Test("The share archive is <name>.zip holding <name>/<name>.cfg, next to the folder")
     @MainActor
     func shareArchive() async throws {
@@ -226,4 +280,11 @@ private final class Counter: @unchecked Sendable {
     private var count = 0
     func increment() { lock.lock(); count += 1; lock.unlock() }
     var value: Int { lock.lock(); defer { lock.unlock() }; return count }
+}
+
+private final class FolderBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var folder: URL?
+    func set(_ url: URL) { lock.lock(); folder = url; lock.unlock() }
+    var value: URL? { lock.lock(); defer { lock.unlock() }; return folder }
 }

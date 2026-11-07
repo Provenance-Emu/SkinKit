@@ -179,6 +179,8 @@ public final class RetroArchSendModel: ObservableObject {
 
     private let exporter: Exporter
     private var archiveURL: URL?
+    /// Bumped by every `start()` and `cleanUp()`. A run whose ticket is stale when it finishes deletes its own output.
+    private var generation = 0
 
     public init(exporter: @escaping Exporter) {
         self.exporter = exporter
@@ -188,12 +190,15 @@ public final class RetroArchSendModel: ObservableObject {
     public func start() async {
         guard state == .idle else { return }
         state = .exporting
+        generation &+= 1
+        let ticket = generation
         let exporter = self.exporter
         let outcome: Result<RetroArchSendResult, Error> = await Task.detached(priority: .userInitiated) {
             Result { try exporter() }
         }.value
-        guard state == .exporting else {
-            // reset() ran while the export was in flight: drop its folder.
+        guard ticket == generation, state == .exporting else {
+            // cleanUp() or reset() ran while the export was in flight: nothing will show
+            // or delete this folder, so drop it here.
             if case .success(let result) = outcome { Self.removeScratch(for: result.folder) }
             return
         }
@@ -225,7 +230,10 @@ public final class RetroArchSendModel: ObservableObject {
     }
 
     /// Deletes the temporary folder and archive. Call when the sheet closes.
+    /// An export still in flight is invalidated: it deletes its folder when it finishes instead of publishing it.
     public func cleanUp() {
+        generation &+= 1
+        if state == .exporting { state = .idle }
         if let folder { Self.removeScratch(for: folder) }
         archiveURL = nil
     }
