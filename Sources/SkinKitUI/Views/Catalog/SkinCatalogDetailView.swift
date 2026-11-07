@@ -2,6 +2,9 @@
 import SkinKitCore
 import SkinKitManager
 import SkinCatalogKit
+#if !os(tvOS)
+import SkinKitRetroArch
+#endif
 //
 //  SkinCatalogDetailView.swift
 //  PVUIBase
@@ -47,6 +50,12 @@ public struct SkinCatalogDetailView: View {
     @State private var creatorIndex: SkinCreatorIndex?
     /// The creator whose profile sheet is open.
     @State private var profileCreator: SkinCreatorCredit?
+    #if !os(tvOS)
+    /// The installed skin this entry matches, when RetroArch has a button mapping for its system.
+    @State private var retroArchCandidate: RetroArchSendItem?
+    /// The skin whose Send to RetroArch sheet is open.
+    @State private var retroArchPresented: RetroArchSendItem?
+    #endif
 
     /// Observe the skin manager so we can detect already-installed skins.
     @ObservedObject private var skinManager = DeltaSkinManager.shared
@@ -149,6 +158,19 @@ public struct SkinCatalogDetailView: View {
         .task {
             creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
+        #if !os(tvOS)
+        // Offer Send to RetroArch once the skin is installed (also right after the download finishes).
+        .task(id: downloadState) {
+            guard downloadState == .installed else { retroArchCandidate = nil; return }
+            let skins = (try? await skinManager.availableSkins()) ?? []
+            if let skin = matchingInstalledSkin(for: entry, in: skins), RetroArchSendAvailability.isSupported(skin: skin) {
+                retroArchCandidate = RetroArchSendItem(skin: skin)
+            } else {
+                retroArchCandidate = nil
+            }
+        }
+        .retroArchSendSheet(item: $retroArchPresented)
+        #endif
     }
 
     // MARK: - Family Section
@@ -439,6 +461,12 @@ public struct SkinCatalogDetailView: View {
                     if let system = resolvedSystemForActivation {
                         activateSkinButton(system: system)
                     }
+
+                    #if !os(tvOS)
+                    if let candidate = retroArchCandidate {
+                        RetroArchSendEntryButton { retroArchPresented = candidate }
+                    }
+                    #endif
                 }
 
             case .failed(let message):

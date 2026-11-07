@@ -6,8 +6,8 @@
 //   SkinKitCore     info.json model, decoding, layout/trait resolution (no UI)
 //   SkinCatalogKit  catalog models, catalog service, store sections/policy (no UI)
 //   SkinKitManager  import, install, storage, per-game/per-system selection (no UI)
-//   SkinKitUI       SwiftUI skin rendering and store/picker views (iOS/tvOS)
-//   SkinKitRetroArch  Delta skin to RetroArch overlay preset (.cfg) conversion; depends on SkinKitCore only (no UI)
+//   SkinKitRetroArch  Delta skin to RetroArch overlay preset (.cfg) conversion, and the logic behind "Send to RetroArch"; depends on SkinKitCore only (no UI)
+//   SkinKitUI       SwiftUI skin rendering and store/picker views (iOS/tvOS); uses SkinKitRetroArch for Send to RetroArch (iOS only)
 //   SkinKit2Core    skin format 2.0: model, preprocessor, validator, layout resolver, JSON Schema (no UI, no deps)
 //   SkinKit2Render  skin format 2.0: Core Graphics drawer and hit testing for resolved layouts (no UIKit/SwiftUI)
 //
@@ -47,7 +47,7 @@ let package = Package(
             name: "SkinKitManager",
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
         ),
-        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager", "SkinKit2Core", "SkinKit2Render"]),
+        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager", "SkinKitRetroArch", "SkinKit2Core", "SkinKit2Render"]),
         .target(
             name: "SkinKitRetroArch",
             dependencies: ["SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
