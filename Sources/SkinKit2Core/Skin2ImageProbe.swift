@@ -15,8 +15,13 @@ public enum Skin2ImageProbe {
         return ext == "pdf" || ext == "svg"
     }
 
+    /// Reads the size from the header. JPEG markers are walked over the whole of `data` (metadata segments
+    /// before the frame can run past any fixed prefix); nothing is copied.
     public static func pixelSize(of data: Data) -> PixelSize? {
-        let b = [UInt8](data.prefix(64 * 1024))
+        data.withUnsafeBytes { probe($0) }
+    }
+
+    private static func probe(_ b: UnsafeRawBufferPointer) -> PixelSize? {
         if b.count >= 24, b[0] == 0x89, b[1] == 0x50, b[2] == 0x4E, b[3] == 0x47,
            b[12] == 0x49, b[13] == 0x48, b[14] == 0x44, b[15] == 0x52 { // PNG: signature, then the IHDR chunk
             return sized(be32(b, 16), be32(b, 20))
@@ -30,12 +35,12 @@ public enum Skin2ImageProbe {
 
     private static func sized(_ w: Int, _ h: Int) -> PixelSize? { w > 0 && h > 0 ? PixelSize(width: w, height: h) : nil }
 
-    private static func be32(_ b: [UInt8], _ i: Int) -> Int {
+    private static func be32(_ b: UnsafeRawBufferPointer, _ i: Int) -> Int {
         Int(b[i]) << 24 | Int(b[i + 1]) << 16 | Int(b[i + 2]) << 8 | Int(b[i + 3])
     }
 
     /// Walks the marker segments to the first start-of-frame.
-    private static func jpeg(_ b: [UInt8]) -> PixelSize? {
+    private static func jpeg(_ b: UnsafeRawBufferPointer) -> PixelSize? {
         var i = 2
         while i + 9 < b.count {
             guard b[i] == 0xFF else { i += 1; continue }

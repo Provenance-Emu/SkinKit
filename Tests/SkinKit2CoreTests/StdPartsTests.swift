@@ -241,6 +241,29 @@ struct StdPartsTests {
         #expect(Skin2ImageProbe.pixelSize(of: Self.png(0, 5)) == nil)
     }
 
+    @Test("A header claiming a huge size is a side-limit error, not an overflow")
+    func hugeHeader() {
+        let huge = Self.png(Int(Int32.max), Int(Int32.max))
+        let report = Skin2Validator.validate(data: Self.imageSkin(["a.png"]), assets: Self.reader(["a.png": huge]))
+        #expect(ValidatorTests.has(report.errors, at: "/root/children/0/src", "the longest side may be 4096 px"))
+        #expect(!ValidatorTests.has(report.errors, at: "", "decode to"), "an oversized image is left out of the total")
+    }
+
+    @Test("A JPEG frame after more than 64 KiB of metadata is still found, in a slice too")
+    func jpegPastLongMetadata() {
+        var bytes: [UInt8] = [0xFF, 0xD8]
+        for _ in 0..<2 { // two maximum-length APP1 segments: the frame starts past 128 KiB
+            bytes += [0xFF, 0xE1, 0xFF, 0xFF] + [UInt8](repeating: 0, count: 0xFFFF - 2)
+        }
+        bytes += [0xFF, 0xC0, 0, 11, 8, 0x13, 0x88, 0x01, 0x40, 1, 1, 0x11, 0] // 320 × 5000
+        #expect(bytes.count > 128 * 1024)
+        #expect(Skin2ImageProbe.pixelSize(of: Data(bytes)) == .init(width: 320, height: 5000))
+        let sliced = (Data([0, 0, 0]) + Data(bytes))[3...] // nonzero startIndex
+        #expect(Skin2ImageProbe.pixelSize(of: sliced) == .init(width: 320, height: 5000))
+        let report = Skin2Validator.validate(data: Self.imageSkin(["a.jpg"]), assets: Self.reader(["a.jpg": Data(bytes)]))
+        #expect(ValidatorTests.has(report.errors, at: "/root/children/0/src", "assets/a.jpg is 320 × 5000 px"))
+    }
+
     @Test("The assets folder reader stays inside the folder")
     func directoryReader() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("skin2-assets-\(UUID().uuidString)", isDirectory: true)

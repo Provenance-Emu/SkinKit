@@ -390,7 +390,11 @@ public enum Skin2Validator {
                 }
                 if max(size.width, size.height) > maxImageSide {
                     error(pointer, "\(name) is \(size.width) × \(size.height) px; the longest side may be \(maxImageSide) px")
+                    // Already an error. Headers can claim sizes up to 2³¹ px a side, whose byte count overflows,
+                    // so an oversized image is left out of the total rather than multiplied.
+                    continue
                 }
+                // Both sides are at most maxImageSide here, so this is at most maxImageSide² × 4 bytes.
                 let bytes = size.width * size.height * 4
                 total += bytes
                 if bytes > (largest?.bytes ?? 0) { largest = (src, bytes, size.width, size.height) }
