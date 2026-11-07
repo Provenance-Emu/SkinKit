@@ -99,9 +99,16 @@ struct GameCubeFixtureTests {
         let left = try #require(r.node(id: "leftColumn")).exactFrame
         let right = try #require(r.node(id: "rightColumn")).exactFrame
         let s = env.safeArea
-        #expect(abs(left.minX - (max(s.left, 8 * u) + 8 * u)) < 0.001)
-        #expect(abs((env.size.width - right.maxX) - (max(s.right, 8 * u) + 8 * u)) < 0.001)
-        #expect(abs((env.size.height - left.maxY) - (max(s.bottom, 8 * u) + 6 * u)) < 0.001)
+        // Split up so Xcode 26's type checker finishes in time.
+        let leftInset: Double = left.minX
+        let rightInset: Double = env.size.width - right.maxX
+        let bottomInset: Double = env.size.height - left.maxY
+        let expectedLeft: Double = max(s.left, 8 * u) + 8 * u
+        let expectedRight: Double = max(s.right, 8 * u) + 8 * u
+        let expectedBottom: Double = max(s.bottom, 8 * u) + 6 * u
+        #expect(abs(leftInset - expectedLeft) < 0.001)
+        #expect(abs(rightInset - expectedRight) < 0.001)
+        #expect(abs(bottomInset - expectedBottom) < 0.001)
         if s.left == 0 { #expect(abs(left.minX - 16 * u) < 0.001) }
         if s.left == 59 { #expect(abs(left.minX - 67.0605) < 0.01) }
     }
