@@ -74,6 +74,17 @@ public final class DeltaSkinButtonOffsets: ObservableObject {
         return false
     }
 
+    /// Every non-zero offset stored for a skin, keyed by button id, whichever layout the button is in.
+    public func allOffsets(for skinIdentifier: String) -> [String: CGPoint] {
+        guard let dict = UserDefaults.standard.dictionary(forKey: userDefaultsKeyPrefix + skinIdentifier) else { return [:] }
+        var result: [String: CGPoint] = [:]
+        for buttonId in dict.keys {
+            let offset = offset(for: buttonId, skinIdentifier: skinIdentifier)
+            if offset != .zero { result[buttonId] = offset }
+        }
+        return result
+    }
+
     // MARK: - Private helpers
 
     private func cacheKey(buttonId: String, skinIdentifier: String) -> String {

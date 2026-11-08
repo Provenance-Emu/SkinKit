@@ -28,6 +28,14 @@ import SkinCatalogKit
 
 #Preview("Skin view: edit mode") {
     DeltaSkinView(skin: PreviewFixtures.skin("PocketTaco-SNES"), traits: PreviewFixtures.portrait,
+                  inputHandler: DeltaSkinPreviewInputHandler(), isEditMode: .constant(true),
+                  layoutEdits: DeltaSkinLayoutEdits(editsDirectory: FileManager.default.temporaryDirectory
+                      .appendingPathComponent("SkinKitPreviewEdits", isDirectory: true)))
+        .background(Color.black)
+}
+
+#Preview("Skin view: edit mode (drag-only offsets)") {
+    DeltaSkinView(skin: PreviewFixtures.skin("PocketTaco-SNES"), traits: PreviewFixtures.portrait,
                   inputHandler: DeltaSkinPreviewInputHandler(), isEditMode: .constant(true))
         .background(Color.black)
 }

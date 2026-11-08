@@ -207,4 +207,28 @@ struct DeltaSkinLayoutEditsTests {
         let fresh = DeltaSkinLayoutEdits(editsDirectory: directory)
         #expect(!fresh.hasEdits(skinIdentifier: skin))
     }
+
+    @Test("Every write posts didChangeNotification for its store and skin, after the write")
+    func changeNotification() throws {
+        defer { cleanup() }
+        final class Log: @unchecked Sendable { var entries: [String] = [] }
+        let log = Log()
+        let observer = NotificationCenter.default.addObserver(
+            forName: DeltaSkinLayoutEdits.didChangeNotification, object: store, queue: nil
+        ) { [store, skin, portrait] note in
+            let id = note.userInfo?[DeltaSkinLayoutEdits.skinIdentifierKey] as? String ?? "?"
+            // The store is unlocked and already holds the new value.
+            log.entries.append("\(id) \(store.hasEdits(skinIdentifier: skin, traitKey: portrait))")
+        }
+        defer { NotificationCenter.default.removeObserver(observer) }
+
+        try store.setEdit(DeltaSkinButtonEdit(dx: 3), forButton: "a", skinIdentifier: skin, traitKey: portrait)
+        try store.resetTrait(skinIdentifier: skin, traitKey: portrait)
+        try store.importLegacyOffsets(["a": CGPoint(x: 1, y: 0)], skinIdentifier: skin, traitKeys: [portrait])
+        try store.resetAll(skinIdentifier: skin)
+        // Another store's writes are not this store's notifications.
+        try DeltaSkinLayoutEdits(editsDirectory: directory).resetAll(skinIdentifier: skin)
+
+        #expect(log.entries == ["\(skin) true", "\(skin) false", "\(skin) true", "\(skin) false"])
+    }
 }

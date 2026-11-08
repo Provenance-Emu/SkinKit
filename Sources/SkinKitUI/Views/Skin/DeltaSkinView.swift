@@ -76,6 +76,14 @@ public struct DeltaSkinView: View {
     /// Per-button position offsets managed by the user via drag-to-reposition.
     @ObservedObject var buttonOffsets: DeltaSkinButtonOffsets
 
+    /// Per-orientation move and scale edits. When set, the skin draws and hit-tests buttons with these edits,
+    /// edit mode uses the move, pinch and reset overlay, and the old `buttonOffsets` are moved into it once.
+    /// When `nil`, the view keeps the old drag-only offsets.
+    let layoutEdits: DeltaSkinLayoutEdits?
+
+    /// Bumped when `layoutEdits` changes for this skin, so the view redraws with the new frames.
+    @State private var layoutEditsRevision = 0
+
     /// Observed so the view re-renders when turbo buttons change.
     @ObservedObject var turboManager: TurboManager
 
@@ -332,8 +340,10 @@ public struct DeltaSkinView: View {
         onViewportFrameChange: ((CGRect) -> Void)? = nil,
         isEditMode: Binding<Bool> = .constant(false),
         buttonOffsets: DeltaSkinButtonOffsets = .shared,
+        layoutEdits: DeltaSkinLayoutEdits? = nil,
         allowsEmptyAreaHold: Bool = false
     ) {
+        self.layoutEdits = layoutEdits
         self.allowsEmptyAreaHold = allowsEmptyAreaHold
         self.skin = skin
         self.traits = traits
@@ -567,6 +577,8 @@ public struct DeltaSkinView: View {
 
     private var classicBody: some View {
         GeometryReader { geometry in
+            // Read so a saved layout edit redraws the buttons.
+            let _ = layoutEditsRevision
             // Store the geometry size and safe area insets for coordinate transformations
             Color.clear.onAppear {
                 self.previewSize = geometry.size
@@ -796,7 +808,17 @@ public struct DeltaSkinView: View {
                         }
 
                         // Edit mode overlay — drag handles for repositioning buttons
-                        if isEditMode, let mappingSize = skin.mappingSize(for: traits) {
+                        if isEditMode, let mappingSize = skin.mappingSize(for: traits), let layoutEdits {
+                            DeltaSkinEditModeOverlay(
+                                skin: skin,
+                                traits: traits,
+                                mappingSize: mappingSize,
+                                containerSize: CGSize(width: layout.width, height: layout.height),
+                                layoutEdits: layoutEdits,
+                                onDone: { isEditMode = false }
+                            )
+                            .zIndex(10)
+                        } else if isEditMode, let mappingSize = skin.mappingSize(for: traits) {
                             DeltaSkinEditModeOverlay(
                                 skin: skin,
                                 traits: traits,
@@ -901,6 +923,21 @@ public struct DeltaSkinView: View {
             }
             .onDisappear {
                 invalidateSkinResources()
+            }
+            .task(id: skin.identifier) {
+                layoutEdits?.migrateLegacyOffsets(from: buttonOffsets, skin: skin)
+            }
+            .onReceive(
+                NotificationCenter.default.publisher(for: DeltaSkinLayoutEdits.didChangeNotification)
+                    .receive(on: DispatchQueue.main)
+            ) { note in
+                guard let layoutEdits, note.object as AnyObject? === layoutEdits,
+                      note.userInfo?[DeltaSkinLayoutEdits.skinIdentifierKey] as? String == skin.identifier
+                else { return }
+                layoutEditsRevision &+= 1
+                // Thumbstick frames are kept with their images; refresh them without reloading the skin artwork.
+                let loadID = resourceLoadID
+                Task { @MainActor in await loadThumbsticks(loadID: loadID) }
             }
             #if !os(tvOS)
             .overlay(
@@ -1796,9 +1833,16 @@ public struct DeltaSkinView: View {
         return (buttonScaleX, buttonScaleY, xOffset, yOffset)
     }
 
-    /// Returns a copy of the button with its frame shifted by any saved user offset.
-    /// When there is no saved offset the original button is returned unchanged.
+    /// Returns a copy of the button with the player's saved edit applied: the `layoutEdits` move and scale for
+    /// these traits when there is one, else the old trait-less offset (until it is migrated).
+    /// When there is neither, the original button is returned unchanged.
     private func buttonWithEffectiveFrame(_ button: DeltaSkinButton) -> DeltaSkinButton {
+        if let layoutEdits {
+            let edit = layoutEdits.edit(forButton: button.id, skinIdentifier: skin.identifier, traitKey: traits.layoutEditKey)
+            if !edit.isIdentity { return button.withFrame(edit.applying(to: button.frame)) }
+            // Falls through to the old offset only while it is not yet migrated (the migration write failed).
+            // The edit overlay reads the store alone, so its handles start from the skin's own frame then.
+        }
         let offset = buttonOffsets.offset(for: button.id, skinIdentifier: skin.identifier)
         guard offset != .zero else { return button }
         return button.withFrame(CGRect(
