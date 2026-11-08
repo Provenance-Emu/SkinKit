@@ -21,7 +21,7 @@ public enum SkinKit2Render {
         "paint.gradients", "paint.image",
         "effects.shadow", "effects.blur", "effects.blend",
         "materials", "text",
-        "parts", "tokens", "themes", "variants", "states",
+        "parts", "parts.std@2.0", "tokens", "themes", "variants", "states",
         "controls.dpad", "controls.thumbstick", "controls.touchSurface",
     ]
 

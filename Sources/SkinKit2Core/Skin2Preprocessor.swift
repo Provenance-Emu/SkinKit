@@ -38,7 +38,8 @@ public struct Skin2Preprocessor {
     public init(source: Skin2JSON, library: [String: Skin2JSON] = [:]) throws {
         guard case .object(let o) = source else { throw Skin2Error("", "a skin is a JSON object") }
         self.source = o
-        self.library = library
+        // The standard parts come first; a caller's library entries win (tests, tools).
+        self.library = Skin2StdParts.library.merging(library) { _, caller in caller }
     }
 
     // MARK: Tokens
@@ -141,8 +142,8 @@ public struct Skin2Preprocessor {
             raw = def; pointer = Skin2Pointer.appending("/parts", name)
         } else if let def = library[name] {
             raw = def; pointer = "library:\(name)"
-        } else if name.hasPrefix("std.") {
-            throw Skin2Error(p, "the standard parts library (\(name)) is not available in this reader")
+        } else if name.hasPrefix(Skin2StdParts.prefix) {
+            throw Skin2Error(p, "no part named \"\(name)\" in the standard parts library (\(Skin2StdParts.featureName)), which has \(Skin2StdParts.names.joined(separator: ", "))")
         } else {
             throw Skin2Error(p, "no part named \"\(name)\"")
         }
@@ -219,6 +220,10 @@ public struct Skin2Preprocessor {
             throw Skin2Error("/formatVersion", "this reader reads format 2.x, found \"\(v)\"")
         }
         let tokens = try tokens(theme: theme)
+        if let reserved = source["parts"]?.objectValue?.keys.sorted().first(where: { $0.hasPrefix(Skin2StdParts.prefix) }) {
+            throw Skin2Error(Skin2Pointer.appending("/parts", reserved),
+                             "part names starting with \"std.\" belong to the standard parts library; pick another name")
+        }
         var out = source
         out.removeValue(forKey: "tokens")
         out.removeValue(forKey: "parts")

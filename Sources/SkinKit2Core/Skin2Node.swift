@@ -121,6 +121,9 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     public var kind: Skin2ControlKind?
     public var input: Skin2Input?
     public var inputs: [String]?
+    /// Thumbsticks only: the classic input the stick's press sends (`l3`, `r3`; 6.1). Kept apart from `inputNames`:
+    /// the stick's axes are `input`, the click is a separate press the control host decides when to fire.
+    public var click: String?
     public var hit: Skin2Hit?
     public var travel: Skin2Length?
     public var states: [String: Skin2State]
@@ -143,7 +146,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     enum K: String, CodingKey {
         case type, id, layout, when, visible, opacity, effects, `repeat`, role, children, stack, grid
         case shape, fills, strokes, material, src, mode, tint, text, font, color, align, fit
-        case kind, input, inputs, hit, travel, states, haptic, aspect, filters, placement
+        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement
     }
 
     public init(from decoder: Decoder) throws {
@@ -193,6 +196,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
             kind = try c.decode(Skin2ControlKind.self, forKey: .kind)
             input = try c.decodeIfPresent(Skin2Input.self, forKey: .input)
             inputs = try c.decodeIfPresent([String].self, forKey: .inputs)
+            click = try c.decodeIfPresent(String.self, forKey: .click)
             hit = try c.decodeIfPresent(Skin2Hit.self, forKey: .hit)
             travel = try c.decodeIfPresent(Skin2Length.self, forKey: .travel)
             states = try c.decodeIfPresent([String: Skin2State].self, forKey: .states) ?? [:]

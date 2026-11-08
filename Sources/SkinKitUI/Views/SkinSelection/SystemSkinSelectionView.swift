@@ -2,6 +2,9 @@
 import SkinKitCore
 import SkinKitManager
 import SkinCatalogKit
+#if !os(tvOS)
+import SkinKitRetroArch
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 #if canImport(SafariServices)
@@ -41,6 +44,10 @@ public struct SystemSkinSelectionView: View {
     @State private var showingDocumentPicker = false
     @State private var showingImportError = false
     @State private var importError: Error?
+#if !os(tvOS)
+    /// The skin whose Send to RetroArch sheet is open.
+    @State private var retroArchPresented: RetroArchSendItem?
+#endif
 
     /// Variant-family membership per skin identifier, from the `.skinmeta` sidecars (standalone
     /// skins absent). Families show as one disclosure section; assignment stays per variant.
@@ -363,6 +370,7 @@ public struct SystemSkinSelectionView: View {
                     isPresented: $showingImportError) {
             Button("OK", role: .cancel) { }
         }
+        .retroArchSendSheet(item: $retroArchPresented)
         #endif
     }
 
@@ -882,6 +890,16 @@ public struct SystemSkinSelectionView: View {
             } label: {
                 Label("Use for Both Orientations", systemImage: "rectangle.portrait.and.landscape")
             }
+
+            #if !os(tvOS)
+            if RetroArchSendAvailability.isSupported(skin: skin) {
+                Button {
+                    retroArchPresented = RetroArchSendItem(skin: skin)
+                } label: {
+                    Label("Send to RetroArch", systemImage: "square.and.arrow.up.on.square")
+                }
+            }
+            #endif
 
             if skinManager.isDeletable(skin) {
                 Button(role: .destructive) {
