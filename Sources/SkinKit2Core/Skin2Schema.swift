@@ -216,6 +216,7 @@ public enum Skin2Schema {
         defs["controlNode"] = node(.control, [
             "kind": tok(enumOf(Skin2ControlKind.allCases.map(\.rawValue))), "input": ref("input"),
             "inputs": ["type": "array", "items": tok(["type": "string"])],
+            "click": tok(["type": "string"]),
             "hit": obj(["extend": ref("edgeLengths")]), "travel": ref("length"),
             "states": ["type": "object", "propertyNames": enumOf(Skin2State.names.sorted()), "additionalProperties": ref("state")],
             "haptic": obj(["style": tok(["type": "string"]), "intensity": ref("unit")]), "children": children,

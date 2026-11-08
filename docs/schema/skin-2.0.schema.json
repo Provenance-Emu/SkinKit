@@ -186,6 +186,16 @@
           },
           "type" : "array"
         },
+        "click" : {
+          "anyOf" : [
+            {
+              "type" : "string"
+            },
+            {
+              "$ref" : "#/$defs/reference"
+            }
+          ]
+        },
         "effects" : {
           "items" : {
             "$ref" : "#/$defs/effect"
