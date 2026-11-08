@@ -929,7 +929,7 @@ public struct DeltaSkinView: View {
             }
             .onReceive(
                 NotificationCenter.default.publisher(for: DeltaSkinLayoutEdits.didChangeNotification)
-                    .receive(on: RunLoop.main)
+                    .receive(on: DispatchQueue.main)
             ) { note in
                 guard let layoutEdits, note.object as AnyObject? === layoutEdits,
                       note.userInfo?[DeltaSkinLayoutEdits.skinIdentifierKey] as? String == skin.identifier
@@ -1840,6 +1840,8 @@ public struct DeltaSkinView: View {
         if let layoutEdits {
             let edit = layoutEdits.edit(forButton: button.id, skinIdentifier: skin.identifier, traitKey: traits.layoutEditKey)
             if !edit.isIdentity { return button.withFrame(edit.applying(to: button.frame)) }
+            // Falls through to the old offset only while it is not yet migrated (the migration write failed).
+            // The edit overlay reads the store alone, so its handles start from the skin's own frame then.
         }
         let offset = buttonOffsets.offset(for: button.id, skinIdentifier: skin.identifier)
         guard offset != .zero else { return button }

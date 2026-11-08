@@ -7,9 +7,14 @@ import SwiftUI
 /// The skin options sheet: theme, alternate layout, which per-game layout applies, edit controls, reset and
 /// export, for one skin in one game.
 ///
-/// Present it from a pause menu or an in-game menu, inside the host's own `NavigationStack` and sheet:
+/// Present it from a pause menu or an in-game menu, inside the host's own `NavigationStack` and sheet. Create one
+/// `DeltaSkinLayoutEdits` and pass it to both this sheet and the skin view, which then draws the edits, offers the
+/// move, pinch and reset overlay in edit mode, and redraws after a reset here:
 ///
 /// ```swift
+/// DeltaSkinView(skin: skin, traits: traits, inputHandler: handler,
+///               isEditMode: $isEditMode, layoutEdits: layoutEdits)
+///
 /// .sheet(isPresented: $showsSkinOptions) {
 ///     NavigationStack {
 ///         DeltaSkinOptionsView(
