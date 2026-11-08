@@ -102,6 +102,13 @@ public final class DeltaSkinLayoutEdits: @unchecked Sendable {
     /// The folder name under the skins directory.
     public static let directoryName = "edits"
 
+    /// Posted after every successful write, on the writing thread. `object` is the store and
+    /// `userInfo[skinIdentifierKey]` the skin whose edits changed.
+    public static let didChangeNotification = Notification.Name("DeltaSkinLayoutEditsDidChange")
+
+    /// The `userInfo` key of `didChangeNotification` holding the skin identifier.
+    public static let skinIdentifierKey = "skinIdentifier"
+
     private let lock = NSLock()
     private let fileManager = FileManager.default
     private let directoryProvider: () throws -> URL
@@ -278,6 +285,14 @@ public final class DeltaSkinLayoutEdits: @unchecked Sendable {
     }
 
     private func mutate(_ skinIdentifier: String, _ change: (inout DeltaSkinLayoutEditsDocument) -> Void) throws {
+        try write(skinIdentifier, change)
+        // Outside the lock, so an observer can read the store straight away.
+        NotificationCenter.default.post(
+            name: Self.didChangeNotification, object: self, userInfo: [Self.skinIdentifierKey: skinIdentifier]
+        )
+    }
+
+    private func write(_ skinIdentifier: String, _ change: (inout DeltaSkinLayoutEditsDocument) -> Void) throws {
         lock.lock()
         defer { lock.unlock() }
         var doc = loadLocked(skinIdentifier)
