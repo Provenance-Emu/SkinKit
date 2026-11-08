@@ -30,3 +30,36 @@ public enum SkinKit2Render {
         requires.allSatisfy { supportedFeatures.contains($0) }
     }
 }
+
+/// The `format2` key of a bundle's `info.json` (section 1): where the 2.0 source is and what it needs.
+public struct Skin2SourceInfo: Equatable, Sendable {
+    public var source: String
+    public var formatVersion: String
+    public var requires: [String]
+
+    public init(source: String, formatVersion: String, requires: [String]) {
+        self.source = source
+        self.formatVersion = formatVersion
+        self.requires = requires
+    }
+
+    /// Reads `info.json`'s `format2` entry; nil when absent or malformed. `source` defaults to `skin.json`.
+    public init?(infoJSON: [String: Any]) {
+        guard let f = infoJSON["format2"] as? [String: Any] else { return nil }
+        self.init(source: f["source"] as? String ?? "skin.json",
+                  formatVersion: f["formatVersion"] as? String ?? "2.0",
+                  requires: f["requires"] as? [String] ?? [])
+    }
+
+    /// True when this reader should draw `source` instead of the baked classic skin: any `2.x`, every `requires`
+    /// entry supported, and a source path that stays inside the bundle.
+    public var isRenderable: Bool {
+        Skin2SourceInfo.accepts(formatVersion: formatVersion) && SkinKit2Render.supports(requires)
+            && !source.isEmpty && !source.hasPrefix("/") && !source.split(separator: "/").contains("..")
+    }
+
+    /// A reader accepts any `2.x` (minor bumps add optional keys).
+    public static func accepts(formatVersion: String) -> Bool {
+        formatVersion.hasPrefix("2.") && formatVersion.count > 2
+    }
+}

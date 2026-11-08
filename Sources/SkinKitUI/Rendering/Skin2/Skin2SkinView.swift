@@ -1,24 +1,18 @@
 #if canImport(UIKit)
 import SkinKit2Core
 import SkinKit2Render
+import SkinKitCore
 import SwiftUI
-
-/// A control's input changed: the control, its new state, and the input names it now holds (a d-pad's held
-/// directions, every input of a pressed button, nothing on release).
-public struct Skin2InputEvent: Equatable, Sendable {
-    public var control: Skin2HitTester.Control
-    public var state: Skin2ControlState
-    public var inputs: [String]
-    /// Touch surfaces: the touch in 0–1 across the frame; nil on release.
-    public var surfacePoint: CGPoint?
-}
+import UIKit
 
 /// Draws a format 2.0 skin (`skin.json`) with the `SkinKit2Render` drawer in a SwiftUI `Canvas`, through
 /// `GraphicsContext.withCGContext`, so the app and the reference images share one drawer (9.1).
 ///
-/// The view resolves the document for its own size and safe area on every layout pass. On iOS one finger drives
-/// the controls (frame hit testing, d-pad zones, thumbstick travel; 6.1); pressed `scale`s ease in over 80 ms
-/// (6.4). tvOS draws the skin without touch handling. Multi-touch clusters and haptics are left to the host for now.
+/// The view resolves the document for its own size and safe area on every layout pass. On iOS a multi-touch
+/// overlay drives the controls (section 6): frame hit testing, d-pad zones, thumbstick travel, touch surfaces,
+/// one finger per stick, a finger dragging across buttons. Pressed `scale`s ease in over 80 ms (6.4) and each
+/// press plays the control's haptic. The rules live in `SkinKit2Render` (`Skin2TouchTracker`, `Skin2Haptics`,
+/// `Skin2ScaleEasing`) and are tested on the macOS host. tvOS draws the skin without touch handling.
 public struct Skin2SkinView: View {
     public let document: Skin2Document
     public var device: Skin2Device
@@ -27,22 +21,29 @@ public struct Skin2SkinView: View {
     public var edits: [String: Skin2Edit]
     public var screenPlaceholders: Bool
     public var showHitFrames: Bool
+    /// Controls drawn in their `selected` state (a toggled switch, a sticky button).
+    public var selected: Set<String>
+    /// Plays each control's `haptic` when it goes down. Off for previews.
+    public var playsHaptics: Bool
     /// Bytes of a file under the bundle's `assets/` (images, and fonts as `fonts/<family>`).
     public var asset: (@Sendable (String) -> Data?)?
     public var onInput: (Skin2InputEvent) -> Void
+    /// Called with the resolved layout whenever the size, safe area, device or flags change (and on appear).
+    public var onLayout: ((Skin2Resolution) -> Void)?
+    /// Called when the view lets go of everything (it disappears, or the canvas changes shape mid-touch).
+    public var onReleaseAll: () -> Void
 
-    @State private var states: [String: Skin2ControlState] = [:]
-    @State private var activeControl: String?
-    @State private var changedAt: [String: Date] = [:]
+    @State private var snapshot = Skin2TouchSnapshot.empty
+    @State private var easing = Skin2ScaleEasing()
     @State private var tick = 0
-
-    /// The pressed-scale ease (6.4).
-    static let scaleDuration: TimeInterval = 0.08
 
     public init(document: Skin2Document, device: Skin2Device = .iphone, displayType: Skin2DisplayType = .edgeToEdge,
                 flags: Set<String> = [], edits: [String: Skin2Edit] = [:], screenPlaceholders: Bool = false,
-                showHitFrames: Bool = false, asset: (@Sendable (String) -> Data?)? = nil,
-                onInput: @escaping (Skin2InputEvent) -> Void = { _ in }) {
+                showHitFrames: Bool = false, selected: Set<String> = [], playsHaptics: Bool = true,
+                asset: (@Sendable (String) -> Data?)? = nil,
+                onInput: @escaping (Skin2InputEvent) -> Void = { _ in },
+                onLayout: ((Skin2Resolution) -> Void)? = nil,
+                onReleaseAll: @escaping () -> Void = {}) {
         self.document = document
         self.device = device
         self.displayType = displayType
@@ -50,8 +51,20 @@ public struct Skin2SkinView: View {
         self.edits = edits
         self.screenPlaceholders = screenPlaceholders
         self.showHitFrames = showHitFrames
+        self.selected = selected
+        self.playsHaptics = playsHaptics
         self.asset = asset
         self.onInput = onInput
+        self.onLayout = onLayout
+        self.onReleaseAll = onReleaseAll
+    }
+
+    private struct LayoutKey: Hashable {
+        var size: CGSize
+        var insets: [CGFloat]
+        var device: Skin2Device
+        var displayType: Skin2DisplayType
+        var flags: Set<String>
     }
 
     public var body: some View {
@@ -59,20 +72,34 @@ public struct Skin2SkinView: View {
             let insets = outer.safeAreaInsets
             GeometryReader { inner in
                 let resolution = resolve(size: inner.size, insets: insets)
-                TimelineView(.animation(minimumInterval: nil, paused: !isEasing(Date()))) { timeline in
+                let tester = Skin2HitTester(resolution)
+                let key = LayoutKey(size: inner.size, insets: [insets.top, insets.leading, insets.bottom, insets.trailing],
+                                    device: device, displayType: displayType, flags: flags)
+                TimelineView(.animation(minimumInterval: nil, paused: !isEasing)) { timeline in
                     Canvas(rendersAsynchronously: false) { context, _ in
-                        let options = Skin2RenderOptions(states: easedStates(at: timeline.date), screenPlaceholders: screenPlaceholders,
+                        let options = Skin2RenderOptions(states: drawnStates(at: timeline.date.timeIntervalSinceReferenceDate),
+                                                         screenPlaceholders: screenPlaceholders,
                                                          showHitFrames: showHitFrames, asset: asset)
                         context.withCGContext { cg in Skin2Renderer.draw(resolution, in: cg, options: options) }
                     }
                 }
                 #if os(iOS)
-                .contentShape(Rectangle())
-                .gesture(touchGesture(Skin2HitTester(resolution)))
+                .overlay(
+                    Skin2TouchSurface(tester: tester, onSnapshot: { apply($0, tester: tester) }, onReleaseAll: onReleaseAll)
+                )
                 #endif
+                .task(id: key) { onLayout?(resolution) }
             }
             .ignoresSafeArea()
         }
+    }
+
+    static var now: TimeInterval { Date.timeIntervalSinceReferenceDate }
+
+    /// Reads `tick`, so the view re-evaluates once an ease is over and the timeline pauses.
+    private var isEasing: Bool {
+        _ = tick
+        return easing.isAnimating(at: Self.now)
     }
 
     func resolve(size: CGSize, insets: EdgeInsets) -> Skin2Resolution {
@@ -82,79 +109,146 @@ public struct Skin2SkinView: View {
         return Skin2Resolver.resolve(document, in: env, edits: edits)
     }
 
-    // MARK: State easing
+    // MARK: States
 
-    private func isEasing(_ now: Date) -> Bool {
-        _ = tick
-        return changedAt.values.contains { now.timeIntervalSince($0) < Self.scaleDuration }
+    /// The held states with the selected controls and the 80 ms scale ease folded in.
+    private func drawnStates(at now: TimeInterval) -> [String: Skin2ControlState] {
+        var states = snapshot.states
+        for id in selected { states[id, default: Skin2ControlState()].selected = true }
+        return easing.apply(to: states, at: now)
     }
-
-    /// Each control's state with `scaleProgress` eased toward it: in from rest while pressed, back out after release.
-    private func easedStates(at now: Date) -> [String: Skin2ControlState] {
-        var out = states
-        for (id, at) in changedAt {
-            let t = min(1, max(0, now.timeIntervalSince(at) / Self.scaleDuration))
-            let eased = 1 - (1 - t) * (1 - t)
-            if var s = out[id] {
-                s.scaleProgress = eased
-                out[id] = s
-            } else if t < 1 {
-                // Released: the pressed scale eases back out; the art is already at rest.
-                out[id] = Skin2ControlState(scaleProgress: 1 - eased, easingOut: true)
-            }
-        }
-        return out
-    }
-
-    private func set(_ id: String, _ state: Skin2ControlState?) {
-        let wasPressed = states[id]?.isPressed ?? false
-        states[id] = state
-        if (state?.isPressed ?? false) != wasPressed {
-            changedAt[id] = Date()
-            // Re-evaluate after the ease so the timeline pauses again.
-            DispatchQueue.main.asyncAfter(deadline: .now() + Self.scaleDuration + 0.02) { tick &+= 1 }
-        }
-    }
-
-    // MARK: Touches (iOS)
 
     #if os(iOS)
-    private func touchGesture(_ tester: Skin2HitTester) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .local)
-            .onChanged { value in
-                let p = value.location
-                // A drag keeps its control (rolling across a d-pad, a stick past its travel) until it lifts.
-                let control = activeControl.flatMap(tester.control(id:)) ?? tester.control(at: p.x, p.y)
-                guard let control else { return }
-                if activeControl != control.id {
-                    if let old = activeControl, let c = tester.control(id: old) { release(c) }
-                    activeControl = control.id
-                }
-                var state = Skin2HitTester.state(for: control, x: p.x, y: p.y)
-                state.selected = states[control.id]?.selected ?? false
-                guard Skin2HitTester.isNewSample(control, state: state, previous: states[control.id]) else { return }
-                if control.kind == .action, states[control.id]?.isPressed == true { return }
-                if state != states[control.id] { set(control.id, state) }
-                var point: CGPoint?
-                if control.kind == .touchSurface {
-                    let s = Skin2HitTester.surfacePoint(frame: control.frame, x: p.x, y: p.y)
-                    point = CGPoint(x: s.x, y: s.y)
-                }
-                onInput(Skin2InputEvent(control: control, state: state, inputs: Skin2HitTester.inputs(for: control, state: state), surfacePoint: point))
+    /// A touch change: ease the scales, play haptics, tell the host.
+    private func apply(_ new: Skin2TouchSnapshot, tester: Skin2HitTester) {
+        let old = snapshot
+        guard new != old else { return }
+        snapshot = new
+        let now = Self.now
+        easing.update(pressed: Set(new.states.filter { $0.value.isPressed }.keys), at: now)
+        // Re-evaluate once the ease is over so the timeline pauses again.
+        DispatchQueue.main.asyncAfter(deadline: .now() + Skin2ScaleEasing.duration + 0.02) {
+            easing.prune(at: Self.now)
+            tick &+= 1
+        }
+        if playsHaptics {
+            for h in Skin2Haptics.requests(from: old, to: new, tester: tester) {
+                DeltaSkinHaptic(style: h.style, intensity: h.intensity).play()
             }
-            .onEnded { _ in
-                if let id = activeControl, let c = tester.control(id: id) { release(c) }
-                activeControl = nil
-            }
-    }
-
-    private func release(_ c: Skin2HitTester.Control) {
-        let state = Skin2ControlState(selected: states[c.id]?.selected ?? false)
-        set(c.id, state.selected ? state : nil)
-        onInput(Skin2InputEvent(control: c, state: state, inputs: [], surfacePoint: nil))
+        }
+        for event in skin2InputEvents(from: old, to: new, tester: tester) { onInput(event) }
     }
     #endif
 }
+
+#if os(iOS)
+/// The multi-touch layer over the drawn skin: feeds every finger to a `Skin2TouchTracker` and reports the
+/// resulting snapshot. Touches that begin where no control is pass through to whatever is below.
+struct Skin2TouchSurface: UIViewRepresentable {
+    var tester: Skin2HitTester
+    var onSnapshot: (Skin2TouchSnapshot) -> Void
+    var onReleaseAll: () -> Void
+
+    func makeUIView(context: Context) -> Skin2TouchUIView {
+        let view = Skin2TouchUIView(tester: tester)
+        view.onSnapshot = onSnapshot
+        view.onReleaseAll = onReleaseAll
+        return view
+    }
+
+    func updateUIView(_ view: Skin2TouchUIView, context: Context) {
+        view.onSnapshot = onSnapshot
+        view.onReleaseAll = onReleaseAll
+        view.update(tester: tester)
+    }
+}
+
+final class Skin2TouchUIView: UIView {
+    var onSnapshot: (Skin2TouchSnapshot) -> Void = { _ in }
+    var onReleaseAll: () -> Void = {}
+    private var tracker: Skin2TouchTracker<ObjectIdentifier>
+    private var current = Skin2TouchSnapshot.empty
+    private var lastSize = CGSize.zero
+
+    init(tester: Skin2HitTester) {
+        tracker = Skin2TouchTracker(tester: tester)
+        super.init(frame: .zero)
+        isMultipleTouchEnabled = true
+        backgroundColor = .clear
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) is not supported") }
+
+    func update(tester: Skin2HitTester) {
+        guard tester != tracker.tester else { return }
+        // A relayout from rotation or a resize moves every control: let go of the fingers.
+        if bounds.size != lastSize, !tracker.isEmpty { releaseAll(); return }
+        // A held control the new layout no longer has (hidden by a flag, a document change) would get no
+        // release event from the new tester: let go of every finger, which also releases the host's inputs.
+        if current.holdsControls(missingFrom: tester) {
+            releaseAll()
+            tracker.setTester(tester)
+            return
+        }
+        tracker.setTester(tester)
+        if !tracker.isEmpty { emit() }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if bounds.size != lastSize {
+            lastSize = bounds.size
+            if !tracker.isEmpty { releaseAll() }
+        }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil, !tracker.isEmpty { releaseAll() }
+    }
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        super.point(inside: point, with: event) && tracker.tester.control(at: point.x, point.y) != nil
+    }
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        for t in touches {
+            let p = t.location(in: self)
+            tracker.began(ObjectIdentifier(t), x: p.x, y: p.y)
+        }
+        emit()
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        for t in touches {
+            let p = t.location(in: self)
+            tracker.moved(ObjectIdentifier(t), x: p.x, y: p.y)
+        }
+        emit()
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { end(touches) }
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { end(touches) }
+
+    private func end(_ touches: Set<UITouch>) {
+        for t in touches { tracker.ended(ObjectIdentifier(t)) }
+        emit()
+    }
+
+    private func releaseAll() {
+        tracker.removeAll()
+        emit()
+        onReleaseAll()
+    }
+
+    private func emit() {
+        let next = tracker.snapshot()
+        guard next != current else { return }
+        current = next
+        onSnapshot(next)
+    }
+}
+#endif
 
 #if DEBUG
 #Preview("Format 2.0 skin") {
