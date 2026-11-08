@@ -15,22 +15,17 @@ public extension DeltaSkinLayoutEdits {
     /// Moves a skin's offsets from the old trait-less `DeltaSkinButtonOffsets` store into this one, once.
     ///
     /// The old store applied one offset to every orientation, so each offset is copied to every trait the skin has
-    /// buttons for. A button that already has an edit on a trait keeps it. The old offsets are cleared afterwards,
-    /// so this does nothing on later calls; if the write fails they stay, and the next call tries again.
+    /// buttons for. Every stored offset moves, including one for a button that only a `gameOverrides` layout has
+    /// (such layouts share their base trait's key). A button that already has an edit on a trait keeps it.
+    /// The old offsets are cleared afterwards, so this does nothing on later calls; if the write fails they stay,
+    /// and the next call tries again.
     @MainActor
     func migrateLegacyOffsets(from offsets: DeltaSkinButtonOffsets, skin: any DeltaSkinRenderable) {
         guard offsets.hasCustomOffsets(for: skin.identifier) else { return }
-        var keys = Set<String>()
-        var moved: [String: CGPoint] = [:]
-        Self.forEachButtonTrait(of: skin) { traits, buttons in
-            keys.insert(traits.layoutEditKey)
-            for button in buttons {
-                let offset = offsets.offset(for: button.id, skinIdentifier: skin.identifier)
-                if offset != .zero { moved[button.id] = offset }
-            }
-        }
+        let keys = Self.traitKeys(for: skin)
+        let moved = offsets.allOffsets(for: skin.identifier)
         do {
-            try importLegacyOffsets(moved, skinIdentifier: skin.identifier, traitKeys: keys.sorted())
+            try importLegacyOffsets(moved, skinIdentifier: skin.identifier, traitKeys: keys)
             offsets.resetOffsets(for: skin.identifier)
             ILOG("DeltaSkinLayoutEdits: moved \(moved.count) legacy offset(s) for \(skin.identifier) to \(keys.count) trait(s)")
         } catch {

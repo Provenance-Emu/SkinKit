@@ -30,6 +30,10 @@ struct DeltaSkinLegacyOffsetMigrationTests {
         let edited = "iphone.edgeToEdge.landscape"
         try store.setEdit(DeltaSkinButtonEdit(dx: 1, dy: 1, scale: 1.5), forButton: button, skinIdentifier: skin.identifier, traitKey: edited)
         offsets.setOffset(CGPoint(x: 12, y: -4), for: button, skinIdentifier: skin.identifier)
+        // A button only a gameOverrides layout has: not in buttons(for:) without a game, but its offset still moves.
+        let overrideOnly = "override-only"
+        offsets.setOffset(CGPoint(x: 0, y: 7), for: overrideOnly, skinIdentifier: skin.identifier)
+        #expect(offsets.allOffsets(for: skin.identifier) == [button: CGPoint(x: 12, y: -4), overrideOnly: CGPoint(x: 0, y: 7)])
 
         store.migrateLegacyOffsets(from: offsets, skin: skin)
 
@@ -39,6 +43,9 @@ struct DeltaSkinLegacyOffsetMigrationTests {
             #expect(store.edit(forButton: button, skinIdentifier: skin.identifier, traitKey: key) == DeltaSkinButtonEdit(dx: 12, dy: -4))
         }
         #expect(store.edit(forButton: button, skinIdentifier: skin.identifier, traitKey: edited) == DeltaSkinButtonEdit(dx: 1, dy: 1, scale: 1.5))
+        for key in keys {
+            #expect(store.edit(forButton: overrideOnly, skinIdentifier: skin.identifier, traitKey: key) == DeltaSkinButtonEdit(dx: 0, dy: 7))
+        }
 
         // Once moved, a reset goes back to the skin's own frame, not to the old offset.
         try store.resetAll(skinIdentifier: skin.identifier)
