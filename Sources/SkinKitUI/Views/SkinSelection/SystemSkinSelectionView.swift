@@ -15,6 +15,9 @@ public struct SystemSkinSelectionView: View {
 
     let system: DeltaSkinSystem
     let game: DeltaSkinGameContext?
+    /// The host shows its built-in controls when no packaged skin is picked, so an empty
+    /// selection highlights the Built-in cell.
+    let emptySelectionMeansBuiltIn: Bool
 
     @ObservedObject private var skinManager = DeltaSkinManager.shared
     @ObservedObject private var selectionManager = DeltaSkinSelectionManager.shared
@@ -62,10 +65,12 @@ public struct SystemSkinSelectionView: View {
         system: DeltaSkinSystem,
         game: DeltaSkinGameContext? = nil,
         preferredScope: SkinScope? = nil,
-        preferredOrientation: SkinOrientation = .portrait
+        preferredOrientation: SkinOrientation = .portrait,
+        emptySelectionMeansBuiltIn: Bool = false
     ) {
         self.system = system
         self.game = game
+        self.emptySelectionMeansBuiltIn = emptySelectionMeansBuiltIn
         _selectedOrientation = State(initialValue: preferredOrientation)
         // System by default: a per-game or session pick is an explicit opt-in from the scope chips.
         _selectedScope = State(initialValue: preferredScope ?? .system)
@@ -806,9 +811,16 @@ public struct SystemSkinSelectionView: View {
         return raw
     }
 
-    /// Built-in cell is highlighted only when this scope stored the built-in token.
+    /// Built-in cell is highlighted when this scope stored the built-in token, or, for hosts whose
+    /// default is the built-in controls, when no packaged skin is picked anywhere in the chain.
     private var isBuiltInSelectionHighlighted: Bool {
-        scopedSelectionIdentifier == DeltaSkinSelectionManager.builtInSkinPreferenceToken
+        let gameKeys = game.map { [$0.id, $0.md5Hash, $0.crc] } ?? []
+        let effective = emptySelectionMeansBuiltIn
+            ? selectionManager.effectiveSkinIdentifier(for: system.id, gameIds: gameKeys, orientation: selectedOrientation)
+            : nil
+        return SkinPickerHighlight.isBuiltInHighlighted(scopedSelection: scopedSelectionIdentifier,
+                                                        effectiveSelection: effective,
+                                                        emptySelectionMeansBuiltIn: emptySelectionMeansBuiltIn)
     }
 
     private func skinCell(for skin: any DeltaSkinRenderable, title: String? = nil) -> some View {
