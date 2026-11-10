@@ -31,6 +31,7 @@ let package = Package(
         .library(name: "SkinKitRetroArch", targets: ["SkinKitRetroArch"]),
         .library(name: "SkinKit2Core", targets: ["SkinKit2Core"]),
         .library(name: "SkinKit2Render", targets: ["SkinKit2Render"]),
+        .library(name: "SkinKit2Bake", targets: ["SkinKit2Bake"]),
     ],
     dependencies: [
         // Same range Provenance resolves (via PVLookup).
@@ -89,6 +90,8 @@ let package = Package(
         .testTarget(name: "SkinKit2CoreTests", dependencies: ["SkinKit2Core"]),
         // Renders Tests/Format2Fixtures and compares with the committed expected/*@2x.png references.
         .testTarget(name: "SkinKit2RenderTests", dependencies: ["SkinKit2Render", "SkinKit2Core"]),
+        .target(name: "SkinKit2Bake", dependencies: ["SkinKit2Core", "SkinKitCore"]),
+        .testTarget(name: "SkinKit2BakeTests", dependencies: ["SkinKit2Bake", "SkinKit2Core", "SkinKitCore"]),
     ],
     swiftLanguageModes: [.v5]
 )
