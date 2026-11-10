@@ -434,7 +434,16 @@ The `skins` repo vendors the fixtures (git submodule or a copy checked by a hash
 - Shadows: Gaussian σ = radius/2; the TS renderer blurs an offscreen canvas with a separable kernel rather than `shadowBlur`, so the kernel is known.
 - Squircles: the TS renderer uses the same cubic approximation as the Swift one (both custom; no `.continuous` in SwiftUI), so the fixture matches exactly.
 
-CI: SkinKit's `xcrun swift test` runs the Swift side on macOS; the `skins` repo's `npm test` runs the TS side against the vendored fixtures; a SkinKit workflow re-runs the TS tests against the SkinKit copy whenever fixtures change.
+SkinKit CI runs the Swift fixture tests on macOS and iOS. The Format 2 renderer parity workflow runs the TypeScript tests from `skins` against the proposed SkinKit fixtures. On a pixel comparison failure, download the renderer diff artifact from the failed CI run to inspect the actual and diff PNGs.
+
+To update the references, run these commands in SkinKit:
+
+```sh
+SKIN2_RECORD=1 xcrun swift test --filter SkinKit2CoreTests
+SKIN2_RECORD=1 xcrun swift test --filter SkinKit2RenderTests
+```
+
+The recording runs deliberately report failures when they rewrite reference files. Review the changes and rerun the tests with recording disabled. Once the fixture change merges, run `node tests/skin2/vendor-fixtures.mjs <SkinKit>/Tests/Format2Fixtures <SkinKit-commit>` from the `skins` checkout and open a PR there to update the vendored copy.
 
 ### 10. Migrating the three apps' generated skins
 

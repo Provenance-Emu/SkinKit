@@ -35,6 +35,15 @@ jobs:
       - uses: actions/checkout@v4
       - run: swift --version
       - run: swift test
+        env:
+          SKIN2_FAILURES: ${{ runner.temp }}/skin2-render-failures
+      - name: Upload Swift renderer diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: skin2-swift-render-diffs
+          path: ${{ runner.temp }}/skin2-render-failures/
+          if-no-files-found: ignore
 
   simulator:
     name: test (${{ matrix.platform }})
