@@ -2,7 +2,7 @@
 
 Controller skins for Provenance, iFly, iCube and emuskins.com. Work is tracked as GitHub issues in this repo, grouped into [milestones](https://github.com/Provenance-Emu/SkinKit/milestones): stages 1–4, then one per theme (Creator features, Editing tools, RetroArch iOS, iCube NES/SNES), and Later for real deferrals. Every issue says what it touches, what it depends on, and what done looks like.
 
-Stages 1–3 are done (stage 3 shipped on the website by 2026-11-04). SkinKit 0.4.0 (2026-11-06) has the first format 2.0 modules and the creator features; app adoption of both is in progress.
+Stages 1–3 are done (stage 3 shipped on the website by 2026-11-04). SkinKit 0.4.0 has the first format 2.0 modules and the creator features; app adoption of both is in progress.
 
 ## Stage 1: SkinKit shared module (done, 0.1.1)
 
@@ -80,4 +80,5 @@ Done: the NES and Super NES shelves (0.3.0), the NES fixture, and `sfc` read as 
 - 2026-10-22: catalog link-health check, zip-pack repacking, and missing-artwork hiding (skins#17, skins#20).
 - 2026-11-03: SkinKit 0.2.0 tagged. Stage 1 (#1–#8) and stage 2 (#9–#21, #34) closed: `gameOverrides` matched by md5 → crc → filename → title, `sanitizeJSON` keeps `//` in strings, Ignited `altRepresentations` with the toggle hotspot, a reachable theme picker, variant families in all three stores and pickers (SkinKit #48–#51; Provenance #3788–#3791; iFly #910; iCube #78–#80). Catalog: `variantLabel`, `variants.json`, sample variant skins, `mature` tag hidden by default, `catalog.min.json` browse index, polite deltastyles crawling, repo opt-out, the move to emuskins.com (skins #21–#33).
 - 2026-11-04: SkinKit 0.3.0 tagged: NES and Super NES shelves for iCube, `SkinKitRetroArch`, the creator directory, layout edits, theme item art and the `addedAt` Recent sort (SkinKit #101–#110). Stage 3 closed (skins #37–#39, #44). iCube pins 0.3.0.
-- 2026-11-06: SkinKit 0.4.0 tagged: `SkinKit2Core` and `SkinKit2Render`, creator follows, profiles, badges and achievements, `sfc` as Super NES, release XCFrameworks (SkinKit #112–#122). Website and catalog: creator profiles, the claim bot, badges, disputes, the editor page and merged variant families (skins #45–#55). Provenance and iFly move to 0.3.0 (Provenance #3804, iFly #915).
+- 2026-11-06: merged for SkinKit 0.4.0 (not tagged until the release below): `SkinKit2Core` and `SkinKit2Render`, creator follows, profiles, badges and achievements, `sfc` as Super NES, release XCFrameworks (SkinKit #112–#122). Website and catalog: creator profiles, the claim bot, badges, disputes, the editor page and merged variant families (skins #45–#55). Provenance and iFly move to 0.3.0 (Provenance #3804, iFly #915).
+- SkinKit 0.4.0 tagged: everything merged since 0.3.1, plus one chrome for the picker, Manage Skins, overview and catalog (#142), skin system lookups indexed once instead of per catalog entry, the Manage Skins grid grouped once per update, and skin previews that draw button art and thumbstick caps.
