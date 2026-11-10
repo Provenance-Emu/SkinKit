@@ -166,7 +166,10 @@ struct SkinKitCardModifier: ViewModifier {
 struct SkinKitBackdropColorSchemeModifier: ViewModifier {
     func body(content: Content) -> some View {
         if let scheme = SkinKitTheme.current.backgroundColorScheme {
-            content.environment(\.colorScheme, scheme)
+            // The environment reaches the content; the navigation bar title needs its own scheme.
+            content
+                .environment(\.colorScheme, scheme)
+                .toolbarColorScheme(scheme, for: .navigationBar)
         } else {
             content
         }
