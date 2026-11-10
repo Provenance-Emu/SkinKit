@@ -45,6 +45,8 @@ public struct SystemSkinSelectionView: View {
     @State private var errorMessage: String?
     @State private var loadingProgress: Double = 0
     @State private var showingDocumentPicker = false
+    /// The skin whose full preview is pushed, from the toolbar or a cell's context menu.
+    @State private var previewTarget: SkinPreviewTarget?
     @State private var showingImportError = false
     @State private var importError: Error?
 #if !os(tvOS)
@@ -320,6 +322,17 @@ public struct SystemSkinSelectionView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
+                            if let id = currentSelectedSkinId {
+                                previewTarget = SkinPreviewTarget(id: id)
+                            }
+                        } label: {
+                            Image(systemName: "eye")
+                        }
+                        .disabled(!availableSkins.contains { $0.identifier == currentSelectedSkinId })
+                        .accessibilityLabel("Preview selected skin")
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
                             loadSkins()
                         } label: {
                             Image(systemName: "arrow.clockwise")
@@ -327,8 +340,16 @@ public struct SystemSkinSelectionView: View {
                         .accessibilityLabel("Refresh skins")
                     }
                 }
+                // The same paged preview Manage Skins opens, starting on the chosen skin.
+                .navigationDestination(item: $previewTarget) { target in
+                    PagedSkinTestView(
+                        skins: availableSkins,
+                        initialIndex: availableSkins.firstIndex { $0.identifier == target.id } ?? 0
+                    )
+                }
             }
         }
+        .skinKitBackdropColorScheme()
         .onAppear {
             // Always load via async path which reads lastScannedSkins (authoritative).
             // loadedSkins (@Published) may lag behind due to MainActor scheduling.
@@ -414,7 +435,7 @@ public struct SystemSkinSelectionView: View {
                     RoundedRectangle(cornerRadius: SkinKitTheme.current.radiusSM)
                         .strokeBorder(
                             SkinKitTheme.current.cyan.opacity(isSelected ? SkinKitTheme.current.menuCellStrokeOpacityFocused : SkinKitTheme.current.menuCellStrokeOpacityUnfocused),
-                            lineWidth: isSelected ? SkinKitTheme.current.menuCellStrokeWidthFocused : SkinKitTheme.current.menuCellStrokeWidthUnfocused
+                            lineWidth: isSelected ? SkinKitTheme.current.selectionStrokeWidth : SkinKitTheme.current.menuCellStrokeWidthUnfocused
                         )
                 )
         )
@@ -479,7 +500,7 @@ public struct SystemSkinSelectionView: View {
 
             HStack(spacing: 8) {
                 NavigationLink(destination: SkinCatalogBrowserView(preselectedSystem: catalogSystemFilter)) {
-                    selectorChip(title: "Get More", systemImage: "arrow.down.circle", isSelected: false, expands: false)
+                    selectorChip(title: "Skin Catalog", systemImage: "square.grid.2x2", isSelected: false, expands: false)
                 }
                 #if !os(tvOS)
                 Button {
@@ -509,7 +530,6 @@ public struct SystemSkinSelectionView: View {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 60))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
                 .padding(.bottom, 10)
 
             Text("ERROR LOADING SKINS")
@@ -538,10 +558,9 @@ public struct SystemSkinSelectionView: View {
                             .fill(Color.black.opacity(0.6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                             )
                     )
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
 
             Spacer()
@@ -566,7 +585,6 @@ public struct SystemSkinSelectionView: View {
             Image(systemName: "gamecontroller.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
                 .padding(.bottom, 10)
 
             Text("NO SKINS AVAILABLE")
@@ -595,10 +613,9 @@ public struct SystemSkinSelectionView: View {
                         .fill(Color.black.opacity(0.6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                         )
                 )
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
             .skinKitFocusButtonStyle()
             #else
@@ -616,10 +633,9 @@ public struct SystemSkinSelectionView: View {
                                 .fill(Color.black.opacity(0.6))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                                 )
                         )
-                        .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
                 }
 
                 NavigationLink(destination: SkinCatalogBrowserView(preselectedSystem: catalogSystemFilter)) {
@@ -636,10 +652,9 @@ public struct SystemSkinSelectionView: View {
                             .fill(Color.black.opacity(0.6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                             )
                     )
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
                 }
             }
             #endif
@@ -768,9 +783,10 @@ public struct SystemSkinSelectionView: View {
         VStack(spacing: 8) {
             ZStack {
                 // Background with retrowave styling
+                // Same shape as the skin cells beside it, so the grid's rows line up.
                 RoundedRectangle(cornerRadius: 12)
                     .fill(Color.black.opacity(0.5))
-                    .aspectRatio(1.5, contentMode: .fit)
+                    .aspectRatio(selectedOrientation == .landscape ? 2.0 : 0.5, contentMode: .fit)
 
                 // Controller icon
                 Image(systemName: "gamecontroller.fill")
@@ -782,13 +798,12 @@ public struct SystemSkinSelectionView: View {
                 Group {
                     if isBuiltInSelectionHighlighted {
                         RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(SkinKitTheme.current.cyan, lineWidth: SkinKitTheme.current.menuCellStrokeWidthFocused)
+                            .strokeBorder(SkinKitTheme.current.cyan, lineWidth: SkinKitTheme.current.selectionStrokeWidth)
                     } else {
                         RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.white.opacity(0.12), lineWidth: SkinKitTheme.current.menuCellStrokeWidthUnfocused)
+                            .strokeBorder(SkinKitTheme.current.resolvedChromeBorder, lineWidth: SkinKitTheme.current.menuCellStrokeWidthUnfocused)
                     }
                 }
-                    .shadow(color: isBuiltInSelectionHighlighted ? SkinKitTheme.current.cyan.opacity(0.45) : .clear, radius: 6)
             )
             .scaleEffect(isBuiltInSelectionHighlighted ? 1.05 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isBuiltInSelectionHighlighted)
@@ -853,13 +868,12 @@ public struct SystemSkinSelectionView: View {
                 Group {
                     if isSelected {
                         RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(SkinKitTheme.current.cyan, lineWidth: SkinKitTheme.current.menuCellStrokeWidthFocused)
+                            .strokeBorder(SkinKitTheme.current.cyan, lineWidth: SkinKitTheme.current.selectionStrokeWidth)
                     } else {
                         RoundedRectangle(cornerRadius: 12)
-                            .strokeBorder(Color.white.opacity(0.12), lineWidth: SkinKitTheme.current.menuCellStrokeWidthUnfocused)
+                            .strokeBorder(SkinKitTheme.current.resolvedChromeBorder, lineWidth: SkinKitTheme.current.menuCellStrokeWidthUnfocused)
                     }
                 }
-                    .shadow(color: isSelected ? SkinKitTheme.current.cyan.opacity(0.45) : .clear, radius: 6)
             )
             .scaleEffect(isSelected ? 1.05 : (isHovered ? 1.02 : 1.0))
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
@@ -887,6 +901,12 @@ public struct SystemSkinSelectionView: View {
                 selectSkin(skin.identifier)
             } label: {
                 Label("Select", systemImage: "checkmark.circle")
+            }
+
+            Button {
+                previewTarget = SkinPreviewTarget(id: skin.identifier)
+            } label: {
+                Label("Preview", systemImage: "eye")
             }
 
             Button {
@@ -1261,10 +1281,9 @@ private struct DeltaStylesLinkView: View {
                         .fill(Color.black.opacity(0.4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5)
+                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                         )
                 )
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
             .sheet(isPresented: $showSafariView) {
                 SafariWebView(url: deltaStylesURL, entersReaderIfAvailable: false)
@@ -1291,10 +1310,9 @@ private struct DeltaStylesLinkView: View {
                         .fill(Color.black.opacity(0.4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5)
+                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                         )
                 )
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
             #endif
         }
@@ -1445,5 +1463,9 @@ struct SkinSelectionPreviewCell: View {
             isLoading = false
         }
     }
+}
+/// Identifies the skin to open in the paged preview.
+private struct SkinPreviewTarget: Hashable {
+    let id: String
 }
 #endif

@@ -91,7 +91,6 @@ struct SystemSkinPreviewRow: View {
                     )
                     .frame(width: 40, height: 40)
                     .rotationEffect(.degrees(360 * glowIntensity))
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 2)
                     .onAppear {
                         withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
                             glowIntensity = 1.0
@@ -131,20 +130,20 @@ struct SystemSkinPreviewRow: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8))
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5)
-                            .shadow(color: SkinKitTheme.current.purple.opacity(0.7), radius: 2)
+                            .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                     )
                 } else {
                     VStack(spacing: 8) {
                         Image(systemName: "gamecontroller")
                             .font(.system(size: 24))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                            .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 2)
 
                         Text("DEFAULT")
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.7))
-                            .tracking(1)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                            .padding(.horizontal, 2)
                     }
                     .frame(maxWidth: .infinity)
                     .aspectRatio(isLandscape ? 2.0 : 0.5, contentMode: .fit)

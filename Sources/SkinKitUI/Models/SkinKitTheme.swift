@@ -36,14 +36,38 @@ public struct SkinKitTheme: @unchecked Sendable {
     public var menuCellStrokeWidthFocused: CGFloat = 2
     public var sectionTitleMutedOpacity: Double = 0.45
     public var panelCornerRadius: CGFloat = 10
-    public var panelStrokeLineWidth: CGFloat = 1.5
+    public var panelStrokeLineWidth: CGFloat = 1
     public var panelFillOpacityDark: Double = 0.88
     public var panelFillOpacityLight: Double = 0.9
+
+    // MARK: Shared chrome (cards, chips, fields on every skin screen)
+
+    /// Hairline drawn around cards, chips and fields. `nil` uses `blue` at `chromeBorderOpacity`.
+    public var chromeBorder: Color?
+    public var chromeBorderOpacity: Double = 0.28
+    /// Corner radius of cards and panels.
+    public var chromeCornerRadius: CGFloat = 13
+    /// Inset between a screen's edge and its content, and inside a card.
+    public var chromeInset: CGFloat = 12
+    /// Minimum height of a tappable chip or field.
+    public var controlHeight: CGFloat = 44
+    /// Border width of the selected chip or cell. Touch selection, not focus: thinner than
+    /// `menuCellStrokeWidthFocused`, which stays for the tvOS focus ring.
+    public var selectionStrokeWidth: CGFloat = 1.5
+    /// Fill of a card, over the screen background.
+    public var cardFillOpacity: Double = 0.06
+
+    /// The hairline colour every skin screen draws its borders with.
+    public var resolvedChromeBorder: Color { chromeBorder ?? blue.opacity(chromeBorderOpacity) }
 
     // MARK: Styling hooks
 
     /// Full-screen backdrop behind the pickers (`RetroTheme.retroBackground`).
     public var background: @MainActor () -> AnyView = { AnyView(Color(red: 0.08, green: 0.07, blue: 0.11).ignoresSafeArea()) }
+
+    /// Colour scheme of the screens drawn on `background`, so system text stays readable on it. The default
+    /// backdrop is near-black, so `.dark`; a host with a light backdrop sets `.light`, or `nil` to inherit.
+    public var backgroundColorScheme: ColorScheme? = .dark
 
     /// Presents an alert (`.retroAlert(title, message:, isPresented:, actions)`). Arguments: the content, the
     /// title, the message, the presentation binding and the actions. The default is a system alert.
@@ -113,15 +137,58 @@ struct SkinKitPanelBackground: View {
             .fill(isDark ? Color.black.opacity(theme.panelFillOpacityDark) : Color.white.opacity(theme.panelFillOpacityLight))
             .overlay(
                 RoundedRectangle(cornerRadius: theme.panelCornerRadius)
-                    .strokeBorder(
-                        LinearGradient(colors: [theme.purple.opacity(0.65), theme.pink.opacity(0.65)],
-                                       startPoint: .topLeading, endPoint: .bottomTrailing),
-                        lineWidth: theme.panelStrokeLineWidth)
+                    .strokeBorder(theme.resolvedChromeBorder, lineWidth: theme.panelStrokeLineWidth)
             )
     }
 }
 
 /// Small count pill (`RetroPauseInsetPillBackground`), drawn from the theme's tokens.
+/// The one card surface the skin screens share: a faint fill and a hairline, no glow.
+struct SkinKitCardModifier: ViewModifier {
+    var isSelected = false
+    var cornerRadius: CGFloat?
+
+    func body(content: Content) -> some View {
+        let theme = SkinKitTheme.current
+        let shape = RoundedRectangle(cornerRadius: cornerRadius ?? theme.chromeCornerRadius)
+        content
+            .background(Color.white.opacity(isSelected ? theme.menuCellFillOpacityFocused : theme.cardFillOpacity), in: shape)
+            .clipShape(shape)
+            .overlay {
+                shape.strokeBorder(isSelected ? theme.cyan.opacity(theme.menuCellStrokeOpacityFocused) : theme.resolvedChromeBorder,
+                                   lineWidth: isSelected ? theme.selectionStrokeWidth : theme.menuCellStrokeWidthUnfocused)
+                    .allowsHitTesting(false)
+            }
+    }
+}
+
+/// Gives a screen drawn on `SkinKitTheme.background` the theme's colour scheme.
+struct SkinKitBackdropColorSchemeModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if let scheme = SkinKitTheme.current.backgroundColorScheme {
+            // The environment reaches the content; the navigation bar title needs its own scheme.
+            content
+                .environment(\.colorScheme, scheme)
+                .toolbarColorScheme(scheme, for: .navigationBar)
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// Applies `SkinKitTheme.backgroundColorScheme`. Every screen that draws the themed backdrop uses it,
+    /// so `.primary` and `.secondary` text is light on the default dark backdrop in light mode too.
+    func skinKitBackdropColorScheme() -> some View {
+        modifier(SkinKitBackdropColorSchemeModifier())
+    }
+
+    /// Card surface shared by the picker, Manage Skins, the overview and the catalog.
+    func skinKitCard(isSelected: Bool = false, cornerRadius: CGFloat? = nil) -> some View {
+        modifier(SkinKitCardModifier(isSelected: isSelected, cornerRadius: cornerRadius))
+    }
+}
+
 struct SkinKitInsetPillBackground: View {
     let isDark: Bool
 

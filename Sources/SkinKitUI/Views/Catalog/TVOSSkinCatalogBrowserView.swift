@@ -177,6 +177,7 @@ public struct TVOSSkinCatalogBrowserView: View {
                 catalogContentView
             }
         }
+        .skinKitBackdropColorScheme()
         .navigationTitle("Browse Skins")
         .searchable(text: $searchText, prompt: "Search by name, author, or tag")
         .onAppear {

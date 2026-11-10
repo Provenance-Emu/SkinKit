@@ -34,20 +34,9 @@ struct SkinPreviewCell: View {
     @State private var showingEditSheet = false
     #endif
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    @Environment(\.colorScheme) private var colorScheme
 
-    // Rubber-like colors
-    private var backgroundColor: Color {
-        colorScheme == .dark ? Color(white: 0.15) : Color(white: 0.85)
-    }
-
-    private var innerShadowColor: Color {
-        colorScheme == .dark ? .black : Color(white: 0.7)
-    }
-
-    private var embossHighlightColor: Color {
-        colorScheme == .dark ? Color(white: 0.25) : Color.white
-    }
+    /// Width over height of the slot the artwork is fitted in.
+    private static let thumbnailSlotAspect: CGFloat = 1
 
     /// Resolve the best supported traits for preview, trying progressively
     /// wider fallbacks so skins that only support one device/orientation
@@ -167,12 +156,10 @@ struct SkinPreviewCell: View {
         if isLoadingThumbnail {
             ProgressView()
                 .frame(maxWidth: .infinity)
-                .aspectRatio(orientation == .portrait ? 0.5 : 2.0, contentMode: .fit)
         } else if let thumbnailImage {
             Image(uiImage: thumbnailImage)
                 .resizable()
                 .scaledToFit()
-                .aspectRatio(orientation == .portrait ? 0.5 : 2.0, contentMode: .fit)
         } else {
             // Fallback for skins where image loading failed
             VStack(spacing: 4) {
@@ -185,7 +172,6 @@ struct SkinPreviewCell: View {
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
-            .aspectRatio(orientation == .portrait ? 0.5 : 2.0, contentMode: .fit)
             .background(Color.gray.opacity(0.15))
         }
     }
@@ -233,79 +219,31 @@ struct SkinPreviewCell: View {
         }
     }
 
+    /// Every cell is the same size: the artwork is fitted inside a fixed slot, so portrait and
+    /// landscape skins line up in one grid instead of making rows of mismatched height.
     private var content: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Preview — lightweight async thumbnail instead of full DeltaSkinView
-            PreviewContainer {
-                thumbnailPreview
-            }
-            .overlay {
-                // Rubber-like gradient overlay
-                LinearGradient(
-                    colors: [
-                        .black.opacity(0.4),
-                        .clear,
-                        .black.opacity(0.3)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            }
+        let theme = SkinKitTheme.current
+        return VStack(alignment: .leading, spacing: 8) {
+            Color.black
+                .aspectRatio(Self.thumbnailSlotAspect, contentMode: .fit)
+                .overlay { thumbnailPreview.padding(6) }
+                .clipShape(RoundedRectangle(cornerRadius: theme.radiusSM))
 
-            // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(skin.name)
-                    .font(.headline)
-                    .lineLimit(1)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2, reservesSpace: true)
+                    .multilineTextAlignment(.leading)
+                    .minimumScaleFactor(0.85)
 
-                HStack {
-                    Label(DeltaSkinSystemDirectory.displayName(for: skin.gameType),
-                          systemImage: "gamecontroller")
-                        .lineLimit(1)
-
-                    Spacer()
-
-                    DeviceIndicators(skin: skin)
-                }
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                DeviceIndicators(skin: skin)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 12)
         }
-        .background(
-            ZStack {
-                // Base rubber texture
-                backgroundColor
-
-                // Noise texture overlay for rubber effect
-                Color.black
-                    .opacity(0.05)
-                    .blendMode(.overlay)
-            }
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .overlay {
-            // Embossed edge effect
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(innerShadowColor, lineWidth: 2)
-                .blur(radius: 2)
-                .mask(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(lineWidth: 2)
-                )
-                .blendMode(.overlay)
-        }
-        .overlay {
-            // Inner shadow for depth
-            RoundedRectangle(cornerRadius: 16)
-                .inset(by: 0.5)
-                .stroke(embossHighlightColor, lineWidth: 1)
-                .blur(radius: 1)
-                .opacity(0.5)
-        }
-        .shadow(color: .black.opacity(0.2), radius: 3, x: 0, y: 2)
-        .padding(2)
+        .padding(theme.chromeInset - 4)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .skinKitCard()
     }
 }
 

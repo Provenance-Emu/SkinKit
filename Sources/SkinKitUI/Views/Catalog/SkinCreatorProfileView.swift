@@ -161,6 +161,7 @@ public struct SkinCreatorProfileView: View {
                 }
                 .scrollIndicators(.hidden)
             }
+            .skinKitBackdropColorScheme()
             .navigationTitle(model.creator.displayName)
             #if !os(tvOS)
             .navigationBarTitleDisplayMode(.inline)
