@@ -1213,102 +1213,26 @@ public struct DeltaSkinView: View {
         await loadButtonAssets(loadID: loadID)
     }
 
-    /// Load and cache per-button images defined in the skin JSON under each item's `asset` or `states` key
+    /// Load and cache per-button images. Which image each control gets is decided by
+    /// `DeltaSkinRenderable.buttonArt(for:)`, which skin previews draw from too.
     @MainActor
     private func loadButtonAssets(loadID: UUID) async {
-        guard isCurrentResourceLoad(loadID), let buttons = skin.buttons(for: traits) else { return }
-        var cache: [String: (normal: UIImage, pressed: UIImage?)] = [:]
-
-        for (index, button) in buttons.enumerated() {
-            guard isCurrentResourceLoad(loadID) else { return }
-            // The selected theme's art for this item wins over the item's own art; no theme art (or art that
-            // fails to load) falls through to the item's own art below.
-            if let image = await skin.themedItemImage(forItemAt: index, traits: traits) {
-                guard isCurrentResourceLoad(loadID) else { return }
-                cache[button.id] = (normal: image, pressed: nil)
-                continue
-            }
-            guard isCurrentResourceLoad(loadID) else { return }
-            // Prefer typed `states` from decoded model (Manic EMU format)
-            if let states = button.states {
-                if let normalName = states.normal?.image {
-                    do {
-                        let normal = try await skin.loadThumbstickImage(named: normalName)
-                        guard isCurrentResourceLoad(loadID) else { return }
-                        var pressedImage: UIImage? = nil
-                        if let pressedName = states.pressed?.image {
-                            do {
-                                pressedImage = try await skin.loadThumbstickImage(named: pressedName)
-                            } catch {
-                                guard isCurrentResourceLoad(loadID) else { return }
-                                ELOG("Failed to load pressed state image '\(pressedName)' for button \(button.id): \(error)")
-                            }
-                        }
-                        guard isCurrentResourceLoad(loadID) else { return }
-                        cache[button.id] = (normal: normal, pressed: pressedImage)
-                        continue // Successfully loaded from typed states; skip legacy path
-                    } catch {
-                        guard isCurrentResourceLoad(loadID) else { return }
-                        ELOG("Failed to load button state image(s) for \(button.id): \(error)")
-                        // Fall through to legacy asset path
-                    }
-                }
-                // states.normal was nil or image load failed — fall through to legacy path
-            }
-
-            // Fall back to legacy `asset` dictionary in raw JSON
-            guard let (normalName, pressedName) = parseButtonAssetNames(for: button) else { continue }
-            do {
-                let normal = try await skin.loadThumbstickImage(named: normalName)
-                guard isCurrentResourceLoad(loadID) else { return }
-                var pressedImage: UIImage? = nil
-                if let pn = pressedName {
-                    do {
-                        pressedImage = try await skin.loadThumbstickImage(named: pn)
-                    } catch {
-                        guard isCurrentResourceLoad(loadID) else { return }
-                        ELOG("Failed to load pressed asset image '\(pn)' for button \(button.id): \(error)")
-                    }
-                }
-                guard isCurrentResourceLoad(loadID) else { return }
-                cache[button.id] = (normal: normal, pressed: pressedImage)
-            } catch {
-                guard isCurrentResourceLoad(loadID) else { return }
-                ELOG("Failed to load button asset image(s) for \(button.id): \(error)")
-            }
-        }
-
         guard isCurrentResourceLoad(loadID) else { return }
+        let art = await skin.buttonArt(for: traits)
+        guard isCurrentResourceLoad(loadID) else { return }
+        var cache: [String: (normal: UIImage, pressed: UIImage?)] = [:]
+        for piece in art where cache[piece.buttonID] == nil {
+            cache[piece.buttonID] = (normal: piece.normal, pressed: piece.pressed)
+        }
         buttonAssetImages = cache
-    }
-
-    /// Find `asset.normal` and optional `asset.pressed` for the JSON item matching this button
-    private func parseButtonAssetNames(for button: DeltaSkinButton) -> (String, String?)? {
-        guard let item = rawItem(matching: button) else { return nil }
-
-        guard let asset = item["asset"] as? [String: Any],
-              let normal = asset["normal"] as? String else { return nil }
-        let pressed = asset["pressed"] as? String
-        return (normal, pressed)
     }
 
     @MainActor
     private func loadThumbstickImage(for button: DeltaSkinButton) async -> (UIImage, CGSize)? {
-        guard let item = rawItem(matching: button),
-        let thumbstick = item["thumbstick"] as? [String: Any],
-        let imageName = thumbstick["name"] as? String,
-        let width = thumbstick["width"] as? CGFloat,
-        let height = thumbstick["height"] as? CGFloat else {
+        guard let art = await skin.thumbstickArt(for: button, traits: traits), let size = art.thumbstickSize else {
             return nil
         }
-
-        do {
-            let image = try await skin.loadThumbstickImage(named: imageName)
-            return (image, CGSize(width: width, height: height))
-        } catch {
-            ELOG("Failed to load thumbstick image: \(error)")
-            return nil
-        }
+        return (art.normal, size)
     }
 
     private func playClickSound(for button: DeltaSkinButton) {
