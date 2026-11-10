@@ -96,18 +96,26 @@ private struct Builder {
         let traits = Skin2TraitSet.sets(for: base)
         let doc = try Skin2Document.load(data: source, theme: theme, variant: variant)
         let baseRepresentations = try representations(doc, traits: traits, native: native, stacksScreens: stacksScreens, prefix: "base")
-        var info: JSON = [
-            "name": label.map { base.name + " — " + $0 } ?? base.name,
-            "identifier": base.identifier + (gameIndex == 0 ? "" : ".game" + String(gameIndex)) + (variant.map { "." + $0 } ?? "")
-                + (theme.map { ".theme." + $0 } ?? ""),
-            "gameTypeIdentifier": gameType, "debug": false, "representations": baseRepresentations,
-            "format2": ["source": "skin.json", "formatVersion": base.formatVersion, "requires": base.requires],
+        var identifier = base.identifier
+        if gameIndex > 0 { identifier += ".game\(gameIndex)" }
+        if let variant { identifier += ".\(variant)" }
+        if let theme { identifier += ".theme.\(theme)" }
+        let name = label.map { base.name + " — " + $0 } ?? base.name
+        var format2: JSON = [
+            "source": "skin.json",
+            "formatVersion": base.formatVersion,
+            "requires": base.requires,
         ]
-        if var format2 = info["format2"] as? JSON {
-            format2["variant"] = variant
-            format2["theme"] = theme
-            info["format2"] = format2
-        }
+        format2["variant"] = variant
+        format2["theme"] = theme
+        var info: JSON = [
+            "name": name,
+            "identifier": identifier,
+            "gameTypeIdentifier": gameType,
+            "debug": false,
+            "representations": baseRepresentations,
+            "format2": format2,
+        ]
         if variant == nil {
             var overrides: [String: Representations] = [:]
             for (index, key) in base.variants.keys.sorted().enumerated() {
