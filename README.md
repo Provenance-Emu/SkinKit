@@ -32,6 +32,14 @@ automatic repair. Drafts need maintainer review and are never auto-merged. If a
 `GH_PAT` secret is available, it publishes the PR so normal PR workflows can run;
 otherwise `GITHUB_TOKEN` is used, and marking the draft ready starts **CI**.
 
+## Bake a format 2 skin
+
+On macOS, run `xcrun swift run skinkit-bake path/to/skin.json path/to/output`.
+The baker reads `assets/` beside the source and writes classic `.deltaskin`
+archives with the original format 2 source, a preview, and per-trait PDF artwork.
+It writes the base and selectable layouts for each listed game type. Use an
+empty output directory to keep the numbered archives separate from earlier bakes.
+
 ## Prebuilt XCFrameworks
 
 Each release has static XCFrameworks attached, built by [release-xcframeworks.yml](.github/workflows/release-xcframeworks.yml) with [scripts/build-xcframeworks.sh](scripts/build-xcframeworks.sh). There is one per module (`SkinKitCore`, `SkinCatalogKit`, `SkinKitManager`, `SkinKitUI`, `SkinKitRetroArch`, `SkinKit2Core`, `SkinKit2Render`) plus `ZIPFoundation`, with slices for iOS, the iOS simulator, tvOS, the tvOS simulator and Mac Catalyst. They are built with library evolution, so newer compilers can use them.

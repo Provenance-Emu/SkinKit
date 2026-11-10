@@ -32,6 +32,7 @@ let package = Package(
         .library(name: "SkinKit2Core", targets: ["SkinKit2Core"]),
         .library(name: "SkinKit2Render", targets: ["SkinKit2Render"]),
         .library(name: "SkinKit2Bake", targets: ["SkinKit2Bake"]),
+        .executable(name: "skinkit-bake", targets: ["skinkit-bake"]),
     ],
     dependencies: [
         // Same range Provenance resolves (via PVLookup).
@@ -48,7 +49,7 @@ let package = Package(
             name: "SkinKitManager",
             dependencies: ["SkinKitCore", "SkinCatalogKit", .product(name: "ZIPFoundation", package: "ZIPFoundation")]
         ),
-        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager", "SkinKitRetroArch", "SkinKit2Core", "SkinKit2Render"]),
+        .target(name: "SkinKitUI", dependencies: ["SkinKitCore", "SkinCatalogKit", "SkinKitManager", "SkinKitRetroArch", "SkinKit2Core", "SkinKit2Render", "SkinKit2Bake"]),
         .target(
             name: "SkinKitRetroArch",
             dependencies: ["SkinKitCore", .product(name: "ZIPFoundation", package: "ZIPFoundation")],
@@ -90,7 +91,8 @@ let package = Package(
         .testTarget(name: "SkinKit2CoreTests", dependencies: ["SkinKit2Core"]),
         // Renders Tests/Format2Fixtures and compares with the committed expected/*@2x.png references.
         .testTarget(name: "SkinKit2RenderTests", dependencies: ["SkinKit2Render", "SkinKit2Core"]),
-        .target(name: "SkinKit2Bake", dependencies: ["SkinKit2Core", "SkinKitCore"]),
+        .target(name: "SkinKit2Bake", dependencies: ["SkinKit2Core", "SkinKitCore", "SkinKit2Render", .product(name: "ZIPFoundation", package: "ZIPFoundation")]),
+        .executableTarget(name: "skinkit-bake", dependencies: ["SkinKit2Bake"]),
         .testTarget(name: "SkinKit2BakeTests", dependencies: ["SkinKit2Bake", "SkinKit2Core", "SkinKitCore"]),
     ],
     swiftLanguageModes: [.v5]

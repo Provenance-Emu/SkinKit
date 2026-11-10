@@ -40,8 +40,9 @@ enum DeltaSkinFormat2 {
             return nil
         }
         // A classic theme id the 2.0 source doesn't define is not an error; draw the default.
-        let loaded = (skin.selectedThemeId.flatMap { try? Skin2Document.load(data: data, theme: $0) })
-            ?? (try? Skin2Document.load(data: data))
+        let variant = (skin.jsonRepresentation["format2"] as? [String: Any])?["variant"] as? String
+        let loaded = (skin.selectedThemeId.flatMap { try? Skin2Document.load(data: data, theme: $0, variant: variant) })
+            ?? (try? Skin2Document.load(data: data, variant: variant))
         guard let document = loaded, Skin2SourceInfo.accepts(formatVersion: document.formatVersion),
               SkinKit2Render.supports(document.requires) else { return nil }
         return document

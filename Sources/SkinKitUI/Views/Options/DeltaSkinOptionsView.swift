@@ -2,6 +2,8 @@
 import SkinCatalogKit
 import SkinKitCore
 import SkinKitManager
+import SkinKit2Bake
+import SkinKit2Render
 import SwiftUI
 
 /// The skin options sheet: theme, alternate layout, which per-game layout applies, edit controls, reset and
@@ -60,6 +62,19 @@ public struct DeltaSkinOptionsView: View {
     @State private var usesAlt = false
     @State private var hasEdits = false
     @State private var confirmsReset = false
+    #if os(iOS)
+    @State private var classicExport: ClassicExport?
+    @State private var exportingClassic = false
+    @State private var exportError: String?
+    #endif
+
+    private var format2Source: Skin2SourceInfo? {
+        #if os(iOS)
+        Skin2SourceInfo(infoJSON: skin.jsonRepresentation)
+        #else
+        nil
+        #endif
+    }
 
     /// - Parameters:
     ///   - skin: The skin in use.
@@ -158,7 +173,7 @@ public struct DeltaSkinOptionsView: View {
                 }
             }
 
-            if model.showsEditControls || model.showsExport {
+            if model.showsEditControls || model.showsExport || format2Source != nil {
                 Section("Controls") {
                     if model.showsEditControls {
                         Button {
@@ -173,6 +188,16 @@ public struct DeltaSkinOptionsView: View {
                         }
                         .disabled(!model.resetEnabled)
                     }
+                    #if os(iOS)
+                    if let source = format2Source {
+                        Button {
+                            exportClassic(source: source.source)
+                        } label: {
+                            Label("Export as classic skin", systemImage: "square.and.arrow.up")
+                        }
+                        .disabled(exportingClassic)
+                    }
+                    #endif
                     if model.showsExport {
                         Button {
                             onExport?()
@@ -185,6 +210,20 @@ public struct DeltaSkinOptionsView: View {
         }
         .navigationTitle("Skin options")
         .onAppear(perform: refresh)
+        #if os(iOS)
+        .sheet(item: $classicExport) { export in
+            ShareSheet(activityItems: export.files)
+                .onDisappear { try? FileManager.default.removeItem(at: export.directory) }
+        }
+        .alert("Could not export skin", isPresented: Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )) {
+            Button("OK") { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
+        }
+        #endif
         .confirmationDialog(
             "Reset every control you moved or resized on this skin?",
             isPresented: $confirmsReset,
@@ -196,6 +235,37 @@ public struct DeltaSkinOptionsView: View {
             Text("This resets every orientation.")
         }
     }
+
+    #if os(iOS)
+    private struct ClassicExport: Identifiable, Sendable {
+        let directory: URL
+        let files: [URL]
+        var id: URL { directory }
+    }
+
+    @MainActor
+    private func exportClassic(source: String) {
+        let bundle = skin.fileURL
+        exportingClassic = true
+        Task {
+            defer { exportingClassic = false }
+            do {
+                classicExport = try await Task.detached(priority: .userInitiated) {
+                    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                    do {
+                        let baked = try Skin2Baker.bake(bundleURL: bundle, sourcePath: source)
+                        return ClassicExport(directory: directory, files: try Skin2Baker.write(baked, to: directory))
+                    } catch {
+                        try? FileManager.default.removeItem(at: directory)
+                        throw error
+                    }
+                }.value
+            } catch {
+                exportError = String(describing: error)
+            }
+        }
+    }
+    #endif
 
     // MARK: Alternate layout
 

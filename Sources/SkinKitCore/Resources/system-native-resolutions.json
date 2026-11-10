@@ -16,6 +16,10 @@
   "psx":             { "width": 320, "height": 240 },
   "psp":             { "width": 480, "height": 272 },
 
+  "nds":             { "width": 256, "height": 192 },
+  "snes":            { "width": 256, "height": 224 },
+  "gamecube":        { "width": 640, "height": 480 },
+  "intellivision":   { "width": 160, "height": 96 },
   "threeDS":         { "width": 400, "height": 240 },
 
   "atari2600":       { "width": 160, "height": 192 },
