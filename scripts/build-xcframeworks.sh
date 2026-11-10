@@ -23,7 +23,7 @@ shift
 platforms=("$@")
 [ ${#platforms[@]} -eq 0 ] && platforms=(ios ios-sim tvos tvos-sim catalyst)
 
-modules=(SkinKitCore SkinCatalogKit SkinKitManager SkinKitUI SkinKitRetroArch SkinKit2Core SkinKit2Render ZIPFoundation)
+modules=(SkinKitCore SkinCatalogKit SkinKitManager SkinKitUI SkinKitRetroArch SkinKit2Core SkinKit2Render SkinKit2Bake ZIPFoundation)
 bundles=(SkinKit_SkinKitCore SkinKit_SkinKitRetroArch SkinKit_SkinKit2Render ZIPFoundation_ZIPFoundation)
 
 # PACKAGE_DIR builds another checkout (the release workflow builds a tag with this script from main).

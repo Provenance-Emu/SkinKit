@@ -13,6 +13,8 @@ public struct Skin2RenderOptions {
     public var screenPlaceholders: Bool
     /// Outline every control's hit frame (debugging).
     public var showHitFrames: Bool
+    /// Pixels per point for effects drawn into a vector target.
+    public var effectScale: CGFloat?
     /// The bytes of a file the skin references: an image `src` (a path under `assets/`) or a font as
     /// `fonts/<family>`. Nil or a missing file draws nothing for that image and the default face for that font.
     public var asset: ((String) -> Data?)?
@@ -34,7 +36,7 @@ public struct Skin2RenderOptions {
 public enum Skin2Renderer {
     /// Draws `resolution` into `ctx`, whose user space is canvas points with a top-left origin and y down.
     public static func draw(_ resolution: Skin2Resolution, in ctx: CGContext, options: Skin2RenderOptions = .init()) {
-        var painter = Painter(resolution: resolution, options: options)
+        var painter = Painter(resolution: resolution, options: options, vectorContext: options.effectScale == nil ? nil : ctx)
         ctx.saveGState()
         Skin2Bitmap.configure(ctx)
         painter.draw(resolution.root, in: ctx, control: nil)
@@ -83,12 +85,14 @@ private struct Painter {
     let resolution: Skin2Resolution
     let options: Skin2RenderOptions
     let unit: Double
+    let vectorContext: CGContext?
     var images: [String: CGImage?] = [:]
     var fonts: [String: CGFont?] = [:]
 
-    init(resolution: Skin2Resolution, options: Skin2RenderOptions) {
+    init(resolution: Skin2Resolution, options: Skin2RenderOptions, vectorContext: CGContext?) {
         self.resolution = resolution
         self.options = options
+        self.vectorContext = vectorContext
         unit = resolution.unit
     }
 
@@ -172,7 +176,12 @@ private struct Painter {
         let blurs = n.effects.filter { $0.type == .blur }
         let blend = n.effects.last { $0.type == .blend }?.mode.map(Self.blendMode) ?? .normal
 
-        if shadows.isEmpty && innerShadows.isEmpty && blurs.isEmpty {
+        // PDF shadings do not reliably preserve alpha and Quartz cannot emit conic shadings.
+        let rasterPaint = ctx === vectorContext && (n.material != nil || n.type == .image || n.fills.contains {
+            $0.type == .angular || $0.type == .image || $0.stops.contains { $0.color.alpha * ($0.opacity ?? 1) < 1 }
+                || (!$0.stops.isEmpty && ($0.opacity ?? 1) < 1)
+        })
+        if shadows.isEmpty && innerShadows.isEmpty && blurs.isEmpty && !rasterPaint {
             let layered = opacity < 1 || blend != .normal
             if layered {
                 ctx.setAlpha(CGFloat(opacity))
@@ -189,34 +198,53 @@ private struct Painter {
         var region = visualBounds(r, node: n).insetBy(dx: -pad, dy: -pad)
         let clip = ctx.boundingBoxOfClipPath
         if !clip.isNull, !clip.isInfinite { region = region.intersection(clip.insetBy(dx: -pad, dy: -pad)) }
-        guard !region.isNull, !region.isEmpty, let content = Skin2Bitmap(region: region, scale: ctx.pixelScale) else { return }
+        guard !region.isNull, !region.isEmpty, let content = Skin2Bitmap(region: region, scale: options.effectScale ?? ctx.pixelScale) else { return }
         drawContent(r, node: n, in: content.context, control: control)
 
         // A shape's shadow is cast by the union of its fills (5.3); anything else by its whole content.
         var silhouette = content
-        if n.type == .shape, !n.fills.isEmpty, let shape = n.shape, let fillsOnly = Skin2Bitmap(region: region, scale: ctx.pixelScale) {
+        if n.type == .shape, !n.fills.isEmpty, let shape = n.shape, let fillsOnly = Skin2Bitmap(region: region, scale: options.effectScale ?? ctx.pixelScale) {
             let path = Skin2Shapes.path(for: shape, in: frame, unit: unit)
             fillShape(path, fills: n.fills, material: nil, frame: frame, in: fillsOnly.context)
             silhouette = fillsOnly
         }
         let alpha = silhouette.alpha()
 
-        ctx.saveGState()
-        ctx.setAlpha(CGFloat(opacity))
-        ctx.setBlendMode(blend)
-        ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+        // PDF masks and the bitmap renderer composite differently. Flatten the effect itself into a
+        // single image before placing it on the vector page.
+        if ctx === vectorContext, let scale = options.effectScale,
+           let layer = Skin2Bitmap(region: region, scale: scale) {
+            compositeEffect(content, alpha: alpha, shadows: shadows, innerShadows: innerShadows,
+                            blurs: blurs, frame: frame, in: layer.context)
+            ctx.saveGState()
+            ctx.setAlpha(CGFloat(opacity))
+            ctx.setBlendMode(blend)
+            if let image = layer.image() { ctx.drawTopDown(image, in: layer.region) }
+            ctx.restoreGState()
+        } else {
+            ctx.saveGState()
+            ctx.setAlpha(CGFloat(opacity))
+            ctx.setBlendMode(blend)
+            ctx.beginTransparencyLayer(auxiliaryInfo: nil)
+            compositeEffect(content, alpha: alpha, shadows: shadows, innerShadows: innerShadows,
+                            blurs: blurs, frame: frame, in: ctx)
+            ctx.endTransparencyLayer()
+            ctx.restoreGState()
+        }
+    }
+
+    func compositeEffect(_ content: Skin2Bitmap, alpha: Skin2Mask?, shadows: [Skin2Effect],
+                         innerShadows: [Skin2Effect], blurs: [Skin2Effect], frame: CGRect, in ctx: CGContext) {
         if let alpha {
-            for s in shadows { drawShadow(s, mask: alpha, in: ctx) }
+            for shadow in shadows { drawShadow(shadow, mask: alpha, in: ctx) }
         }
         if let sigma = blurs.compactMap({ $0.radius?.resolve(along: Double(min(frame.width, frame.height)), unit: unit) }).max(), sigma > 0 {
             content.blur(sigma: CGFloat(sigma) / 2)
         }
         if let image = content.image() { ctx.drawTopDown(image, in: content.region) }
         if let alpha {
-            for s in innerShadows { drawInnerShadow(s, mask: alpha, in: ctx) }
+            for shadow in innerShadows { drawInnerShadow(shadow, mask: alpha, in: ctx) }
         }
-        ctx.endTransparencyLayer()
-        ctx.restoreGState()
     }
 
     mutating func drawContent(_ r: Skin2ResolvedNode, node n: Skin2Node, in ctx: CGContext, control: ControlContext?) {
