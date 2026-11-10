@@ -36,3 +36,48 @@ private func validateArchive(_ url: URL) throws {
     let path = try #require(info.assets.resizable)
     #expect(try skin.loadAssetData(path).starts(with: Data("%PDF".utf8)))
 }
+
+private func info(_ bundle: Skin2BakedBundle) throws -> DeltaSkin.Info {
+    try JSONDecoder().decode(DeltaSkin.Info.self, from: #require(bundle.files["info.json"]))
+}
+
+@Test("Classic GameCube bake preserves left and right thumbstick input names")
+func bakedStickIdentity() throws {
+    let bundles = try Skin2Baker.bake(sourceURL: fixtures.appendingPathComponent("gamecube-icube/skin.json"))
+    let classic = try info(#require(bundles.first))
+    let items = try #require(classic.representations[.iphone]?.edgeToEdge?["portrait"]?.items)
+    let stickUps = items.compactMap { item -> String? in
+        guard item.thumbstick != nil, case .directional(let directions) = item.inputs else { return nil }
+        return directions["up"]
+    }
+    #expect(Set(stickUps) == ["leftThumbstickUp", "rightThumbstickUp"])
+}
+
+@Test("Layout-changing themes have complete classic layouts of their own")
+func bakedThemeGeometry() throws {
+    let bundles = try Skin2Baker.bake(sourceURL: fixtures.appendingPathComponent("variants/skin.json"))
+    let base = try info(#require(bundles.first))
+    let large = try info(#require(bundles.first { $0.variantLabel == "big" }))
+    #expect(base.themes?.map(\.id) == ["red"])
+    #expect(large.identifier != base.identifier)
+    func faceWidth(_ skin: DeltaSkin.Info) throws -> CGFloat {
+        let items = try #require(skin.representations[.iphone]?.edgeToEdge?["portrait"]?.items)
+        let face = try #require(items.first { if case .single(["a"]) = $0.inputs { return true }; return false })
+        return face.frame.width
+    }
+    #expect(try faceWidth(large) > faceWidth(base))
+}
+
+@Test("Unknown native resolution leaves classic source crop unset")
+func unknownFrameBuffer() throws {
+    let source = try Data(contentsOf: fixtures.appendingPathComponent("layout/skin.json"))
+    var document = try #require(JSONSerialization.jsonObject(with: source) as? [String: Any])
+    document["gameTypes"] = ["com.rileytestut.delta.game.nes"]
+    document["root"] = ["type": "group", "children": [
+        ["type": "screen", "id": "screen", "role": "main", "aspect": 1.5, "layout": ["frame": [0, 0, 100, 100]]],
+    ]]
+    let bundles = try Skin2Baker.bake(source: JSONSerialization.data(withJSONObject: document))
+    let classic = try info(#require(bundles.first))
+    let screen = try #require(classic.representations[.iphone]?.edgeToEdge?["portrait"]?.screens?.first)
+    #expect(screen.inputFrame == nil)
+}

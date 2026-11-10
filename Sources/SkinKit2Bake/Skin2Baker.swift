@@ -29,12 +29,51 @@ public enum Skin2Baker {
         guard report.isValid else { throw Skin2BakeError.invalidSource(report.errors.map(\.description)) }
         let document = try Skin2Document.load(data: source)
         let selectable = document.variants.keys.sorted().filter { document.variants[$0]?.isPlayerSelectable == true }
+        let traits = Skin2TraitSet.sets(for: document)
+        let splitThemes = try document.themeNames.sorted().filter { theme in
+            for variant in [nil] + document.variants.keys.sorted().map(Optional.some) {
+                let base = try Skin2Document.load(data: source, variant: variant)
+                let themed = try Skin2Document.load(data: source, theme: theme, variant: variant)
+                for trait in traits {
+                    let original = Skin2Resolver.resolve(base, in: trait.environment)
+                    let candidate = Skin2Resolver.resolve(themed, in: trait.environment)
+                    if layoutSignature(original) != layoutSignature(candidate) { return true }
+                }
+            }
+            return false
+        }
+        let inlineThemes = document.themeNames.sorted().filter { !splitThemes.contains($0) }
         return try document.gameTypes.enumerated().flatMap { index, gameType in
-            try ([nil] + selectable.map(Optional.some)).map { variant in
-                var builder = Builder(source: source, assets: assets)
-                return try builder.build(document, gameType: gameType, gameIndex: index, variant: variant)
+            try ([nil] + selectable.map(Optional.some)).flatMap { variant in
+                try ([nil] + splitThemes.map(Optional.some)).map { theme in
+                    var builder = Builder(source: source, assets: assets)
+                    return try builder.build(document, gameType: gameType, gameIndex: index, variant: variant,
+                                             theme: theme, inlineThemes: theme == nil ? inlineThemes : [])
+                }
             }
         }
+    }
+
+    private struct LayoutNode: Equatable {
+        let id: String?
+        let frame: Skin2Rect
+        let hitFrame: Skin2Rect?
+        let placement: Skin2ScreenPlacement?
+        let kind: Skin2ControlKind?
+        let input: Skin2Input?
+        let inputs: [String]
+        let screenRole: Skin2ScreenRole?
+        let filters: [Skin2ScreenFilter]
+    }
+
+    private static func layoutSignature(_ resolution: Skin2Resolution) -> [LayoutNode] {
+        resolution.nodes.filter { $0.node.type == .control || $0.node.type == .screen || $0.node.role == .knob }
+            .map { resolved in
+                let node = resolved.node
+                return LayoutNode(id: node.id, frame: resolved.frame, hitFrame: resolved.hitFrame,
+                                  placement: node.placement, kind: node.kind, input: node.input, inputs: node.inputs ?? [],
+                                  screenRole: node.screenRole, filters: node.filters)
+            }
     }
 }
 
@@ -47,29 +86,33 @@ private struct Builder {
     var files: [String: Data] = [:]
     var warnings: [String] = []
 
-    mutating func build(_ base: Skin2Document, gameType: String, gameIndex: Int, variant: String?) throws -> Skin2BakedBundle {
+    mutating func build(_ base: Skin2Document, gameType: String, gameIndex: Int, variant: String?,
+                        theme: String?, inlineThemes: [String]) throws -> Skin2BakedBundle {
         guard let game = DeltaSkinGameType.fromAnyString(gameType) else { throw Skin2BakeError.unknownGameType(gameType) }
-        let native = DeltaSkinNativeResolution.size(for: game) ?? CGSize(width: 4, height: 3)
+        let native = DeltaSkinNativeResolution.size(for: game)
         let stacksScreens = game == .nds
-        let label = variant.map { base.variants[$0]?.label ?? $0 }
+        let labels = [variant.map { base.variants[$0]?.label ?? $0 }, theme].compactMap { $0 }
+        let label = labels.isEmpty ? nil : labels.joined(separator: " — ")
         let traits = Skin2TraitSet.sets(for: base)
-        let doc = try Skin2Document.load(data: source, variant: variant)
+        let doc = try Skin2Document.load(data: source, theme: theme, variant: variant)
         let baseRepresentations = try representations(doc, traits: traits, native: native, stacksScreens: stacksScreens, prefix: "base")
         var info: JSON = [
             "name": label.map { base.name + " — " + $0 } ?? base.name,
-            "identifier": base.identifier + (gameIndex == 0 ? "" : ".game" + String(gameIndex)) + (variant.map { "." + $0 } ?? ""),
+            "identifier": base.identifier + (gameIndex == 0 ? "" : ".game" + String(gameIndex)) + (variant.map { "." + $0 } ?? "")
+                + (theme.map { ".theme." + $0 } ?? ""),
             "gameTypeIdentifier": gameType, "debug": false, "representations": baseRepresentations,
             "format2": ["source": "skin.json", "formatVersion": base.formatVersion, "requires": base.requires],
         ]
-        if let variant, var format2 = info["format2"] as? JSON {
+        if var format2 = info["format2"] as? JSON {
             format2["variant"] = variant
+            format2["theme"] = theme
             info["format2"] = format2
         }
         if variant == nil {
             var overrides: [String: Representations] = [:]
             for (index, key) in base.variants.keys.sorted().enumerated() {
                 guard let variant = base.variants[key], !variant.isPlayerSelectable else { continue }
-                let doc = try Skin2Document.load(data: source, variant: key)
+                let doc = try Skin2Document.load(data: source, theme: theme, variant: key)
                 let reps = try representations(doc, traits: traits, native: native, stacksScreens: stacksScreens, prefix: "variant-\(index)")
                 if variant.toggle == true { info["altRepresentations"] = reps }
                 if let match = variant.match {
@@ -81,8 +124,8 @@ private struct Builder {
             }
             if !overrides.isEmpty { info["gameOverrides"] = overrides }
         }
-        if !base.themeNames.isEmpty {
-            info["themes"] = try base.themeNames.sorted().enumerated().map { index, name -> JSON in
+        if !inlineThemes.isEmpty {
+            info["themes"] = try inlineThemes.enumerated().map { index, name -> JSON in
                 let themed = try Skin2Document.load(data: source, theme: name, variant: variant)
                 let reps = try representations(themed, traits: traits, native: native, stacksScreens: stacksScreens, prefix: "theme-\(index)")
                 let artwork = reps.mapValues { $0.mapValues { $0.mapValues { $0["assets"]! } } }
@@ -118,7 +161,7 @@ private struct Builder {
     }
 
     mutating func representations(
-        _ document: Skin2Document, traits: [Skin2TraitSet], native: CGSize, stacksScreens: Bool, prefix: String
+        _ document: Skin2Document, traits: [Skin2TraitSet], native: CGSize?, stacksScreens: Bool, prefix: String
     ) throws -> Representations {
         var result: Representations = [:]
         for trait in traits {
@@ -155,13 +198,15 @@ private struct Builder {
                 let node = screen.element
                 var entry: JSON = [
                     "outputFrame": rect(node.frame),
-                    "inputFrame": [
-                        "x": 0, "y": stacksScreens && screenRank(node) == 1 ? native.height : 0,
-                        "width": native.width, "height": native.height,
-                    ],
                     "maintainAspectRatio": true,
                     "placement": node.node.placement?.rawValue ?? "app",
                 ]
+                if let native {
+                    entry["inputFrame"] = [
+                        "x": 0, "y": stacksScreens && screenRank(node) == 1 ? native.height : 0,
+                        "width": native.width, "height": native.height,
+                    ]
+                }
                 if !node.node.filters.isEmpty {
                     entry["filters"] = node.node.filters.map { filter -> JSON in
                         var result: JSON = ["name": filter.name]

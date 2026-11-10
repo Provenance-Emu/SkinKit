@@ -41,7 +41,10 @@ struct ClassicItem: Encodable {
         case (.dpad, _):
             return nil
         case (.thumbstick, _):
-            inputs = .directional(["up": "up", "down": "down", "left": "left", "right": "right"])
+            guard case .name(let name) = control.node.input else { return nil }
+            let prefix = name.lowercased() == "cstick" ? "rightThumbstick" : name
+            inputs = .directional(["up": prefix + "Up", "down": prefix + "Down",
+                                   "left": prefix + "Left", "right": prefix + "Right"])
         case (.action, _):
             let supported = names.filter { Self.classicActions.contains($0) }
             guard !supported.isEmpty else { return nil }
