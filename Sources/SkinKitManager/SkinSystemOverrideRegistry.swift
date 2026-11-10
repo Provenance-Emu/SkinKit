@@ -161,6 +161,9 @@ public actor SkinSystemOverrideRegistry {
     /// Path is the key because installed skins can share or omit an identifier.
     private var overridesByPath: [String: Set<String>] = [:]
 
+    /// The fallback catalog indexed for matching, kept until a different catalog arrives.
+    private var catalogMatchIndex: CatalogMatchIndex?
+
     // MARK: - File Naming
 
     /// Sidecar files are stored next to the skin package and share its stem
@@ -178,11 +181,47 @@ public actor SkinSystemOverrideRegistry {
     ///
     /// Codes are lowercased to align with Provenance's `SystemIdentifier.skinCatalogSystemCode`.
     public func systemCodes(for skin: any DeltaSkinProtocol) async -> Set<String> {
+        if let codes = storedCodes(for: skin) {
+            return codes
+        }
+        guard let catalog = await catalogProvider() else { return [] }
+        return catalogDerivedCodes(for: skin, in: matchIndex(for: catalog))
+    }
+
+    /// Batch lookup that maps each skin's identifier to its override codes
+    /// (omitting skins with no override).  Avoids per-skin actor hops in tight
+    /// filter loops like `DeltaSkinManager.skins(for:)`.
+    ///
+    /// The catalog is asked for once, and only when some skin has neither a cached override nor a
+    /// sidecar (bundled skins and skins imported from Files never have one).
+    public func overrideCodesByIdentifier(for skins: [any DeltaSkinProtocol]) async -> [String: Set<String>] {
+        var result: [String: Set<String>] = [:]
+        var withoutStoredCodes: [any DeltaSkinProtocol] = []
+        for skin in skins {
+            if let codes = storedCodes(for: skin) {
+                result[skin.identifier] = codes
+            } else {
+                withoutStoredCodes.append(skin)
+            }
+        }
+        guard !withoutStoredCodes.isEmpty, let catalog = await catalogProvider() else { return result }
+        let index = matchIndex(for: catalog)
+        for skin in withoutStoredCodes {
+            let codes = catalogDerivedCodes(for: skin, in: index)
+            if !codes.isEmpty {
+                result[skin.identifier] = codes
+            }
+        }
+        return result
+    }
+
+    /// The codes already known for `skin` without a catalog: the in-memory cache, then its sidecar.
+    /// `nil` when neither has any.
+    private func storedCodes(for skin: any DeltaSkinProtocol) -> Set<String>? {
         let pathKey = skin.fileURL.standardizedFileURL.path
         if let cached = overridesByPath[pathKey], !cached.isEmpty {
             return cached
         }
-
         if let sidecar = readSidecar(for: skin.fileURL) {
             let codes = Self.normalize(sidecar.systems)
             if !codes.isEmpty {
@@ -190,26 +229,7 @@ public actor SkinSystemOverrideRegistry {
                 return codes
             }
         }
-
-        if let codes = await catalogDerivedCodes(for: skin), !codes.isEmpty {
-            overridesByPath[pathKey] = codes
-            return codes
-        }
-        return []
-    }
-
-    /// Batch lookup that maps each skin's identifier to its override codes
-    /// (omitting skins with no override).  Avoids per-skin actor hops in tight
-    /// filter loops like `DeltaSkinManager.skins(for:)`.
-    public func overrideCodesByIdentifier(for skins: [any DeltaSkinProtocol]) async -> [String: Set<String>] {
-        var result: [String: Set<String>] = [:]
-        for skin in skins {
-            let codes = await systemCodes(for: skin)
-            if !codes.isEmpty {
-                result[skin.identifier] = codes
-            }
-        }
-        return result
+        return nil
     }
 
     /// Persist a sidecar for a freshly installed skin and warm the in-memory cache.
@@ -327,19 +347,26 @@ public actor SkinSystemOverrideRegistry {
 
     // MARK: - Catalog Fallback
 
-    /// Looks up `skin` in the catalog (if any) and, when found,
-    /// returns the catalog entry's normalized `systems` list.
-    ///
-    /// Uses the shared ``matchingInstalledSkin(for:in:)`` helper inverted: we
-    /// iterate catalog entries until one matches the skin, so the matching
-    /// rules stay aligned with the catalog browser.
-    private func catalogDerivedCodes(for skin: any DeltaSkinProtocol) async -> Set<String>? {
-        guard let catalog = await catalogProvider() else { return nil }
-        let entry = catalog.skins.first { entry in
-            matchingInstalledSkin(for: entry, in: [skin]) != nil
+    /// The index for `catalog`, rebuilt only when the catalog's entries differ from the indexed ones.
+    private func matchIndex(for catalog: SkinCatalog) -> CatalogMatchIndex {
+        let signature = CatalogMatchIndex.signature(of: catalog)
+        if let index = catalogMatchIndex, index.signature == signature {
+            return index
         }
-        guard let entry else { return [] }
-        return Self.normalize(entry.systems)
+        let index = CatalogMatchIndex(catalog: catalog, signature: signature)
+        catalogMatchIndex = index
+        return index
+    }
+
+    /// The normalized `systems` of the catalog entry that matches `skin`, cached when there are any.
+    /// Empty when no entry matches or the entry lists no usable system.
+    private func catalogDerivedCodes(for skin: any DeltaSkinProtocol, in index: CatalogMatchIndex) -> Set<String> {
+        guard let systems = index.systems(matching: skin) else { return [] }
+        let codes = Self.normalize(systems)
+        if !codes.isEmpty {
+            overridesByPath[skin.fileURL.standardizedFileURL.path] = codes
+        }
+        return codes
     }
 
     // MARK: - Helpers
@@ -350,6 +377,85 @@ public actor SkinSystemOverrideRegistry {
                 .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
                 .filter { !$0.isEmpty && !SkinStorePolicy.defaultPlaceholderSystemCodes.contains($0) }
         )
+    }
+}
+
+// MARK: - Catalog index
+
+/// A catalog's entries keyed the four ways ``matchingInstalledSkin(for:in:)`` matches one, so looking
+/// a skin up is four dictionary reads.
+///
+/// The registry used to run that function once per catalog entry for every skin without a sidecar:
+/// with 145 installed skins and a 1,400-entry catalog a skin picker spent ten seconds on "Loading
+/// skins", and did so again each time it opened because a miss was never remembered.
+struct CatalogMatchIndex {
+    /// Identifies the entries the index was built from.
+    let signature: Int
+
+    private let systemsByEntry: [[String]]
+    private let entryByIdentifier: [String: Int]
+    private let entryByPreferredStem: [String: Int]
+    private let entryByDownloadStem: [String: Int]
+    private let entryByName: [String: Int]
+
+    /// Changes whenever an entry is added, removed, reordered, or changes a field matching reads.
+    static func signature(of catalog: SkinCatalog) -> Int {
+        var hasher = Hasher()
+        hasher.combine(catalog.skins.count)
+        for entry in catalog.skins {
+            hasher.combine(entry.id)
+            hasher.combine(entry.name)
+            hasher.combine(entry.downloadURL)
+            hasher.combine(entry.systems)
+        }
+        return hasher.finalize()
+    }
+
+    init(catalog: SkinCatalog, signature: Int) {
+        self.signature = signature
+        var systemsByEntry: [[String]] = []
+        var byIdentifier: [String: Int] = [:]
+        var byPreferredStem: [String: Int] = [:]
+        var byDownloadStem: [String: Int] = [:]
+        var byName: [String: Int] = [:]
+        systemsByEntry.reserveCapacity(catalog.skins.count)
+        for (position, entry) in catalog.skins.enumerated() {
+            systemsByEntry.append(entry.systems)
+            // The earliest entry keeps each key, as the entry-by-entry search found the earliest match.
+            byIdentifier[entry.id] = byIdentifier[entry.id] ?? position
+            let preferredStem = Self.stem(of: URL(fileURLWithPath: entry.preferredLocalDownloadFileName()))
+            if !preferredStem.isEmpty {
+                byPreferredStem[preferredStem] = byPreferredStem[preferredStem] ?? position
+            }
+            let downloadStem = Self.stem(of: entry.downloadURL)
+            if !downloadStem.isEmpty {
+                byDownloadStem[downloadStem] = byDownloadStem[downloadStem] ?? position
+            }
+            let name = entry.name.lowercased()
+            byName[name] = byName[name] ?? position
+        }
+        self.systemsByEntry = systemsByEntry
+        entryByIdentifier = byIdentifier
+        entryByPreferredStem = byPreferredStem
+        entryByDownloadStem = byDownloadStem
+        entryByName = byName
+    }
+
+    /// The `systems` of the first catalog entry that matches `skin` by identifier, file stem
+    /// (preferred install name or download name) or name. `nil` when none does.
+    func systems(matching skin: any DeltaSkinProtocol) -> [String]? {
+        let stem = Self.stem(of: skin.fileURL)
+        let position = [
+            entryByIdentifier[skin.identifier],
+            entryByPreferredStem[stem],
+            entryByDownloadStem[stem],
+            entryByName[skin.name.lowercased()]
+        ].compactMap { $0 }.min()
+        return position.map { systemsByEntry[$0] }
+    }
+
+    private static func stem(of url: URL) -> String {
+        url.deletingPathExtension().lastPathComponent.lowercased()
     }
 }
 
@@ -364,7 +470,8 @@ public actor SkinSystemOverrideRegistry {
 /// 4. The catalog `name` matches the skin's `name` (case-insensitive).
 ///
 /// Moved from Provenance's `SkinCatalogBrowserView.swift`, where the browser and the detail view
-/// shared it. The registry uses it too.
+/// shared it. The registry applies the same four rules through ``CatalogMatchIndex``: change them
+/// together.
 public func matchingInstalledSkin(for entry: SkinCatalogEntry, in skins: [any DeltaSkinProtocol]) -> (any DeltaSkinProtocol)? {
     guard !skins.isEmpty else { return nil }
 
