@@ -37,9 +37,16 @@ struct SkinGridView: View {
         return grouped.sorted { $0.key < $1.key }
     }
 
-    // Create an ordered list that matches the visual grouping
-    private var orderedSkins: [any DeltaSkinRenderable] {
-        groupedSkins.flatMap { _, consoleSkins in consoleSkins }
+    /// Every skin in on-screen order, with each one's position, for the paged preview a cell opens.
+    private struct OrderedSkins {
+        let skins: [any DeltaSkinRenderable]
+        let indexByIdentifier: [String: Int]
+
+        init(_ groups: [(String, [any DeltaSkinRenderable])]) {
+            skins = groups.flatMap { _, consoleSkins in consoleSkins }
+            indexByIdentifier = Dictionary(skins.enumerated().map { ($1.identifier, $0) },
+                                           uniquingKeysWith: { first, _ in first })
+        }
     }
 
     /// Custom transition for section content
@@ -75,10 +82,14 @@ struct SkinGridView: View {
 
     /// Main content view with skins
     private var skinsContentView: some View {
-        ScrollView {
+        // Grouped once per update. Each cell's link needs the whole ordered list; regrouping it for
+        // every cell made drawing the grid quadratic in the number of skins.
+        let groups = groupedSkins
+        let ordered = OrderedSkins(groups)
+        return ScrollView {
             VStack(spacing: 16) {
-                ForEach(groupedSkins, id: \.0) { consoleName, consoleSkins in
-                    skinSectionView(consoleName: consoleName, consoleSkins: consoleSkins)
+                ForEach(groups, id: \.0) { consoleName, consoleSkins in
+                    skinSectionView(consoleName: consoleName, consoleSkins: consoleSkins, ordered: ordered)
                 }
 
                 // DeltaStyles link component
@@ -92,7 +103,8 @@ struct SkinGridView: View {
 
     /// Individual skin section view
     @ViewBuilder
-    private func skinSectionView(consoleName: String, consoleSkins: [any DeltaSkinRenderable]) -> some View {
+    private func skinSectionView(consoleName: String, consoleSkins: [any DeltaSkinRenderable],
+                                 ordered: OrderedSkins) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             // Section header with disclosure button
             Button {
@@ -132,8 +144,8 @@ struct SkinGridView: View {
                     ForEach(consoleSkins, id: \.identifier) { skin in
                         NavigationLink {
                             PagedSkinTestView(
-                                skins: orderedSkins,
-                                initialIndex: orderedSkins.firstIndex(where: { $0.identifier == skin.identifier }) ?? 0
+                                skins: ordered.skins,
+                                initialIndex: ordered.indexByIdentifier[skin.identifier] ?? 0
                             )
                         } label: {
                             SkinPreviewCell(skin: skin, manager: manager)
