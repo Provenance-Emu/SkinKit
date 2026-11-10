@@ -381,7 +381,6 @@ public struct SkinCatalogBrowserView: View {
                                 )
                         )
                 )
-                .shadow(color: isSelected ? SkinKitTheme.current.pink.opacity(0.4) : .clear, radius: 4)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -553,7 +552,6 @@ public struct SkinCatalogBrowserView: View {
                     .stroke(SkinKitTheme.current.horizontalGradient, style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .frame(width: 70, height: 70)
                     .rotationEffect(.degrees(spinnerRotation))
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
                     .onAppear {
                         withAnimation(.linear(duration: 1.0).repeatForever(autoreverses: false)) {
                             spinnerRotation = 360
@@ -578,7 +576,6 @@ public struct SkinCatalogBrowserView: View {
             Image(systemName: "wifi.slash")
                 .font(.system(size: 50))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
 
             Text("CATALOG UNAVAILABLE")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
@@ -604,10 +601,9 @@ public struct SkinCatalogBrowserView: View {
                             .fill(Color.black.opacity(0.6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                             )
                     )
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
 
             Spacer()
@@ -623,7 +619,6 @@ public struct SkinCatalogBrowserView: View {
             Image(systemName: "gamecontroller")
                 .font(.system(size: 50))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
 
             Text("NO SKINS FOUND")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
@@ -654,10 +649,9 @@ public struct SkinCatalogBrowserView: View {
                                 .fill(Color.black.opacity(0.6))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                                 )
                         )
-                        .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
                 }
             }
 
@@ -887,6 +881,7 @@ private struct CatalogSkinCard<Destination: View>: View {
                             Text(displayName(forSystemCode: system))
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .tracking(0.5)
+                                .lineLimit(1)
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background(
@@ -917,15 +912,7 @@ private struct CatalogSkinCard<Destination: View>: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.4))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: isInstalled ? 2 : 1)
-                )
-                .shadow(color: isInstalled ? SkinKitTheme.current.pink.opacity(0.5) : SkinKitTheme.current.purple.opacity(0.3), radius: 6)
-        )
+        .skinKitCard()
     }
 
     /// The credit line. One creator: a button that opens the profile. Several (a family mixing
@@ -992,7 +979,6 @@ private struct CatalogSkinCard<Destination: View>: View {
             Image(systemName: "gamecontroller.fill")
                 .font(.system(size: 32))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 4)
         }
     }
 

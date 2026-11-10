@@ -36,8 +36,8 @@ public struct DeltaSkinListView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink(destination: SkinCatalogBrowserView()) {
                         HStack(spacing: 4) {
-                            Image(systemName: "arrow.down.circle")
-                            Text("Get More")
+                            Image(systemName: "square.grid.2x2")
+                            Text("Skin Catalog")
                                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                         }
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
@@ -49,8 +49,7 @@ public struct DeltaSkinListView: View {
                     Button {
                         showingDocumentPicker = true
                     } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
+                        Image(systemName: "plus")
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     }
                 }
@@ -180,10 +179,8 @@ public struct DeltaSkinListView: View {
 // MARK: - Helper Extensions
 internal extension Color {
     #if os(tvOS)
-    static let systemGroupedBackground = Color(uiColor: .darkGray)
     static let secondarySystemGroupedBackground = Color(uiColor: .lightGray)
     #else
-    static let systemGroupedBackground = Color(uiColor: .systemGroupedBackground)
     static let secondarySystemGroupedBackground = Color(uiColor: .secondarySystemGroupedBackground)
     #endif
 }

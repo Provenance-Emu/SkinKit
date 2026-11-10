@@ -76,45 +76,55 @@ struct SkinGridView: View {
     /// Main content view with skins
     private var skinsContentView: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 16) {
                 ForEach(groupedSkins, id: \.0) { consoleName, consoleSkins in
                     skinSectionView(consoleName: consoleName, consoleSkins: consoleSkins)
                 }
 
                 // DeltaStyles link component
                 DeltaStylesLinkView()
-                    .padding(.horizontal)
+                    .padding(.horizontal, SkinKitTheme.current.chromeInset)
                     .padding(.top, 8)
             }
+            .padding(.vertical, SkinKitTheme.current.chromeInset)
         }
     }
 
     /// Individual skin section view
     @ViewBuilder
     private func skinSectionView(consoleName: String, consoleSkins: [any DeltaSkinRenderable]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 4) {
             // Section header with disclosure button
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                     toggleSection(consoleName)
                 }
             } label: {
-                HStack {
+                HStack(spacing: 8) {
                     Text(consoleName)
-                        .font(.title2)
-                        .fontWeight(.bold)
+                        .font(.headline)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+
+                    Text("\(consoleSkins.count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                        .background { SkinKitInsetPillBackground(isDark: true) }
 
                     Spacer()
 
-                    Image(systemName: isExpanded(consoleName) ? "chevron.down" : "chevron.right")
+                    Image(systemName: "chevron.right")
                         .foregroundStyle(.secondary)
-                        .font(.headline)
-                        .rotationEffect(.degrees(isExpanded(consoleName) ? 0 : -90))
-                        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded(consoleName))
+                        .font(.subheadline.weight(.semibold))
+                        .rotationEffect(.degrees(isExpanded(consoleName) ? 90 : 0))
                 }
+                .frame(minHeight: SkinKitTheme.current.controlHeight)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.horizontal)
+            .padding(.horizontal, SkinKitTheme.current.chromeInset)
 
             // Grid of skins for this console
             if isExpanded(consoleName) {
@@ -128,9 +138,10 @@ struct SkinGridView: View {
                         } label: {
                             SkinPreviewCell(skin: skin, manager: manager)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, SkinKitTheme.current.chromeInset)
                 .transition(sectionTransition)
             }
         }
@@ -148,7 +159,8 @@ struct SkinGridView: View {
                 skinsContentView
             }
         }
-        .background(Color.systemGroupedBackground)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background { SkinKitTheme.current.background() }
         .onAppear {
             // Check if skins are already loaded (from background scan or previous load)
             if !manager.loadedSkins.isEmpty {
@@ -332,22 +344,8 @@ private struct DeltaStylesLinkView: View {
                         )
                 }
                 .padding(.vertical, 12)
-                .padding(.horizontal, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.secondary.opacity(0.2))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [.pink, .blue]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ),
-                                    lineWidth: 1.5
-                                )
-                        )
-                )
+                .padding(.horizontal, SkinKitTheme.current.chromeInset)
+                .skinKitCard()
             }
             .sheet(isPresented: $showSafariView) {
                 SafariWebView(url: deltaStylesURL, entersReaderIfAvailable: false)
@@ -386,22 +384,8 @@ private struct DeltaStylesLinkView: View {
                         )
                 }
                 .padding(.vertical, 12)
-                .padding(.horizontal, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.secondary.opacity(0.2))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [.pink, .blue]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    ),
-                                    lineWidth: 1.5
-                                )
-                        )
-                )
+                .padding(.horizontal, SkinKitTheme.current.chromeInset)
+                .skinKitCard()
             }
             #endif
         }

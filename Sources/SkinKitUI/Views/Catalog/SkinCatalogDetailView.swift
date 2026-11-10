@@ -237,7 +237,6 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "gamecontroller.fill")
                             .font(.system(size: 60))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                            .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
                         Text("NO PREVIEW")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
@@ -454,9 +453,8 @@ public struct SkinCatalogDetailView: View {
                     .background(
                         RoundedRectangle(cornerRadius: 10)
                             .fill(Color.black.opacity(0.5))
-                            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+                            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1))
                     )
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.4), radius: 6)
 
                     if let system = resolvedSystemForActivation {
                         activateSkinButton(system: system)
@@ -509,7 +507,7 @@ public struct SkinCatalogDetailView: View {
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .fill(Color.black.opacity(0.5))
-                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1))
         )
     }
 
@@ -535,10 +533,9 @@ public struct SkinCatalogDetailView: View {
                     .fill(Color.black.opacity(0.6))
                     .overlay(
                         RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                            .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                     )
             )
-            .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 8)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -565,7 +562,6 @@ public struct SkinCatalogDetailView: View {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(SkinKitTheme.current.horizontalGradient)
                         .frame(width: geo.size.width * progress)
-                        .shadow(color: SkinKitTheme.current.pink.opacity(0.8), radius: 4)
                         .animation(.linear(duration: 0.1), value: progress)
                 }
             }
@@ -821,7 +817,7 @@ public struct SkinCatalogDetailView: View {
                 .background(
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color.black.opacity(0.4))
-                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+                        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1))
                 )
             }
             .buttonStyle(PlainButtonStyle())
@@ -840,7 +836,7 @@ public struct SkinCatalogDetailView: View {
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(Color.black.opacity(0.4))
-                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+                    .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1))
             )
 
         case .activated:
@@ -882,7 +878,7 @@ public struct SkinCatalogDetailView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 10)
                                 .fill(Color.black.opacity(0.4))
-                                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5))
+                                .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1))
                         )
                 }
                 .buttonStyle(PlainButtonStyle())

@@ -73,9 +73,9 @@ public struct SystemSkinBrowserView: View {
             #if !os(tvOS)
             ToolbarItem(placement: .topBarLeading) {
                 NavigationLink(destination: SkinCatalogBrowserView()) {
-                    Image(systemName: "arrow.down.circle")
+                    Image(systemName: "square.grid.2x2")
                 }
-                .accessibilityLabel("Get More")
+                .accessibilityLabel("Skin Catalog")
                 .transaction { $0.animation = nil }
             }
             #endif
@@ -152,7 +152,6 @@ public struct SystemSkinBrowserView: View {
             Image(systemName: "gamecontroller.fill")
                 .font(.system(size: 60))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.7), radius: 4)
                 .padding(.bottom, 10)
 
             Text("NO SKINS FOUND")
@@ -182,10 +181,9 @@ public struct SystemSkinBrowserView: View {
                         .fill(Color.black.opacity(0.6))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                         )
                 )
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
             .skinKitFocusButtonStyle()
             #else
@@ -203,10 +201,9 @@ public struct SystemSkinBrowserView: View {
                                 .fill(Color.black.opacity(0.6))
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                        .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                                 )
                         )
-                        .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
                 }
 
                 NavigationLink(destination: SkinCatalogBrowserView()) {
@@ -223,10 +220,9 @@ public struct SystemSkinBrowserView: View {
                             .fill(Color.black.opacity(0.6))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 8)
-                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 2)
+                                    .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                             )
                     )
-                    .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
                 }
             }
             #endif // os(tvOS)
@@ -534,10 +530,9 @@ private struct DeltaStylesLinkView: View {
                         .fill(Color.black.opacity(0.4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5)
+                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                         )
                 )
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
             .sheet(isPresented: $showSafariView) {
                 SafariWebView(url: deltaStylesURL, entersReaderIfAvailable: false)
@@ -564,10 +559,9 @@ private struct DeltaStylesLinkView: View {
                         .fill(Color.black.opacity(0.4))
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1.5)
+                                .strokeBorder(SkinKitTheme.current.gradient, lineWidth: 1)
                         )
                 )
-                .shadow(color: SkinKitTheme.current.pink.opacity(0.5), radius: 5)
             }
             #endif
         }
