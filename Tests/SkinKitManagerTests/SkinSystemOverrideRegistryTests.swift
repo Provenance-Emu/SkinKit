@@ -247,10 +247,102 @@ struct SkinSystemOverrideRegistryTests {
         #expect(await registry.systemCodes(for: unrelated).isEmpty)
     }
 
+    // MARK: - Catalog index
+
+    /// A catalog whose entries each match by a different rule, plus later entries that would match
+    /// the same skins.
+    private func rulesCatalog() throws -> SkinCatalog {
+        SkinCatalog(skins: [
+            try TestSupport.entry(id: "by.identifier", name: "One", systems: ["nes"], url: "https://example.com/a.deltaskin"),
+            try TestSupport.entry(id: "catalog/id:two", name: "Two", systems: ["snes"], url: "https://example.com/b.deltaskin"),
+            try TestSupport.entry(id: "three", name: "Three", systems: ["gba"], url: "https://example.com/Download-Stem.manicskin"),
+            try TestSupport.entry(id: "four", name: "Named Skin", systems: ["jaguar"], url: "https://example.com/d.deltaskin"),
+            try TestSupport.entry(id: "five", name: "named skin", systems: ["lynx"], url: "https://example.com/e.deltaskin")
+        ])
+    }
+
+    private func stub(identifier: String = "none", name: String = "None", file: String = "none.deltaskin") -> StubSkin {
+        StubSkin(identifier: identifier, name: name, gameType: .gba, fileURL: URL(fileURLWithPath: "/tmp/\(file)"))
+    }
+
+    @Test("The index matches by identifier, install name, download name and name, like matchingInstalledSkin")
+    func indexMatchesEveryRule() throws {
+        let catalog = try rulesCatalog()
+        let index = CatalogMatchIndex(catalog: catalog, signature: CatalogMatchIndex.signature(of: catalog))
+        let skins = [
+            stub(identifier: "by.identifier"),
+            stub(file: "catalog-id-two.deltaskin"),
+            stub(file: "download-stem.manicskin"),
+            stub(name: "NAMED SKIN"),
+            stub()
+        ]
+        #expect(skins.map { index.systems(matching: $0) } == [["nes"], ["snes"], ["gba"], ["jaguar"], nil])
+        for skin in skins {
+            let expected = catalog.skins.first { matchingInstalledSkin(for: $0, in: [skin]) != nil }?.systems
+            #expect(index.systems(matching: skin) == expected, "\(skin.identifier) / \(skin.fileURL.lastPathComponent) / \(skin.name)")
+        }
+    }
+
+    @Test("When several entries match a skin, the earliest in the catalog wins")
+    func indexPrefersEarliestEntry() throws {
+        let catalog = try rulesCatalog()
+        let index = CatalogMatchIndex(catalog: catalog, signature: CatalogMatchIndex.signature(of: catalog))
+        // Identifier of entry four, file name of entry three: three comes first.
+        let skin = stub(identifier: "four", file: "download-stem.deltaskin")
+        #expect(index.systems(matching: skin) == ["gba"])
+    }
+
+    @Test("A batch asks for the catalog once, and not at all when every skin has a sidecar")
+    func batchFetchesCatalogOnce() async throws {
+        let dir = try makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let catalog = try rulesCatalog()
+        let calls = CallCounter()
+        let registry = SkinSystemOverrideRegistry(catalogProvider: {
+            await calls.increment()
+            return catalog
+        })
+
+        let withSidecar = StubSkin(identifier: "side", name: "Side", gameType: .gba,
+                                   fileURL: dir.appendingPathComponent("side.deltaskin"))
+        try writeRawSidecar(#"{"version": 1, "systems": ["sg1000"]}"#, next: withSidecar.fileURL)
+        #expect(await registry.overrideCodesByIdentifier(for: [withSidecar]) == ["side": ["sg1000"]])
+        #expect(await calls.count == 0)
+
+        let unmatched = (0..<50).map { stub(identifier: "u\($0)", name: "U\($0)", file: "u\($0).deltaskin") }
+        let codes = await registry.overrideCodesByIdentifier(for: unmatched + [withSidecar, stub(identifier: "by.identifier")])
+        #expect(codes == ["side": ["sg1000"], "by.identifier": ["nes"]])
+        #expect(await calls.count == 1)
+    }
+
+    @Test("A different catalog replaces the index")
+    func newCatalogIsIndexedAgain() async throws {
+        let catalogs = CatalogBox(try rulesCatalog())
+        let registry = SkinSystemOverrideRegistry(catalogProvider: { await catalogs.value })
+        let skin = stub(identifier: "added.later")
+        #expect(await registry.systemCodes(for: skin).isEmpty)
+
+        await catalogs.set(SkinCatalog(skins: [
+            try TestSupport.entry(id: "added.later", name: "Later", systems: ["sms"], url: "https://example.com/l.deltaskin")
+        ]))
+        #expect(await registry.systemCodes(for: skin) == ["sms"])
+    }
+
     @Test("A fresh registry has no catalog, so it never reaches for the network")
     func defaultRegistryHasNoCatalog() async {
         let registry = SkinSystemOverrideRegistry()
         let stub = StubSkin(identifier: "x", name: "X", gameType: .gba, fileURL: URL(fileURLWithPath: "/tmp/does-not-exist.deltaskin"))
         #expect(await registry.systemCodes(for: stub).isEmpty)
     }
+}
+
+private actor CallCounter {
+    private(set) var count = 0
+    func increment() { count += 1 }
+}
+
+private actor CatalogBox {
+    private(set) var value: SkinCatalog
+    init(_ value: SkinCatalog) { self.value = value }
+    func set(_ value: SkinCatalog) { self.value = value }
 }
