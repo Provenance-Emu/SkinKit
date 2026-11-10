@@ -282,14 +282,15 @@ final class SkinPreviewThumbnailCache: @unchecked Sendable {
     /// Longest side of a stored preview, in points.
     static let maxPointSize: CGFloat = 256
 
-    /// The image both skin grids show: the skin's small `thumbnail` render, which the skin also keeps
-    /// on disk. Never the full-size image: at 3x one is ~14 MB, so the library grid kept evicting
+    /// The image both skin grids show: the skin's small `previewImage`, its background (which the
+    /// skin also keeps on disk) with button art and thumbstick caps drawn as the game view draws
+    /// them. Never the full-size image: at 3x one is ~14 MB, so the library grid kept evicting
     /// every other preview from this cache's budget and re-rendering skins on each appearance.
-    /// A full render stands in only when the thumbnail fails or samples blank, scaled down first.
+    /// A full render stands in only when the preview fails or samples blank, scaled down first.
     static func preview(of skin: any DeltaSkinRenderable, traits: DeltaSkinTraits) async throws -> UIImage {
-        if let thumbnail = try? await skin.thumbnail(for: traits, maxDimension: maxPointSize),
-           thumbnail.hasVisibleContent {
-            return thumbnail
+        if let preview = try? await skin.previewImage(for: traits, maxDimension: maxPointSize),
+           preview.hasVisibleContent {
+            return preview
         }
         return scaledDown(try await skin.image(for: traits))
     }
