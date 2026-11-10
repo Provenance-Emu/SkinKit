@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Provenance-Emu/skins
-          ref: main
+          ref: 39ca46b756ddde1149c86f97575624133c8bb242
           path: .skins-parity
           persist-credentials: false
 
