@@ -27,7 +27,7 @@ extension Skin2Baker {
     /// Reads the format 2 source and assets from an installed archive or directory package.
     public static func bake(bundleURL: URL, sourcePath: String = "skin.json") throws -> [Skin2BakedBundle] {
         let components = sourcePath.split(separator: "/", omittingEmptySubsequences: false)
-        guard !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) else {
+        guard !sourcePath.contains("\\"), !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) else {
             throw Skin2BakeError.invalidSource([sourcePath])
         }
         if (try bundleURL.resourceValues(forKeys: [.isDirectoryKey])).isDirectory == true {

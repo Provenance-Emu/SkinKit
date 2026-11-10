@@ -91,7 +91,9 @@ private struct Builder {
         }
         files["info.json"] = Data(try canonicalJSON(info).utf8)
         files["skin.json"] = source
-        for (name, data) in assets where name.hasPrefix("assets/") && !name.split(separator: "/", omittingEmptySubsequences: false).contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) {
+        for (name, data) in assets where name.hasPrefix("assets/") {
+            let components = name.split(separator: "/", omittingEmptySubsequences: false)
+            guard !name.contains("\\"), !components.contains(where: { $0.isEmpty || $0 == "." || $0 == ".." }) else { continue }
             files[name] = data
         }
         if let preview = traits.first(where: { $0.name == "iphone-edgeToEdge-portrait" }) {
