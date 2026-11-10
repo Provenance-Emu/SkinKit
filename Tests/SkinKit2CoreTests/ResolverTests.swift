@@ -179,6 +179,23 @@ struct ResolverTests {
         #expect(Self.frame(hidden, "b") == b)
     }
 
+    @Test("Touch surface edits preserve independent width and height across encoding")
+    func independentSurfaceSize() throws {
+        let source = """
+        { "type": "control", "id": "ir", "kind": "touchSurface", "input": "pointer",
+          "layout": { "frame": [20, 40, 200, 300] } }
+        """
+        let edit = Skin2Edit(offset: .init(x: 10, y: 15), scaleX: 0.5, scaleY: 1.5)
+        let restored = try JSONDecoder().decode(Skin2Edit.self, from: JSONEncoder().encode(edit))
+        let resolution = try Self.resolve(source, edits: ["ir": restored])
+        let node = try #require(resolution.node(id: "ir"))
+        #expect(node.exactFrame == Skin2Rect(x: 80, y: -20, width: 100, height: 450))
+        #expect(node.hitFrame == node.frame)
+        let legacy = try JSONDecoder().decode(Skin2Edit.self, from: Data(#"{ "scale": 2 }"#.utf8))
+        #expect(legacy.scaleX == nil && legacy.scaleY == nil)
+        #expect(try Self.resolve(source, edits: ["ir": legacy]).node(id: "ir")?.exactFrame.width == 400)
+    }
+
     @Test("Frames round to half points; hit frames extend; thumbsticks get a travel radius")
     func controlsAndRounding() throws {
         let r = try Self.resolve(#"""

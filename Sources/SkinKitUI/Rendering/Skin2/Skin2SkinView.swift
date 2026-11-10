@@ -214,7 +214,7 @@ final class Skin2TouchUIView: UIView {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         for t in touches {
             let p = t.location(in: self)
-            tracker.began(ObjectIdentifier(t), x: p.x, y: p.y)
+            tracker.began(ObjectIdentifier(t), x: p.x, y: p.y, pressure: normalizedPressure(t))
         }
         emit()
     }
@@ -222,13 +222,18 @@ final class Skin2TouchUIView: UIView {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         for t in touches {
             let p = t.location(in: self)
-            tracker.moved(ObjectIdentifier(t), x: p.x, y: p.y)
+            tracker.moved(ObjectIdentifier(t), x: p.x, y: p.y, pressure: normalizedPressure(t))
         }
         emit()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { end(touches) }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { end(touches) }
+
+    private func normalizedPressure(_ touch: UITouch) -> Double? {
+        guard touch.maximumPossibleForce > 0, touch.force > 0 else { return nil }
+        return Double(touch.force / touch.maximumPossibleForce)
+    }
 
     private func end(_ touches: Set<UITouch>) {
         for t in touches { tracker.ended(ObjectIdentifier(t)) }
