@@ -65,6 +65,10 @@ public struct SkinKitTheme: @unchecked Sendable {
     /// Full-screen backdrop behind the pickers (`RetroTheme.retroBackground`).
     public var background: @MainActor () -> AnyView = { AnyView(Color(red: 0.08, green: 0.07, blue: 0.11).ignoresSafeArea()) }
 
+    /// Colour scheme of the screens drawn on `background`, so system text stays readable on it. The default
+    /// backdrop is near-black, so `.dark`; a host with a light backdrop sets `.light`, or `nil` to inherit.
+    public var backgroundColorScheme: ColorScheme? = .dark
+
     /// Presents an alert (`.retroAlert(title, message:, isPresented:, actions)`). Arguments: the content, the
     /// title, the message, the presentation binding and the actions. The default is a system alert.
     public var alert: @MainActor (_ content: AnyView, _ title: String, _ message: String, _ isPresented: Binding<Bool>, _ actions: AnyView) -> AnyView = {
@@ -158,7 +162,24 @@ struct SkinKitCardModifier: ViewModifier {
     }
 }
 
+/// Gives a screen drawn on `SkinKitTheme.background` the theme's colour scheme.
+struct SkinKitBackdropColorSchemeModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if let scheme = SkinKitTheme.current.backgroundColorScheme {
+            content.environment(\.colorScheme, scheme)
+        } else {
+            content
+        }
+    }
+}
+
 extension View {
+    /// Applies `SkinKitTheme.backgroundColorScheme`. Every screen that draws the themed backdrop uses it,
+    /// so `.primary` and `.secondary` text is light on the default dark backdrop in light mode too.
+    func skinKitBackdropColorScheme() -> some View {
+        modifier(SkinKitBackdropColorSchemeModifier())
+    }
+
     /// Card surface shared by the picker, Manage Skins, the overview and the catalog.
     func skinKitCard(isSelected: Bool = false, cornerRadius: CGFloat? = nil) -> some View {
         modifier(SkinKitCardModifier(isSelected: isSelected, cornerRadius: cornerRadius))

@@ -65,6 +65,7 @@ public struct SystemSkinBrowserView: View {
                 .scrollIndicators(.hidden)
             }
         }
+        .skinKitBackdropColorScheme()
         .navigationTitle("Controller Skins")
 #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)

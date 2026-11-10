@@ -161,6 +161,7 @@ struct SkinGridView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background { SkinKitTheme.current.background() }
+        .skinKitBackdropColorScheme()
         .onAppear {
             // Check if skins are already loaded (from background scan or previous load)
             if !manager.loadedSkins.isEmpty {

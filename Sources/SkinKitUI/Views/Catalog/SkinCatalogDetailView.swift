@@ -123,6 +123,7 @@ public struct SkinCatalogDetailView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .skinKitBackdropColorScheme()
         .navigationTitle(entry.name)
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)

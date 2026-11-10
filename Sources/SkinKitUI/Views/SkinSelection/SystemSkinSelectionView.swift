@@ -349,6 +349,7 @@ public struct SystemSkinSelectionView: View {
                 }
             }
         }
+        .skinKitBackdropColorScheme()
         .onAppear {
             // Always load via async path which reads lastScannedSkins (authoritative).
             // loadedSkins (@Published) may lag behind due to MainActor scheduling.

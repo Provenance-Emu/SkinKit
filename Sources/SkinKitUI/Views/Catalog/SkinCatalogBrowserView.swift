@@ -156,6 +156,7 @@ public struct SkinCatalogBrowserView: View {
                 }
             }
         }
+        .skinKitBackdropColorScheme()
         .skinAchievementToasts()
         .navigationTitle("Skin Catalog")
         #if !os(tvOS)
