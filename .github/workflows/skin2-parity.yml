@@ -1,0 +1,69 @@
+name: Format 2 renderer parity
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/skin2-parity.yml'
+      - 'Package.swift'
+      - 'Sources/SkinKit2Core/**'
+      - 'Sources/SkinKit2Render/**'
+      - 'Tests/Format2Fixtures/**'
+      - 'Tests/SkinKit2CoreTests/**'
+      - 'Tests/SkinKit2RenderTests/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/skin2-parity.yml'
+      - 'Package.swift'
+      - 'Sources/SkinKit2Core/**'
+      - 'Sources/SkinKit2Render/**'
+      - 'Tests/Format2Fixtures/**'
+      - 'Tests/SkinKit2CoreTests/**'
+      - 'Tests/SkinKit2RenderTests/**'
+
+permissions:
+  contents: read
+
+jobs:
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/checkout@v4
+        with:
+          repository: Provenance-Emu/skins
+          ref: main
+          path: .skins-parity
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Use SkinKit's proposed fixtures
+        run: |
+          rm -rf .skins-parity/fixtures/format2
+          cp -R Tests/Format2Fixtures .skins-parity/fixtures/format2
+
+      - name: Test TypeScript against the proposed fixtures
+        id: parity
+        working-directory: .skins-parity/tests/skin2
+        env:
+          SKIN2_FAILURES: ${{ runner.temp }}/skin2-render-failures
+        run: |
+          npm ci
+          npm run build
+          # The website's fixtures.test.js checks the vendored manifest and inventory.
+          # The proposed Swift fixtures are the source of truth in this job.
+          node --test layout.test.js model.test.js render.test.js units.test.js
+
+      - name: Upload renderer diffs
+        if: failure() && steps.parity.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: skin2-typescript-render-diffs
+          path: ${{ runner.temp }}/skin2-render-failures/
+          if-no-files-found: ignore

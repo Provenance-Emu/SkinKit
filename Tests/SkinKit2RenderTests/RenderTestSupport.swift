@@ -27,7 +27,12 @@ enum RenderPaths {
     static func expected(_ name: String) -> URL { fixtures.appendingPathComponent("\(name)/expected", isDirectory: true) }
 
     /// Where failing comparisons leave the actual and diff images (never the repo).
-    static let failures = FileManager.default.temporaryDirectory.appendingPathComponent("skin2-render-failures", isDirectory: true)
+    static let failures: URL = {
+        if let path = ProcessInfo.processInfo.environment["SKIN2_FAILURES"], !path.isEmpty {
+            return URL(fileURLWithPath: path, isDirectory: true)
+        }
+        return FileManager.default.temporaryDirectory.appendingPathComponent("skin2-render-failures", isDirectory: true)
+    }()
 }
 
 /// One reference image: a fixture rendered on one trait set with one theme, variant or state set.
