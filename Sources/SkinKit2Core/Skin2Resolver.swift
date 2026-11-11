@@ -11,10 +11,14 @@ public struct Skin2Edit: Equatable, Hashable, Sendable, Codable {
 
     public var offset: Offset?
     public var scale: Double?
+    /// Independent dimensions for resizable touch surfaces. Each axis falls back to scale.
+    public var scaleX: Double?
+    public var scaleY: Double?
     public var opacity: Double?
     public var hidden: Bool?
 
-    public init(offset: Offset? = nil, scale: Double? = nil, opacity: Double? = nil, hidden: Bool? = nil) {
+    public init(offset: Offset? = nil, scale: Double? = nil, opacity: Double? = nil, hidden: Bool? = nil, scaleX: Double? = nil, scaleY: Double? = nil) {
+        self.scaleX = scaleX; self.scaleY = scaleY
         self.offset = offset; self.scale = scale; self.opacity = opacity; self.hidden = hidden
     }
 }
@@ -272,10 +276,11 @@ public struct Skin2Resolver {
         if let id = n.id, let edit = edits[id] {
             if edit.hidden == true { return nil }
             if let o = edit.offset { frame.x += o.x * unit; frame.y += o.y * unit }
-            if let s = edit.scale, s > 0 {
-                frame = Skin2Rect(x: frame.midX - frame.width * s / 2, y: frame.midY - frame.height * s / 2,
-                                  width: frame.width * s, height: frame.height * s)
-            }
+            let uniform = edit.scale.flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? 1
+            let sx = edit.scaleX.flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? uniform
+            let sy = edit.scaleY.flatMap { $0.isFinite && $0 > 0 ? $0 : nil } ?? uniform
+            frame = Skin2Rect(x: frame.midX - frame.width * sx / 2, y: frame.midY - frame.height * sy / 2,
+                              width: frame.width * sx, height: frame.height * sy)
             if let o = edit.opacity { opacity *= o }
         }
         if let id = n.id { areas[id] = frame }

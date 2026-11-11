@@ -17,6 +17,8 @@ public struct Skin2SkinView: View {
     public let document: Skin2Document
     public var device: Skin2Device
     public var displayType: Skin2DisplayType
+    /// Hosts that simulate a device supply its safe area explicitly.
+    public var safeAreaOverride: Skin2Insets?
     public var flags: Set<String>
     public var edits: [String: Skin2Edit]
     public var screenPlaceholders: Bool
@@ -43,7 +45,8 @@ public struct Skin2SkinView: View {
                 asset: (@Sendable (String) -> Data?)? = nil,
                 onInput: @escaping (Skin2InputEvent) -> Void = { _ in },
                 onLayout: ((Skin2Resolution) -> Void)? = nil,
-                onReleaseAll: @escaping () -> Void = {}) {
+                onReleaseAll: @escaping () -> Void = {}, safeAreaOverride: Skin2Insets? = nil) {
+        self.safeAreaOverride = safeAreaOverride
         self.document = document
         self.device = device
         self.displayType = displayType
@@ -69,7 +72,10 @@ public struct Skin2SkinView: View {
 
     public var body: some View {
         GeometryReader { outer in
-            let insets = outer.safeAreaInsets
+            let actual = outer.safeAreaInsets
+            let insets = safeAreaOverride.map {
+                EdgeInsets(top: $0.top, leading: $0.left, bottom: $0.bottom, trailing: $0.right)
+            } ?? actual
             GeometryReader { inner in
                 let resolution = resolve(size: inner.size, insets: insets)
                 let tester = Skin2HitTester(resolution)
@@ -214,7 +220,7 @@ final class Skin2TouchUIView: UIView {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         for t in touches {
             let p = t.location(in: self)
-            tracker.began(ObjectIdentifier(t), x: p.x, y: p.y)
+            tracker.began(ObjectIdentifier(t), x: p.x, y: p.y, pressure: normalizedPressure(t))
         }
         emit()
     }
@@ -222,13 +228,18 @@ final class Skin2TouchUIView: UIView {
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
         for t in touches {
             let p = t.location(in: self)
-            tracker.moved(ObjectIdentifier(t), x: p.x, y: p.y)
+            tracker.moved(ObjectIdentifier(t), x: p.x, y: p.y, pressure: normalizedPressure(t))
         }
         emit()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) { end(touches) }
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { end(touches) }
+
+    private func normalizedPressure(_ touch: UITouch) -> Double? {
+        guard touch.maximumPossibleForce > 0, touch.force > 0 else { return nil }
+        return Double(touch.force / touch.maximumPossibleForce)
+    }
 
     private func end(_ touches: Set<UITouch>) {
         for t in touches { tracker.ended(ObjectIdentifier(t)) }

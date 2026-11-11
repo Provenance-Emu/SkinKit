@@ -450,3 +450,45 @@ struct GameCubeHitFrameTests {
         }
     }
 }
+
+@Suite("Trigger pressure")
+struct TriggerPressureTests {
+    private func tester() throws -> Skin2HitTester {
+        let doc = try renderSkin("""
+        { "type": "control", "id": "l", "kind": "trigger", "input": "l",
+          "layout": { "frame": [0, 0, 80, 40] } }
+        """, requires: "[]")
+        return Skin2HitTester(Skin2Resolver.resolve(doc, in: Skin2Environment(size: Skin2Size(width: 400, height: 400))))
+    }
+
+    @Test("Pressure-only changes emit events, and lifting releases the trigger")
+    func pressureChanges() throws {
+        let tester = try tester()
+        var tracker = Skin2TouchTracker<Int>(tester: tester)
+        tracker.began(1, x: 20, y: 20, pressure: 0.25)
+        let first = tracker.snapshot()
+        #expect(first.states["l"]?.pressure == 0.25)
+        tracker.moved(1, x: 20, y: 20, pressure: 0.75)
+        let next = tracker.snapshot()
+        let events = skin2InputEvents(from: first, to: next, tester: tester)
+        #expect(events.count == 1)
+        #expect(events.first?.state.pressure == 0.75)
+        tracker.ended(1)
+        #expect(tracker.snapshot() == .empty)
+        #expect(skin2InputEvents(from: next, to: .empty, tester: tester).first?.state.isPressed == false)
+    }
+
+    @Test("Missing force and ambiguous multiple touches use a full press")
+    func fallback() throws {
+        var tracker = Skin2TouchTracker<Int>(tester: try tester())
+        tracker.began(1, x: 20, y: 20)
+        #expect(tracker.snapshot().states["l"]?.pressure == 1)
+        tracker.moved(1, x: 20, y: 20, pressure: 0.2)
+        tracker.began(2, x: 30, y: 20, pressure: 0.4)
+        #expect(tracker.snapshot().states["l"]?.pressure == 1)
+        tracker.ended(2)
+        #expect(tracker.snapshot().states["l"]?.pressure == 0.2)
+        tracker.moved(1, x: 200, y: 20, pressure: 0.2)
+        #expect(tracker.snapshot() == .empty)
+    }
+}

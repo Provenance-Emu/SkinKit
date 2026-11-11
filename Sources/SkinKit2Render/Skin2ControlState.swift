@@ -10,6 +10,8 @@ public enum Skin2Direction: String, Sendable, CaseIterable, Hashable {
 public struct Skin2ControlState: Equatable, Hashable, Sendable {
     /// A button, trigger or action is held; a d-pad counts as pressed while any direction is.
     public var pressed: Bool
+    /// Normalized trigger pressure, 0...1. Nil for controls without pressure input.
+    public var pressure: Double?
     public var selected: Bool
     /// D-pads: the directions held (a diagonal holds two).
     public var directions: Set<Skin2Direction>
@@ -23,7 +25,8 @@ public struct Skin2ControlState: Equatable, Hashable, Sendable {
     public var easingOut: Bool
 
     public init(pressed: Bool = false, selected: Bool = false, directions: Set<Skin2Direction> = [],
-                stick: Skin2StickValue = .zero, scaleProgress: Double = 1, easingOut: Bool = false) {
+                stick: Skin2StickValue = .zero, scaleProgress: Double = 1, easingOut: Bool = false, pressure: Double? = nil) {
+        self.pressure = pressure.map { $0.isFinite ? min(1, max(0, $0)) : 1 }
         self.pressed = pressed; self.selected = selected; self.directions = directions; self.stick = stick
         self.scaleProgress = scaleProgress; self.easingOut = easingOut
     }

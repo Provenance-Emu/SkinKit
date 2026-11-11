@@ -45,6 +45,7 @@ public struct Skin2TouchTracker<Key: Hashable> {
         var y: Double
         var owner: Owner
         var order: Int
+        var pressure: Double?
     }
 
     public private(set) var tester: Skin2HitTester
@@ -67,7 +68,7 @@ public struct Skin2TouchTracker<Key: Hashable> {
         dpadHeld = dpadHeld.filter { tester.control(id: $0.key) != nil }
     }
 
-    public mutating func began(_ key: Key, x: Double, y: Double) {
+    public mutating func began(_ key: Key, x: Double, y: Double, pressure: Double? = nil) {
         var owner = Owner.free
         if let c = tester.control(at: x, y) {
             switch c.kind {
@@ -78,14 +79,15 @@ public struct Skin2TouchTracker<Key: Hashable> {
                 owner = .free
             }
         }
-        touches[key] = Touch(x: x, y: y, owner: owner, order: nextOrder)
+        touches[key] = Touch(x: x, y: y, owner: owner, order: nextOrder, pressure: pressure)
         nextOrder += 1
     }
 
-    public mutating func moved(_ key: Key, x: Double, y: Double) {
+    public mutating func moved(_ key: Key, x: Double, y: Double, pressure: Double? = nil) {
         guard var touch = touches[key] else { return }
         touch.x = x
         touch.y = y
+        touch.pressure = pressure
         if case .latched(let id) = touch.owner, let c = tester.control(id: id), c.kind == .action,
            !Skin2HitTester.contains(c.hitFrame, x, y) {
             touch.owner = .inert
@@ -146,6 +148,11 @@ public struct Skin2TouchTracker<Key: Hashable> {
         case .thumbstick:
             // TODO(#123): a tap on the stick sends its `click` input (L3/R3).
             states[c.id] = Skin2HitTester.state(for: c, x: touch.x, y: touch.y)
+        case .trigger:
+            // Several fingers on a trigger have ambiguous force ownership. Match the host's
+            // binary fallback until only one finger remains.
+            let pressure = states[c.id] == nil ? (touch.pressure ?? 1) : 1
+            states[c.id] = Skin2ControlState(pressed: true, pressure: pressure)
         default:
             states[c.id] = Skin2ControlState(pressed: true)
         }
