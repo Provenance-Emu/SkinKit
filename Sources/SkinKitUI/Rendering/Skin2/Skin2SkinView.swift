@@ -17,6 +17,8 @@ public struct Skin2SkinView: View {
     public let document: Skin2Document
     public var device: Skin2Device
     public var displayType: Skin2DisplayType
+    /// Hosts that simulate a device supply its safe area explicitly.
+    public var safeAreaOverride: Skin2Insets?
     public var flags: Set<String>
     public var edits: [String: Skin2Edit]
     public var screenPlaceholders: Bool
@@ -43,7 +45,8 @@ public struct Skin2SkinView: View {
                 asset: (@Sendable (String) -> Data?)? = nil,
                 onInput: @escaping (Skin2InputEvent) -> Void = { _ in },
                 onLayout: ((Skin2Resolution) -> Void)? = nil,
-                onReleaseAll: @escaping () -> Void = {}) {
+                onReleaseAll: @escaping () -> Void = {}, safeAreaOverride: Skin2Insets? = nil) {
+        self.safeAreaOverride = safeAreaOverride
         self.document = document
         self.device = device
         self.displayType = displayType
@@ -69,7 +72,10 @@ public struct Skin2SkinView: View {
 
     public var body: some View {
         GeometryReader { outer in
-            let insets = outer.safeAreaInsets
+            let actual = outer.safeAreaInsets
+            let insets = safeAreaOverride.map {
+                EdgeInsets(top: $0.top, leading: $0.left, bottom: $0.bottom, trailing: $0.right)
+            } ?? actual
             GeometryReader { inner in
                 let resolution = resolve(size: inner.size, insets: insets)
                 let tester = Skin2HitTester(resolution)
