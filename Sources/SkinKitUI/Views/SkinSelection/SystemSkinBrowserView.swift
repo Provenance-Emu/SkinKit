@@ -267,7 +267,7 @@ public struct SystemSkinBrowserView: View {
                     Text(system.fullName)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(Color.white)
-                        .lineLimit(1)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Spacer()
 

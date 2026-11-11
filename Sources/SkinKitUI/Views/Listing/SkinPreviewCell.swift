@@ -234,11 +234,14 @@ struct SkinPreviewCell: View {
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2, reservesSpace: true)
                     .multilineTextAlignment(.leading)
-                    .minimumScaleFactor(0.85)
 
-                DeviceIndicators(skin: skin)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                // Empty badge rows still occupy one caption line, including at larger type sizes.
+                ZStack(alignment: .leading) {
+                    Text(" ").hidden()
+                    DeviceIndicators(skin: skin)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
         }
         .padding(theme.chromeInset - 4)

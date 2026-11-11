@@ -827,6 +827,9 @@ private struct CatalogSkinCard<Destination: View>: View {
     let onOpenCreator: (SkinCreatorCredit) -> Void
     @ViewBuilder let destination: () -> Destination
 
+    /// Fixed slot for downloaded thumbnails; fit the whole image instead of cropping its artwork.
+    private static var thumbnailAspectRatio: CGFloat { 1.4 }
+
     private var title: String { family?.name ?? entry.name }
     private var credit: String { family?.creditLine ?? "by \(entry.author ?? "Unknown")" }
     private var downloads: Int { family?.totalDownloadCount ?? entry.downloadCount ?? 0 }
@@ -839,8 +842,9 @@ private struct CatalogSkinCard<Destination: View>: View {
         VStack(alignment: .leading, spacing: 0) {
             // Thumbnail with installed badge overlay
             NavigationLink(destination: destination()) {
-                thumbnailView
-                    .aspectRatio(1.4, contentMode: .fit)
+                Color.clear
+                    .aspectRatio(Self.thumbnailAspectRatio, contentMode: .fit)
+                    .overlay { thumbnailView }
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                     .overlay(alignment: .bottomLeading) {
                         if let family {
@@ -866,7 +870,7 @@ private struct CatalogSkinCard<Destination: View>: View {
                     Text(title)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                        .lineLimit(1)
+                        .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                 }
@@ -879,10 +883,11 @@ private struct CatalogSkinCard<Destination: View>: View {
                         // System tags (max 2, excluding legacy codes like "unofficial")
                         let validSystems = entry.systems.filter { !SkinCatalogService.isLegacySystemCode($0) }
                         ForEach(validSystems.prefix(2), id: \.self) { system in
-                            Text(displayName(forSystemCode: system))
+                            Text(system.uppercased())
                                 .font(.system(size: 9, weight: .bold, design: .rounded))
                                 .tracking(0.5)
                                 .lineLimit(1)
+                                .accessibilityLabel(displayName(forSystemCode: system))
                                 .padding(.horizontal, 5)
                                 .padding(.vertical, 2)
                                 .background(
@@ -962,7 +967,7 @@ private struct CatalogSkinCard<Destination: View>: View {
                 case .success(let image):
                     image
                         .resizable()
-                        .scaledToFill()
+                        .scaledToFit()
                 case .failure:
                     placeholderThumbnail
                 @unknown default:
