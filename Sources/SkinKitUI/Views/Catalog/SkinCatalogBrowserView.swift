@@ -56,6 +56,7 @@ public struct SkinCatalogBrowserView: View {
     @State private var searchText = ""
     @State private var selectedSystem: String?
     @State private var selectedDevice: String?
+    @State private var selectedOrientation: SkinCatalogOrientation?
     @State private var sortOption: SkinSortOption = .popular
     @State private var availableSystems: [String] = []
     @State private var glowIntensity: CGFloat = 0.5
@@ -110,16 +111,6 @@ public struct SkinCatalogBrowserView: View {
         self.activationContextGameId = activationContextGameId
         _selectedSystem = State(initialValue: preselectedSystem)
         _showingFilters = State(initialValue: preselectedSystem != nil)
-        // Pre-select the device filter that matches the current hardware so
-        // iPad users see iPad skins and iPhone users see iPhone skins by default.
-        let defaultDevice: String? = {
-            #if os(tvOS)
-            return "tv"
-            #else
-            return UIDevice.current.userInterfaceIdiom == .pad ? "ipad" : "iphone"
-            #endif
-        }()
-        _selectedDevice = State(initialValue: defaultDevice)
     }
 
     @ViewBuilder
@@ -232,6 +223,9 @@ public struct SkinCatalogBrowserView: View {
         .onChange(of: selectedDevice) { _, _ in
             scheduleFilterUpdate()
         }
+        .onChange(of: selectedOrientation) { _, _ in
+            scheduleFilterUpdate()
+        }
         .onChange(of: sortOption) { _, _ in
             scheduleFilterUpdate()
         }
@@ -328,6 +322,7 @@ public struct SkinCatalogBrowserView: View {
                         ForEach(deviceOptions, id: \.label) { option in
                             filterChip(option.label, isSelected: selectedDevice == option.value) {
                                 selectedDevice = option.value
+                                if option.value == nil { selectedOrientation = nil }
                             }
                         }
                         // Only creators the user follows. Shown once they follow someone (or while it is on).
@@ -339,6 +334,22 @@ public struct SkinCatalogBrowserView: View {
                         }
                     }
                     .padding(.horizontal)
+                }
+
+                if selectedDevice != nil {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            filterChip("Both Orientations", isSelected: selectedOrientation == nil) {
+                                selectedOrientation = nil
+                            }
+                            ForEach(SkinCatalogOrientation.allCases, id: \.self) { orientation in
+                                filterChip(orientation == .portrait ? "Portrait" : "Landscape", isSelected: selectedOrientation == orientation) {
+                                    selectedOrientation = orientation
+                                }
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                 }
 
                 // Sort picker
@@ -637,6 +648,7 @@ public struct SkinCatalogBrowserView: View {
                     searchText = ""
                     selectedSystem = nil
                     selectedDevice = nil
+                    selectedOrientation = nil
                     followingOnly = false
                     Task { await applyFilters() }
                 } label: {
@@ -727,47 +739,16 @@ public struct SkinCatalogBrowserView: View {
         }
     }
 
-    private func sortLocally(_ entries: [SkinCatalogEntry], by option: SkinSortOption) -> [SkinCatalogEntry] {
-        switch option {
-        case .popular:      return entries.sorted { ($0.downloadCount ?? 0) > ($1.downloadCount ?? 0) }
-        case .recent:       return entries.sorted { ($0.effectiveDate ?? .distantPast) > ($1.effectiveDate ?? .distantPast) }
-        case .alphabetical: return entries.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        case .rating:       return entries.sorted { ($0.rating ?? 0) > ($1.rating ?? 0) }
-        }
-    }
-
     private func applyFilters() async {
         do {
-            var results: [SkinCatalogEntry]
-
-            if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                let deviceFilter = selectedDevice.map { [$0] }
-                results = try await SkinCatalogService.shared.filterSkins(
-                    system: selectedSystem,
-                    deviceSupport: deviceFilter,
-                    sortBy: sortOption
-                )
-            } else {
-                results = try await SkinCatalogService.shared.searchSkins(
-                    query: searchText,
-                    system: selectedSystem
-                )
-                /// Apply device filter and sort locally on search results.
-                /// Treat an omitted or empty `deviceSupport` list as unrestricted support.
-                /// Use prefix matching so "iphone" matches catalog variants like "iphone-x".
-                if let device = selectedDevice {
-                    let lowerFilter = device.lowercased()
-                    results = results.filter { entry in
-                        let entryDevices = entry.deviceSupport
-                        guard !entryDevices.isEmpty else { return true }
-                        return entryDevices.contains { d in
-                            let dl = d.lowercased()
-                            return dl == lowerFilter || dl.hasPrefix(lowerFilter + "-") || lowerFilter.hasPrefix(dl + "-")
-                        }
-                    }
-                }
-                results = sortLocally(results, by: sortOption)
+            let device = selectedDevice
+            let orientation = selectedOrientation
+            let matchesDevice: (SkinCatalogEntry) -> Bool = { entry in
+                guard let device else { return true }
+                return entry.supportsCatalogDevice(device, orientation: orientation)
             }
+            let found = try await SkinCatalogService.shared.searchSkins(query: searchText, system: selectedSystem)
+            var results = SkinCatalogService.sortEntries(found.filter(matchesDevice), by: sortOption)
 
             // The Following chip keeps the creators the user follows, resolved the way the profile
             // sheet and the shelf resolve them.
@@ -779,12 +760,12 @@ public struct SkinCatalogBrowserView: View {
 
             guard !Task.isCancelled else { return }
 
-            // A card shows its complete family (every visible member, not only the ones that matched
-            // the search or filter), so "Install all" never installs a subset. Hidden sample/mature
-            // entries never reach a family; labels come from the whole catalog.
+            // Keep compatible siblings even if their name did not match the query.
+            // Labels still come from the whole catalog.
             let index = try await SkinCatalogService.shared.familyIndex()
             let visible = try await SkinCatalogService.shared.visibleCatalog().skins
-            let grouped = index.families(containing: results, in: visible)
+            let grouped = index.families(containing: results, in: visible.filter(matchesDevice))
+            guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 withAnimation(.easeOut(duration: 0.2)) {

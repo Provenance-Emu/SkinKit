@@ -56,3 +56,23 @@ public extension SkinStorePolicy {
         return entries.filter { isCompatible($0, with: device) }
     }
 }
+
+
+/// A layout orientation advertised by the catalog.
+public enum SkinCatalogOrientation: String, CaseIterable, Sendable {
+    case portrait
+    case landscape
+}
+
+public extension SkinCatalogEntry {
+    /// Matches an explicit device filter using archive metadata. Older entries may
+    /// advertise a device without an orientation, which only matches a device-only filter.
+    func supportsCatalogDevice(_ device: String, orientation: SkinCatalogOrientation? = nil) -> Bool {
+        let device = device.lowercased()
+        let declared = Set(deviceSupport.map { $0.lowercased() })
+        if let orientation {
+            return declared.contains("\(device)-\(orientation.rawValue)")
+        }
+        return declared.contains(device) || declared.contains { $0.hasPrefix(device + "-") }
+    }
+}
