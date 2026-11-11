@@ -124,7 +124,7 @@ public struct SkinCatalogDetailView: View {
             .scrollIndicators(.hidden)
         }
         .skinKitBackdropColorScheme()
-        .navigationTitle(entry.name)
+        .navigationTitle("Skin Details")
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -283,6 +283,7 @@ public struct SkinCatalogDetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(entry.name)
                     .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .shadow(color: SkinKitTheme.current.pink.opacity(glowIntensity * 0.4), radius: 2)
 

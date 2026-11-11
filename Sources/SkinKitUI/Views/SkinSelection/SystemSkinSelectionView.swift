@@ -301,21 +301,15 @@ public struct SystemSkinSelectionView: View {
                         errorView(message: error)
                     } else {
                         VStack(spacing: 0) {
-                            // Header with system name
-                            headerView
-
-                            // Orientation picker
+                            // Keep scope and orientation reachable while the names, themes and skins scroll.
                             orientationPickerView
-
-                            // Theme of the selected skin, when it ships any
-                            selectedSkinThemeRow
 
                             // Skin grid for selected orientation (always shown so Built-in is accessible)
                             skinGridView
                         }
                     }
                 }
-                .navigationTitle(isPerGameSelection ? "\(game?.title ?? "Game") Skin" : "\(system.fullName) Skins")
+                .navigationTitle("Choose Skin")
                 #if !os(tvOS)
                 .navigationBarTitleDisplayMode(.inline)
                 #endif
@@ -403,13 +397,19 @@ public struct SystemSkinSelectionView: View {
     // MARK: - UI Components
 
     private var headerView: some View {
-        Text("Choose the skin for this session, game, or system.")
-            .font(.subheadline)
-            .foregroundColor(.white.opacity(0.7))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 4)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(isPerGameSelection ? (game?.title ?? system.fullName) : system.fullName)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            Text("Choose the skin for this session, game, or system.")
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.7))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, SkinKitTheme.current.chromeInset)
+        .padding(.top, SkinKitTheme.current.chromeInset)
     }
 
     /// Quiet capsule used for scope, orientation, and the catalog/import actions.
@@ -704,6 +704,9 @@ public struct SystemSkinSelectionView: View {
     private var skinGridView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
+                headerView
+                selectedSkinThemeRow
+
                 Text(selectedOrientation == .portrait ? "PORTRAIT" : "LANDSCAPE")
                     .skinKitSectionHeaderTypography()
                     .foregroundStyle(Color.white.opacity(SkinKitTheme.current.sectionTitleMutedOpacity))
@@ -776,7 +779,8 @@ public struct SystemSkinSelectionView: View {
                     .padding(.bottom, 20)
             }
         }
-        .scrollIndicators(.hidden)
+        .scrollIndicators(.visible)
+        .scrollIndicatorsFlash(onAppear: true)
     }
 
     private var builtInControlsCell: some View {

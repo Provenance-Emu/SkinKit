@@ -155,7 +155,7 @@ public struct DeltaSkinTestView: View {
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
-        .navigationTitle(skin.name)
+        .navigationTitle("Skin Preview")
         .fullScreenCover(isPresented: $showingFullscreenPreview) {
             DeltaSkinFullscreenPagerView(
                 skins: [skin],
@@ -273,6 +273,11 @@ public struct DeltaSkinTestView: View {
     private func previewArea(geometry: GeometryProxy) -> some View {
         ScrollView {
             VStack(spacing: 24) {
+                Text(skin.name)
+                    .font(.title2.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, SkinKitTheme.current.chromeInset)
                 portraitPreview(geometry: geometry)
                 if supportsLandscape {
                     landscapePreview(geometry: geometry)

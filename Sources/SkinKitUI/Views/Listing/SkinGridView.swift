@@ -115,8 +115,7 @@ struct SkinGridView: View {
                 HStack(spacing: 8) {
                     Text(consoleName)
                         .font(.headline)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     Text("\(consoleSkins.count)")
                         .font(.caption.weight(.semibold))
