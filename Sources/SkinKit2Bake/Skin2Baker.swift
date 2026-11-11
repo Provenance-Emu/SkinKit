@@ -23,9 +23,10 @@ public struct Skin2BakedBundle {
 /// Builds classic representations while preserving the original format 2 source.
 public enum Skin2Baker {
     public static func bake(
-        source: Data, assets: [String: Data] = [:]
+        source: Data, assets: [String: Data] = [:],
+        hitOverlapPolicy: Skin2Validator.HitOverlapPolicy = .reject
     ) throws -> [Skin2BakedBundle] {
-        let report = Skin2Validator.validate(data: source, assets: { assets["assets/" + $0] })
+        let report = Skin2Validator.validate(data: source, hitOverlapPolicy: hitOverlapPolicy, assets: { assets["assets/" + $0] })
         guard report.isValid else { throw Skin2BakeError.invalidSource(report.errors.map(\.description)) }
         let document = try Skin2Document.load(data: source)
         let selectable = document.variants.keys.sorted().filter { document.variants[$0]?.isPlayerSelectable == true }
@@ -47,6 +48,7 @@ public enum Skin2Baker {
             try ([nil] + selectable.map(Optional.some)).flatMap { variant in
                 try ([nil] + splitThemes.map(Optional.some)).map { theme in
                     var builder = Builder(source: source, assets: assets)
+                    if hitOverlapPolicy == .warn { builder.warnings = report.warnings.map(\.description) }
                     return try builder.build(document, gameType: gameType, gameIndex: index, variant: variant,
                                              theme: theme, inlineThemes: theme == nil ? inlineThemes : [])
                 }

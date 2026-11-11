@@ -52,8 +52,15 @@ public enum Skin2Validator {
         }
     }
 
+    /// Built-in overlays may retain overlapping hit regions when their host owns touch routing.
+    public enum HitOverlapPolicy: Sendable {
+        case reject
+        case warn
+    }
+
     /// `assets`: pass a reader to check the image limits (section 11); without one the images aren't opened.
-    public static func validate(data: Data, library: [String: Skin2JSON] = [:], assets: AssetReader? = nil) -> Skin2ValidationReport {
+    public static func validate(data: Data, library: [String: Skin2JSON] = [:],
+                                hitOverlapPolicy: HitOverlapPolicy = .reject, assets: AssetReader? = nil) -> Skin2ValidationReport {
         guard data.count <= Skin2Document.maxFileBytes else {
             return Skin2ValidationReport(issues: [Skin2Issue(.error, "", "skin.json is \(data.count) bytes; the limit is \(Skin2Document.maxFileBytes)")])
         }
@@ -61,10 +68,11 @@ public enum Skin2Validator {
         do { json = try Skin2JSON.parse(data) } catch {
             return Skin2ValidationReport(issues: [Skin2Issue(.error, "", "not valid JSON: \(error.localizedDescription)")])
         }
-        return validate(json: json, library: library, assets: assets)
+        return validate(json: json, library: library, hitOverlapPolicy: hitOverlapPolicy, assets: assets)
     }
 
-    public static func validate(json: Skin2JSON, library: [String: Skin2JSON] = [:], assets: AssetReader? = nil) -> Skin2ValidationReport {
+    public static func validate(json: Skin2JSON, library: [String: Skin2JSON] = [:],
+                                hitOverlapPolicy: HitOverlapPolicy = .reject, assets: AssetReader? = nil) -> Skin2ValidationReport {
         var v = Run()
         let base: Skin2Document
         do { base = try Skin2Document.load(json: json, library: library) } catch let e as Skin2Error {
@@ -102,7 +110,7 @@ public enum Skin2Validator {
             v.sources.append(contentsOf: t.sources)
         }
         for (label, doc) in docs {
-            v.checkLayout(doc, label: label)
+            v.checkLayout(doc, label: label, hitOverlapPolicy: hitOverlapPolicy)
         }
         if let assets { v.checkImages(assets) }
         return Skin2ValidationReport(issues: v.issues, document: base)
@@ -409,7 +417,7 @@ public enum Skin2Validator {
 
         // MARK: Layout on the bake trait sets
 
-        mutating func checkLayout(_ doc: Skin2Document, label: String) {
+        mutating func checkLayout(_ doc: Skin2Document, label: String, hitOverlapPolicy: HitOverlapPolicy) {
             let suffix = label.isEmpty ? "" : ", \(label)"
             var reportedPairs: Set<[String]> = []
             var reportedSmall: Set<String> = []
@@ -423,7 +431,7 @@ public enum Skin2Validator {
                         guard let hb = b.hitFrame, ha.overlaps(hb) else { continue }
                         let pair = [a.pointer, b.pointer]
                         guard reportedPairs.insert(pair).inserted else { continue }
-                        error(a.pointer, "hit frame of #\(a.id ?? "?") overlaps #\(b.id ?? "?") on \(trait.name)\(suffix)")
+                        add(Skin2Issue(hitOverlapPolicy == .reject ? .error : .warning, a.pointer, "hit frame of #\(a.id ?? "?") overlaps #\(b.id ?? "?") on \(trait.name)\(suffix)"))
                     }
                 }
                 for c in r.controls {

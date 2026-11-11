@@ -647,7 +647,7 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
         case "atarist", "atariST": return .atarist
 
         // SNK
-        case "neogeo", "neo", "ng": return .neogeo
+        case "neogeo", "neogeocd", "neo", "ng": return .neogeo
         case "ngp", "neogeopocket": return .ngp
         case "ngpc", "neogeopocketcolor": return .ngpc
 
@@ -881,7 +881,7 @@ public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
              (.lynx, "lynx"), (.lynx, "atarilynx"),
              (.atari8bit, "atari8bit"), (.atari8bit, "atari8"),
              (.atarist, "atarist"),
-             (.neogeo, "neogeo"), (.neogeo, "neo"), (.neogeo, "ng"),
+             (.neogeo, "neogeo"), (.neogeo, "neogeocd"), (.neogeo, "neo"), (.neogeo, "ng"),
              (.ngp, "ngp"), (.ngp, "neogeopocket"),
              (.ngpc, "ngpc"), (.ngpc, "neogeopocketcolor"),
              (.wonderswan, "ws"), (.wonderswan, "wonderswan"),
