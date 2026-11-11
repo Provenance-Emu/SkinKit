@@ -65,6 +65,16 @@ struct ValidatorTests {
         #expect(!Self.has(landscape.errors, "portrait"))
     }
 
+    @Test("Provenance input aliases keep their existing tokens", arguments: [
+        ("psp", "l1"), ("psp", "r1"), ("gamegear", "c"), ("mastersystem", "c"), ("sg1000", "c"),
+        ("wii", "1"), ("wii", "2"), ("wii", "+"), ("wii", "-")
+    ])
+    func provenanceInputs(system: String, input: String) {
+        let report = Self.report(Self.button("button", input: input, frame: "[0, 0, 60, 60]"),
+                                 gameTypes: "[\"com.provenance.\(system)\"]")
+        #expect(report.errors.isEmpty)
+    }
+
     @Test("Inputs must fit the control kind and the game type")
     func inputs() {
         #expect(Self.has(Self.report(Self.button("c", frame: "[0, 0, 60, 60]")).errors, "\"c\" is not an input of game type"))
