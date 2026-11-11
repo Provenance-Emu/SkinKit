@@ -433,7 +433,8 @@ public struct SkinCatalogBrowserView: View {
 
     /// The shelf sits above the grid while nothing narrows it: no search, system or Following filter.
     private var showsFollowShelf: Bool {
-        !followFeed.isEmpty && !followingOnly && selectedSystem == nil
+        !followFeed.isEmpty && !followingOnly && selectedSystem == nil && selectedDevice == nil &&
+            searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
