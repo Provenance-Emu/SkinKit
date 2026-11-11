@@ -237,7 +237,11 @@ struct SkinPreviewCell: View {
 
                 // Empty badge rows still occupy one caption line, including at larger type sizes.
                 ZStack(alignment: .leading) {
-                    Text(" ").hidden()
+                    HStack(spacing: 4) {
+                        Image(systemName: "iphone")
+                        Image(systemName: "ipad")
+                    }
+                    .hidden()
                     DeviceIndicators(skin: skin)
                 }
                 .font(.caption)

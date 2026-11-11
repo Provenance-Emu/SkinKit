@@ -33,5 +33,5 @@ xcodebuild test \
   -scheme SkinKit-Package \
   -destination "id=$udid" \
   -skipPackagePluginValidation \
-  | tail -n 40
+  | tee /tmp/skinkit-simulator-tests.log
 exit "${PIPESTATUS[0]}"

@@ -44,8 +44,11 @@ public class DeltaSkinScreenFilter {
             self.radius = 0
             self.center = nil
 
-            // Apply standard parameters
+            // Apply standard parameters. A skin can name a key this filter does not have, and
+            // CoreImage raises an exception for one, so those are skipped.
+            let inputKeys = Set(filter.inputKeys)
             filterInfo.parameters.forEach { key, value in
+                guard inputKeys.contains(key) else { return }
                 switch value {
                 case .number(let num):
                     filter.setValue(num as NSNumber, forKey: key)
@@ -109,6 +112,8 @@ public class DeltaSkinScreenFilter {
             }
 
         default:
+            // A generator (CIConstantColorGenerator, …) takes no input image and cannot filter one.
+            guard filter.inputKeys.contains(kCIInputImageKey) else { return nil }
             filter.setValue(image, forKey: kCIInputImageKey)
             return filter.outputImage
         }
