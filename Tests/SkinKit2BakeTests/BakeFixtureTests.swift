@@ -81,3 +81,33 @@ func unknownFrameBuffer() throws {
     let screen = try #require(classic.representations[.iphone]?.edgeToEdge?["portrait"]?.screens?.first)
     #expect(screen.inputFrame == nil)
 }
+
+
+@Test("Explicit bundled overlay bakes preserve overlapping hit regions and recognize Neo Geo CD")
+func bundledOverlayHitOverlap() throws {
+    let source = Data("""
+    {
+      "formatVersion": "2.0",
+      "identifier": "com.example.neogeocd",
+      "name": "Neo Geo CD",
+      "requires": [],
+      "gameTypes": ["com.provenance.neogeocd"],
+      "reference": {"shortSide": 390, "minScale": 1, "maxScale": 1.35},
+      "bake": {"traits": ["iphone.standard", "iphone.edgeToEdge"]},
+      "root": {"type": "group", "children": [
+        {"type": "control", "id": "a", "kind": "button", "input": "a",
+         "layout": {"frame": [0, 0, 60, 60]}, "hit": {"extend": {"right": 12}}},
+        {"type": "control", "id": "b", "kind": "button", "input": "b",
+         "layout": {"frame": [66, 0, 60, 60]}}
+      ]}
+    }
+    """.utf8)
+    #expect(throws: Skin2BakeError.self) { try Skin2Baker.bake(source: source) }
+    let bundle = try #require(Skin2Baker.bake(source: source, hitOverlapPolicy: .warn).first)
+    #expect(bundle.warnings.contains { $0.contains("overlaps #b") })
+    let classic = try info(bundle)
+    let items = try #require(classic.representations[.iphone]?.edgeToEdge?["portrait"]?.items)
+    #expect(items.count == 2)
+    #expect(items.first?.extendedEdges?.right == 12)
+    #expect(DeltaSkinGameType.fromAnyString("com.provenance.neogeocd") == .neogeo)
+}

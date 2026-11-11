@@ -4,7 +4,7 @@ import ZIPFoundation
 
 extension Skin2Baker {
     /// Reads a source document and its adjacent assets from a directory.
-    public static func bake(sourceURL: URL) throws -> [Skin2BakedBundle] {
+    public static func bake(sourceURL: URL, hitOverlapPolicy: Skin2Validator.HitOverlapPolicy = .reject) throws -> [Skin2BakedBundle] {
         let source = sourceURL.standardizedFileURL
         let root = source.deletingLastPathComponent()
         let assetRoot = root.appendingPathComponent("assets", isDirectory: true)
@@ -21,7 +21,7 @@ extension Skin2Baker {
                 }
             }
         }
-        return try bake(source: Data(contentsOf: source), assets: assets)
+        return try bake(source: Data(contentsOf: source), assets: assets, hitOverlapPolicy: hitOverlapPolicy)
     }
 
     /// Reads the format 2 source and assets from an installed archive or directory package.

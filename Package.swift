@@ -92,7 +92,7 @@ let package = Package(
         // Renders Tests/Format2Fixtures and compares with the committed expected/*@2x.png references.
         .testTarget(name: "SkinKit2RenderTests", dependencies: ["SkinKit2Render", "SkinKit2Core"]),
         .target(name: "SkinKit2Bake", dependencies: ["SkinKit2Core", "SkinKitCore", "SkinKit2Render", .product(name: "ZIPFoundation", package: "ZIPFoundation")]),
-        .executableTarget(name: "skinkit-bake", dependencies: ["SkinKit2Bake"]),
+        .executableTarget(name: "skinkit-bake", dependencies: ["SkinKit2Bake", "SkinKit2Core"]),
         .testTarget(name: "SkinKit2BakeTests", dependencies: ["SkinKit2Bake", "SkinKit2Core", "SkinKitCore"]),
     ],
     swiftLanguageModes: [.v5]

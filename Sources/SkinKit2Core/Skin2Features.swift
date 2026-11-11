@@ -104,7 +104,7 @@ public enum Skin2Inputs {
     /// `action` control inputs (the Provenance `OverlayAction` list that Delta understands, plus Provenance's own).
     public static let actions: Set<String> = [
         "menu", "quickSave", "quickLoad", "fastForward", "toggleFastForward", "toggleAltRepresentations",
-        "toggleKeyboard", "screenshot", "rewind", "pause", "reset", "restart",
+        "toggleKeyboard", "screenshot", "rewind", "pause", "reset", "restart", "keypad", "service",
     ]
 
     /// `touchSurface` inputs.
@@ -122,13 +122,13 @@ public enum Skin2Inputs {
             (["ds", "nds"], ["a", "b", "x", "y", "l", "r", "touchScreen"]),
             (["3ds"], ["a", "b", "x", "y", "l", "r", "zl", "zr", "home", "leftThumbstick", "rightThumbstick", "cStick", "touchScreen"]),
             (["genesis", "md", "megadrive", "segacd", "mcd", "megacd", "32x", "sega32x"], ["a", "b", "c", "x", "y", "z", "mode"]),
-            (["ms", "mastersystem", "gg", "gamegear", "sg1000"], ["a", "b"]),
+            (["ms", "mastersystem", "gg", "gamegear", "sg1000"], ["a", "b", "c"]),
             (["saturn", "ss"], ["a", "b", "c", "x", "y", "z", "l", "r"]),
             (["psx", "ps1"], ["cross", "circle", "square", "triangle", "l1", "l2", "r1", "r2", "l3", "r3", "leftThumbstick", "rightThumbstick", "analog"]),
-            (["psp"], ["cross", "circle", "square", "triangle", "l", "r", "leftThumbstick"]),
+            (["psp"], ["cross", "circle", "square", "triangle", "l", "r", "l1", "r1", "leftThumbstick"]),
             (["dc", "dreamcast"], ["a", "b", "x", "y", "l", "r", "leftThumbstick"]),
             (["gamecube", "gc", "ngc", "gcn"], ["a", "b", "x", "y", "z", "l", "r", "leftThumbstick", "rightThumbstick", "cStick", "mic"]),
-            (["wii"], ["a", "b", "one", "two", "plus", "minus", "home", "c", "z", "nunchukStick", "pointer",
+            (["wii"], ["a", "b", "one", "two", "plus", "minus", "1", "2", "+", "-", "home", "c", "z", "nunchukStick", "pointer",
                        "x", "y", "l", "r", "zl", "zr", "leftThumbstick", "rightThumbstick"]),
             (["intellivision"], digits.union(["clear", "enter", "topAction", "bottomLeftAction", "bottomRightAction"])),
             (["colecovision", "coleco"], digits.union(["*", "#", "leftAction", "rightAction"])),
