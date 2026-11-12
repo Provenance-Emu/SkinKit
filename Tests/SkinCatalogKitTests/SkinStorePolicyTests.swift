@@ -1,4 +1,5 @@
 import XCTest
+import Testing
 @testable import SkinCatalogKit
 
 /// iFly's and iCube's store behaviour, reproduced from the two `SkinStorePolicy` presets against
@@ -502,5 +503,23 @@ final class SkinStoreDeviceTests: XCTestCase {
         let list = [entry("for iPhone"), entry("for iPad")]
         XCTAssertEqual(SkinStorePolicy.filtered(list, for: nil).count, 2)
         XCTAssertEqual(SkinStorePolicy.filtered(list, for: .iPad).map(\.name), ["for iPad"])
+    }
+}
+
+
+@Suite("Catalog device filters")
+struct CatalogDeviceFilterTests {
+    @Test func deviceAndOrientationRequireCompatibleArchiveMetadata() {
+        func entry(_ support: [String]) -> SkinCatalogEntry {
+            SkinCatalogEntry(id: "skin", name: "Skin", systems: ["gba"],
+                             downloadURL: URL(fileURLWithPath: "/skin.deltaskin"), deviceSupport: support)
+        }
+
+        #expect(!entry([]).supportsCatalogDevice("ipad"))
+        #expect(!entry(["iphone", "iphone-landscape"]).supportsCatalogDevice("ipad"))
+        #expect(entry(["ipad"]).supportsCatalogDevice("ipad"))
+        #expect(!entry(["ipad"]).supportsCatalogDevice("ipad", orientation: .landscape))
+        #expect(entry(["ipad-landscape"]).supportsCatalogDevice("iPad", orientation: .landscape))
+        #expect(!entry(["ipad", "ipad-landscape"]).supportsCatalogDevice("ipad", orientation: .portrait))
     }
 }
