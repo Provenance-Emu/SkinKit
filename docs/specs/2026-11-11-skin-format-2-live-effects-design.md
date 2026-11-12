@@ -147,7 +147,7 @@ Two kinds, both pure functions of a clock:
 
 **Clocks.** `appear` counts from when the skin appeared on this display, `gameStart` from the game's first frame (it restarts on reset), `run` is total running time. All three stop while the game is paused, so a paused skin is still and costs nothing. In the rest frame, `once` animations are finished and loops and waves sit at phase 0.
 
-**Flashing.** The validator rejects a loop or wave on `opacity`, `tint` or `gain` that repeats more often than three times a second and changes the value by more than 0.1. A CRT flicker of a few percent passes; a strobe does not. When the system's Reduce Motion or Dim Flashing Lights setting is on, the host draws the rest frame's values for every animation and for the motion and viewer signals.
+**Flashing.** The limit is three flashes a second, counted inside the animation, not by how often it repeats. A *swing* is a run of the value in one direction, up or down, that changes it by more than 0.1 (for a colour, any channel); a flash is two swings. The validator rejects an animation on `opacity`, `tint` or `gain` in which more than six swings begin within any one second of it. For keyframes it walks the keyframe values in order, and for `loop` and `pingPong` it continues across the repeat, so eleven keyframes that alternate 0 and 1 over one second fail however long the loop is. For waves the count follows from the period: `sine` and `triangle` make two swings a period and `square` two jumps, so each needs a period of at least a third of a second once `max − min` is above 0.1; `noise` is counted as one swing a period and needs at least a sixth of a second. A CRT flicker of a few percent passes at any speed; a strobe does not. When the system's Reduce Motion or Dim Flashing Lights setting is on, the host draws the rest frame's values for every animation and for the motion and viewer signals.
 
 ### 5. Signals
 
@@ -187,7 +187,15 @@ The 2.0 design named `{ "type": "ci", "name", "params" }` and left it unbuilt. T
 
 **Parameters** take the forms classic screen filters take (`DeltaSkin.FilterInfo`: numbers, vectors, points, rects, colours), a live value where the filter wants a number or a colour, and three image forms for filters with a second image input (`CIBlendWithMask`, `CIDisplacementDistortion`): `{"src": "assets/…"}`, `{"picture": "#id"}` and `{"content": true}` (the node's own drawn content). Any built-in Core Image filter may be named. A filter or key Core Image does not have is skipped and logged once, as the classic path does since SkinKit #147. Filters that need a model, a URL or code cannot be configured from JSON and so cannot be used.
 
-**Delta `filters` map one to one.** A screen node's `filters` key stays, and is defined as shorthand: its entries are `ci` effects that run before the node's `effects`. The baker writes every `ci` entry of a screen, from either key, into the classic `filters` (as `{name, parameters}`), so a round trip through the baker loses nothing. A classic skin converted to format 2 keeps its `filters` as they are. A screen's effects are never drawn into the baked background (a screen is not part of it); only `ci` effects on other static nodes are baked into the artwork, as 2.0 §8.2 says.
+**Delta `filters` map one to one.** A screen node's `filters` key stays, and is defined as shorthand: its entries are `ci` effects that run before the node's `effects`. A classic skin converted to format 2 keeps its `filters` as they are, and they bake back unchanged.
+
+**What the baker writes to classic `filters`.** Classic readers decode a filter parameter only as a number or a dictionary of numbers (`FilterParameter` in `SkinKitCore/DeltaSkinTypes.swift`: vector, colour as `{r, g, b}`, rectangle, affine transform), and one parameter that fails to decode fails the whole skin. So the baker writes a screen's `ci` entries, from either key, as `{name, parameters}` under these rules, and both bakers apply them identically:
+
+- a number, vector, rectangle or transform is written as it is; a colour is written as `{r, g, b}`;
+- a live value is written as its rest-frame value;
+- an entry with an image parameter (`src`, `picture`, `content`) is left out whole, because classic cannot express it and half a filter is worse than none. The validator warns that the classic skin will not have that filter.
+
+The baked `info.json` must decode with `DeltaSkin` (the baker's tests already load every bake); a fixture with an image-parameter screen filter covers this case. A screen's effects are never drawn into the baked background (a screen is not part of it); only `ci` effects on other static nodes are baked into the artwork, as 2.0 §8.2 says.
 
 **Order on a node that is not a screen.** 2.0 §5.3 fixes the order of shadows, content, blur and blend. `ci` entries, then a `shader` entry, run after blur and before blend, each in listed order.
 
@@ -310,7 +318,7 @@ Each effect fails on its own and always in the same direction, toward the static
 | `live`, `live.animate`, signals | evaluates a given frame; the rest frame by default and in bakes | every frame | same as Swift static; the playground has a time scrubber and signal sliders |
 | `effects.ci` | applied; baked in | applied | skipped |
 | `effects.shader` | skipped | run through the host's runner | skipped |
-| classic `filters` | written to `info.json` from every screen `ci` entry | run as `ci` | written to `info.json` identically |
+| classic `filters` | written to `info.json` from a screen's `ci` entries under the rules of §6 (image-parameter entries left out) | run as `ci` | written to `info.json` identically |
 
 Both bakers still write byte-identical `info.json`. Classic skins get the rest frame.
 
