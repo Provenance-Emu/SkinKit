@@ -63,21 +63,13 @@ struct SkinGridView: View {
             .backgroundStyle(.blendMode(.darken))
     }
 
-    /// Empty state view
-    @ViewBuilder
+    /// Empty state view. SkinKit supports iOS and tvOS 17 and later.
     private var emptyStateView: some View {
-        if #available(iOS 17.0, tvOS 17.0, *) {
-            ContentUnavailableView(
-                "No Skins Found",
-                systemImage: "gamecontroller",
-                description: Text("Add skins to get started")
-            )
-        } else {
-            VStack {
-                Text("No Skins Found")
-                Text("Add skins to get started")
-            }
-        }
+        ContentUnavailableView(
+            "No Skins Found",
+            systemImage: "gamecontroller",
+            description: Text("Add skins to get started")
+        )
     }
 
     /// Main content view with skins
