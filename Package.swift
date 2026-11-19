@@ -10,6 +10,9 @@
 //   SkinKitUI       SwiftUI skin rendering and store/picker views (iOS/tvOS); uses SkinKitRetroArch for Send to RetroArch (iOS only)
 //   SkinKit2Core    skin format 2.0: model, preprocessor, validator, layout resolver, JSON Schema (no UI, no deps)
 //   SkinKit2Render  skin format 2.0: Core Graphics drawer and hit testing for resolved layouts (no UIKit/SwiftUI)
+//   SkinKitBezels   the TV drawn around the game picture: selection rules, bundled TVs (format 2 documents),
+//                   image bezels, The Bezel Project, settings behind a protocol (no UI, runs no shader)
+//   SkinKitBezelsUI the pause-menu TV switcher, the TV picker and the plain (shader-free) TV view (iOS/tvOS)
 //
 // macOS is listed only so the non-UI modules can run `swift test` on the host
 // without a simulator. The apps ship on iOS and tvOS.
@@ -32,6 +35,8 @@ let package = Package(
         .library(name: "SkinKit2Core", targets: ["SkinKit2Core"]),
         .library(name: "SkinKit2Render", targets: ["SkinKit2Render"]),
         .library(name: "SkinKit2Bake", targets: ["SkinKit2Bake"]),
+        .library(name: "SkinKitBezels", targets: ["SkinKitBezels"]),
+        .library(name: "SkinKitBezelsUI", targets: ["SkinKitBezelsUI"]),
         .executable(name: "skinkit-bake", targets: ["skinkit-bake"]),
     ],
     dependencies: [
@@ -94,6 +99,17 @@ let package = Package(
         .target(name: "SkinKit2Bake", dependencies: ["SkinKit2Core", "SkinKitCore", "SkinKit2Render", .product(name: "ZIPFoundation", package: "ZIPFoundation")]),
         .executableTarget(name: "skinkit-bake", dependencies: ["SkinKit2Bake", "SkinKit2Core"]),
         .testTarget(name: "SkinKit2BakeTests", dependencies: ["SkinKit2Bake", "SkinKit2Core", "SkinKitCore"]),
+
+        // The bundled TVs are format 2 skin documents drawn by SkinKit2Render. Nothing from The Bezel Project
+        // is bundled or used as a fixture.
+        .target(
+            name: "SkinKitBezels",
+            dependencies: ["SkinKit2Core", "SkinKit2Render"],
+            resources: [.copy("Resources/TVBezels")]
+        ),
+        .target(name: "SkinKitBezelsUI", dependencies: ["SkinKitBezels"]),
+        .testTarget(name: "SkinKitBezelsTests", dependencies: ["SkinKitBezels"]),
+        .testTarget(name: "SkinKitBezelsUITests", dependencies: ["SkinKitBezelsUI", "SkinKitBezels"]),
     ],
     swiftLanguageModes: [.v5]
 )
