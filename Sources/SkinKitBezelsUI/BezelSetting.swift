@@ -41,8 +41,10 @@ final class BezelSettingsObserver: ObservableObject {
     @Published var revision = 0
     private var subscription: AnyCancellable?
 
-    init() {
-        subscription = NotificationCenter.default.publisher(for: .bezelSettingsDidChange)
+    /// - Parameter store: the only store to listen to; `nil` for every store, which is what
+    ///   views want (the app has one).
+    init(store: (any BezelSettingsStore)? = nil) {
+        subscription = NotificationCenter.default.publisher(for: .bezelSettingsDidChange, object: store)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.revision += 1 }
     }

@@ -16,7 +16,7 @@ public protocol BezelSettingsStore: AnyObject, Sendable {
     /// The TV for every game: a `TVBezel` id, `ExternalDisplayBezelRules.noBezelID` for none
     /// or `automaticBezelID`, which is what a player who never chose has.
     var chosenBezel: String { get set }
-    /// With a TV chosen, prefer the TV that lists the game's system.
+    /// With a TV chosen, prefer a bezel the player added for the game's system.
     var matchesSystem: Bool { get set }
     /// The picture lights the room; `nil` until the player sets it (it then goes by the device).
     var lightsRoom: Bool? { get set }

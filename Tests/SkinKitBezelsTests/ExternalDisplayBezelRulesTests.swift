@@ -33,15 +33,15 @@ struct ExternalDisplayBezelRulesTests {
         #expect(bezel(chosen: "studio", system: nil) == "studio")
     }
 
-    @Test("A system's own screen replaces the chosen TV while matching is on")
-    func matchesSystem() {
-        #expect(bezel(chosen: "studio", system: "com.provenance.amiga") == "computer")
-        #expect(bezel(chosen: "studio", matches: false, system: "com.provenance.amiga") == "studio")
+    @Test("A built-in TV for the system does not replace the chosen TV", arguments: [true, false])
+    func chosenBeatsBuiltIn(matches: Bool) {
+        #expect(bezel(chosen: "studio", matches: matches, system: "com.provenance.amiga") == "studio")
+        #expect(bezel(chosen: "late-claim", matches: matches, system: "com.provenance.c64") == "late-claim")
     }
 
     @Test("The first TV in the catalogue wins a system two of them claim")
     func firstClaimWins() {
-        #expect(bezel(chosen: "studio", system: "com.provenance.c64") == "computer")
+        #expect(bezel(chosen: Rules.automaticBezelID, system: "com.provenance.c64") == "computer")
     }
 
     @Test("No TV chosen shows none, even for a system with a screen of its own",
@@ -122,11 +122,13 @@ struct ExternalDisplayBezelRulesTests {
         #expect(resolve(chosen: Rules.noBezelID, gameArt: "not-downloaded") == nil)
     }
 
-    @Test("Among TVs for a system the player's own comes first")
+    @Test("The player's own bezel for a system replaces the chosen TV while matching is on")
     func ownTVFirst() {
         #expect(resolve(system: "com.provenance.c64") == "my-c64")
         #expect(resolve(system: "com.provenance.snes") == "my-snes")
         #expect(resolve(matches: false, system: "com.provenance.c64") == "studio")
+        // Automatic takes the player's own before a built-in TV for the same system.
+        #expect(resolve(chosen: Rules.automaticBezelID, matches: false, system: "com.provenance.c64") == "my-c64")
         // A TV for a system still needs a TV to be chosen.
         #expect(resolve(chosen: Rules.noBezelID, system: "com.provenance.snes") == nil)
     }

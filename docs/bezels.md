@@ -86,4 +86,8 @@ suggests and may be left out. A system may be listed by one TV only.
 - **No Bezel Project artwork in any repository**, bundle or test fixture. It is downloaded from the
   project's pages when the player asks.
 - A `nil` `BezelPreview?` is "no preview"; a preview whose choice is `""` is Off. Do not fold them.
+- **A TV the player picks is the TV shown.** The systems a built-in TV lists only feed Automatic. With a TV
+  chosen, only a bezel the player added for the game's system replaces it, and only while
+  `matchesSystem` is on. (Built-in TVs used to replace it too; with consoles and arcade boards listed,
+  that swapped a chosen TV on most games and left the switcher's preview unchanged.)
 - Stored ids never change: `living-room-tv`, `slang:bezel/…`, `file:<path inside Bezels>`, `auto`, `""`.

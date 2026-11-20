@@ -20,7 +20,8 @@ struct BezelSettingsObserverTests {
         let defaults = try #require(UserDefaults(suiteName: name))
         defer { defaults.removePersistentDomain(forName: name) }
         let settings = UserDefaultsBezelSettings(defaults: defaults)
-        let observer = BezelSettingsObserver()
+        // Its own store only: other suites change theirs at the same time.
+        let observer = BezelSettingsObserver(store: settings)
         let before = observer.revision
         var changes = observer.$revision.dropFirst().values.makeAsyncIterator()
         settings.chosenBezel = "studio-monitor"
