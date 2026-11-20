@@ -115,6 +115,31 @@ struct TVBezelCatalogTests {
         #expect(handheld.resolution.outcome == .noneForSystem)
     }
 
+    @Test("Automatic gives a Dreamcast-era console the flat-tube TV and an arcade board the cabinet")
+    func eraDefaults() {
+        func automatic(_ system: String) -> String? {
+            TVBezelCatalog.resolve(chosen: ExternalDisplayBezelRules.automaticBezelID, matchesSystem: true,
+                                   systemID: system, systemSuitsTV: true).bezel?.id
+        }
+        for system in ["com.provenance.dreamcast", "com.provenance.ps2", "com.provenance.gamecube"] {
+            #expect(automatic(system) == "flat-tube-tv", "\(system)")
+        }
+        for system in ["com.provenance.naomi", "com.provenance.naomi2", "com.provenance.atomiswave"] {
+            #expect(automatic(system) == "candy-cabinet", "\(system)")
+        }
+        // The two that no system asks for are still there to choose.
+        #expect(TVBezelCatalog.bezel(id: "dorm-tv") != nil)
+        #expect(TVBezelCatalog.bezel(id: "vga-monitor") != nil)
+    }
+
+    @Test("Every bundled TV's artwork renders")
+    func everyArtworkRenders() throws {
+        for bezel in bezels {
+            let image = try #require(try TVBezelArtwork(bezel: bezel).image(pixelWidth: 320), "\(bezel.id)")
+            #expect(image.width == 320 && image.height == 180)
+        }
+    }
+
     @Test("A catalogue entry needs only an id, a name and artwork")
     func decodesMinimalEntry() throws {
         let data = Data(#"{"bezels":[{"id":"a","name":"A","artwork":"a.skin.json"}]}"#.utf8)
