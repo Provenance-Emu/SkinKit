@@ -97,10 +97,15 @@ struct BezelChoiceTests {
     @Test("Automatic gives a console a TV and a handheld none")
     func automatic() {
         let settings = settings()
-        let console = BezelChoice.resolve(gameID: nil, systemID: "com.provenance.gamecube", systemSuitsTV: true,
+        let console = BezelChoice.resolve(gameID: nil, systemID: "com.provenance.snes", systemSuitsTV: true,
                                           preview: nil, settings: settings)
         #expect(console.bezel?.id == ExternalDisplayBezelRules.automaticDefaultBezelID)
         #expect(console.resolution.isAutomatic)
+        // A console of about 2000 gets the TV of its day, not the wood-grain set.
+        let later = BezelChoice.resolve(gameID: nil, systemID: "com.provenance.gamecube", systemSuitsTV: true,
+                                        preview: nil, settings: settings)
+        #expect(later.bezel?.id == "flat-tube-tv")
+        #expect(later.resolution.isAutomatic)
         let handheld = BezelChoice.resolve(gameID: nil, systemID: "com.provenance.gba", systemSuitsTV: false,
                                            preview: nil, settings: settings)
         #expect(handheld.bezel == nil)

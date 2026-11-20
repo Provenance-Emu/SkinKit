@@ -74,12 +74,16 @@ public enum ExternalDisplayBezelRules {
     /// 2. artwork made for the game;
     /// 3. with *Automatic*: none for a system with a screen of its own, else a TV that lists
     ///    the game's system, else `automaticDefault`;
-    /// 4. with a TV chosen and `matchesSystem`, a TV that lists the game's system;
+    /// 4. with a TV chosen and `matchesSystem`, a bezel the player added that lists the
+    ///    game's system;
     /// 5. the chosen TV.
+    ///
+    /// A built-in TV's systems only feed *Automatic*: a TV the player picked is not replaced
+    /// by another built-in one, so the TV they pick (or try in the switcher) is the TV shown.
     ///
     /// - Parameters:
     ///   - chosen: the stored choice (`noBezelID` for none, `automaticBezelID` for *Automatic*).
-    ///   - matchesSystem: with a TV chosen, prefer the TV that lists the game's system.
+    ///   - matchesSystem: with a TV chosen, prefer a bezel the player added for the game's system.
     ///   - systemSuitsTV: the system was played on a TV or monitor (its screen type is CRT).
     ///   - candidates: every TV on the device, in catalogue order. Among TVs listing a system
     ///     the player's own win, then the first.
@@ -96,11 +100,9 @@ public enum ExternalDisplayBezelRules {
                                gameArt: String? = nil,
                                automaticDefault: String = automaticDefaultBezelID) -> Resolution {
         let known = { (id: String) in candidates.contains { $0.id == id } }
-        let listing = { () -> String? in
-            guard let systemID else { return nil }
-            let claims = candidates.filter { $0.preferredSystems.contains(systemID) }
-            return (claims.first(where: \.isUserAdded) ?? claims.first)?.id
-        }
+        let claims = systemID.map { systemID in candidates.filter { $0.preferredSystems.contains(systemID) } } ?? []
+        let ownClaim = claims.first(where: \.isUserAdded)?.id
+        let listing = ownClaim ?? claims.first?.id
         if let pinned {
             if pinned == noBezelID { return Resolution(outcome: .noneChosen, isAutomatic: false) }
             if known(pinned) { return Resolution(outcome: .bezel(pinned), isAutomatic: false) }
@@ -109,14 +111,14 @@ public enum ExternalDisplayBezelRules {
         if chosen == noBezelID { return Resolution(outcome: .noneChosen, isAutomatic: false) }
         if chosen == automaticBezelID {
             guard systemSuitsTV else { return Resolution(outcome: .noneForSystem, isAutomatic: true) }
-            if let preferred = listing() { return Resolution(outcome: .bezel(preferred), isAutomatic: true) }
+            if let listing { return Resolution(outcome: .bezel(listing), isAutomatic: true) }
             return Resolution(outcome: known(automaticDefault) ? .bezel(automaticDefault) : .noneAvailable,
                               isAutomatic: true)
         }
-        // The system's own screen replaces the chosen TV; it does not switch TVs on.
+        // The player's own bezel for the system replaces the chosen TV; it does not switch TVs on.
         guard known(chosen) else { return Resolution(outcome: .noneAvailable, isAutomatic: false) }
-        if matchesSystem, let preferred = listing() {
-            return Resolution(outcome: .bezel(preferred), isAutomatic: false)
+        if matchesSystem, let ownClaim {
+            return Resolution(outcome: .bezel(ownClaim), isAutomatic: false)
         }
         return Resolution(outcome: .bezel(chosen), isAutomatic: false)
     }

@@ -52,6 +52,31 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
 6. **Game artwork** (optional): `await BezelChoice.fetchGameArtwork(for:)`, then resolve again when it
    returns `true`.
 
+## The bundled TVs
+
+`Resources/TVBezels/catalog.json` lists them in the order the picker shows them. Under Automatic a system
+gets the TV whose `preferredSystems` lists it, else `living-room-tv`.
+
+| id | Looks like | Automatic for |
+|---|---|---|
+| `studio-monitor` | A dark broadcast monitor on a shelf | |
+| `living-room-tv` | A wood-grain console set of the 1970s and 80s | every other TV system |
+| `computer-monitor` | A beige home-computer monitor | C64, Atari ST, MSX, DOS and the other computers |
+| `flat-tube-tv` | A silver flat-glass set of about 2000 on an AV stand | Dreamcast, PlayStation 2, GameCube |
+| `dorm-tv` | A small black TV with a tape slot and front jacks | |
+| `vga-monitor` | A pale grey 19-inch flat-tube PC monitor (a Dreamcast on a VGA box) | |
+| `candy-cabinet` | The front of a white sit-down arcade cabinet | Naomi, Naomi 2, Atomiswave |
+
+![Flat-Tube TV](images/bezels/flat-tube-tv.jpg) ![Dorm TV](images/bezels/dorm-tv.jpg)
+![VGA Monitor](images/bezels/vga-monitor.jpg) ![Candy Cabinet](images/bezels/candy-cabinet.jpg)
+
+To add one: write `<id>.skin.json` (a format 2 document on the 1920x1080 canvas, drawn from shapes, with
+exactly one `screen` node that is 4:3 and centred both ways), add its catalogue entry, and run
+`xcrun swift test --filter SkinKitBezelsTests`. No brand names, logos or photographs: the artwork is
+drawn, and a TV is named for what it is. `frame` holds the shader path's cabinet colour and glass values
+(the tube's place and shape come from the artwork, never from `frame`); `look` is the filter the TV
+suggests and may be left out. A system may be listed by one TV only.
+
 ## Rules that bite
 
 - **A GPU hang is fatal for the session.** After two GPU restarts iOS refuses every frame the app submits
@@ -61,4 +86,8 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
 - **No Bezel Project artwork in any repository**, bundle or test fixture. It is downloaded from the
   project's pages when the player asks.
 - A `nil` `BezelPreview?` is "no preview"; a preview whose choice is `""` is Off. Do not fold them.
+- **A TV the player picks is the TV shown.** The systems a built-in TV lists only feed Automatic. With a TV
+  chosen, only a bezel the player added for the game's system replaces it, and only while
+  `matchesSystem` is on. (Built-in TVs used to replace it too; with consoles and arcade boards listed,
+  that swapped a chosen TV on most games and left the switcher's preview unchanged.)
 - Stored ids never change: `living-room-tv`, `slang:bezel/…`, `file:<path inside Bezels>`, `auto`, `""`.
