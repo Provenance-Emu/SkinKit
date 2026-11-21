@@ -24,6 +24,7 @@ The owner decided:
 - Layout state (is the shelf open) is separate from emulated hardware state.
 - (2026-11-21) **The first working panel is the iFly VMU.**
 - (2026-11-21) **Approach C**: the panel is written once as a reusable part and mounted in the controller skin first, in the TV around the picture second.
+- (2026-11-21) **A closed shelf still provides its contents.** While the VMU shelf is closed and its handle is reachable, iFly's floating VMU stays hidden.
 
 Every other choice below is mine and is listed under "Calls I made".
 
@@ -252,7 +253,7 @@ The art is vector shapes only, drawn for this project. It does not copy the hous
 - **Capabilities:** `picture.vmu.p1` while the running platform has a VMU in player 1's controller (`VMUDisplayPrefs.currentPlatform` and the slot from `lcdIndex`), whatever "Show VMU In-Game" says. That setting keeps meaning the floating window.
 - **Pictures:** move the polling in `FloatingVMUView` (copy on change, build a `CGImage`, apply the chosen LCD filter) into one `VMUPictureFeed` object. `FloatingVMUView` reads it, and it writes the same image to a `Skin2PictureStore` passed to `DeltaSkinView`. One poll, two readers. An all-zero buffer (no frame pushed yet) sets `nil`, so the skin provides nothing and the placeholder rule in `FloatingVMUView` is unchanged.
 - **Ownership:** `EmulationView+Layout` shows `FloatingVMUView` when the setting is on **and** `provided.pictures` lacks `vmu.p1`.
-- **The skin:** one new bundled format 2 Dreamcast skin, "Dreamcast VMU" (working name), charcoal with an amber window, using `std.vmu` in a panel. Phone portrait: fixed, above the buttons. Phone landscape: a shelf on the trailing edge, closed by default. iPad: fixed. It ships with its classic bake like any format 2 bundle. The source lives in SkinKit's examples so the site and the tests use the same file.
+- **The skin:** one new bundled format 2 Dreamcast skin, "Dreamcast VMU" (working name), charcoal with an amber window, using `std.vmu` in a panel. Phone portrait: fixed, above the buttons. Phone landscape: a shelf on the trailing edge, open by default, so the VMU is visible until the player closes it. iPad: fixed. It ships with its classic bake like any format 2 bundle. The source lives in SkinKit's examples so the site and the tests use the same file.
 - tvOS and controller-only play have no controller skin, so they keep the floating window until slice 2.
 
 ### 10. Documentation and the TypeScript renderer (`skins` repo)
@@ -293,7 +294,7 @@ Four accessory screens, six panels, no nested panels, 64 characters for a panel 
 4. **The app supplies a finished image; SkinKit does not recolour it.** iFly's LCD filters keep working, and the amber look is the window art plus the player's filter.
 5. **Two presentations, `fixed` and `shelf`.** "Embedded" and "docked" are both `fixed` with different layout.
 6. **Shelf state is a flag the skin's own `when` patches read**, so no new animation language; the host tweens between two resolved layouts.
-7. **A closed shelf with a reachable handle still provides its contents**; an unreachable one provides nothing.
+7. **A shelf whose handle is unreachable provides nothing** (that a closed, reachable shelf still provides is the owner's decision), and **the VMU skin's shelf starts open**.
 8. **`provided` is computed from the resolved tree** with size and visibility thresholds (48×32 pt for a picture, 44×44 pt for a control, opacity above 0.05), and a picture counts only after the app has delivered one.
 9. **`"duplicate": true`** is the explicit way to allow a second copy.
 10. **Pictures are drawn in layers above a split canvas**, so a changing VMU does not redraw the skin.
