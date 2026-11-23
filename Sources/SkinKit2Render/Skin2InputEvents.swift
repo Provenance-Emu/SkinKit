@@ -19,10 +19,11 @@ public struct Skin2InputEvent: Equatable, Sendable {
 }
 
 /// The events that take `old` to `new`: one per control whose state changed (a release carries the empty state), and
-/// one per move of a held touch surface. Controls are visited in hit order, so the output is deterministic.
+/// one per move of a held touch surface. Controls are visited in hit order, so the output is deterministic. A
+/// shelf's handle is left out: see `skin2PanelToggles`.
 public func skin2InputEvents(from old: Skin2TouchSnapshot, to new: Skin2TouchSnapshot, tester: Skin2HitTester) -> [Skin2InputEvent] {
     var out: [Skin2InputEvent] = []
-    for c in tester.controls {
+    for c in tester.controls where c.togglesPanel == nil {
         let before = old.states[c.id], after = new.states[c.id]
         let point = new.surfacePoints[c.id]
         let moved = c.kind == .touchSurface && after != nil && point != old.surfacePoints[c.id]
@@ -32,6 +33,15 @@ public func skin2InputEvents(from old: Skin2TouchSnapshot, to new: Skin2TouchSna
     }
     // Releases first, so a finger handing over from one control to the next lets go before it presses.
     return out.filter { !$0.state.isPressed } + out.filter { $0.state.isPressed }
+}
+
+/// The panels whose handle went down between `old` and `new`, in hit order. A handle's touch belongs to the skin
+/// view, which opens or closes the shelf; `skin2InputEvents` never reports it, so it does not reach the app.
+public func skin2PanelToggles(from old: Skin2TouchSnapshot, to new: Skin2TouchSnapshot, tester: Skin2HitTester) -> [String] {
+    tester.controls.compactMap { c in
+        guard let panel = c.togglesPanel, new.states[c.id]?.isPressed == true, old.states[c.id]?.isPressed != true else { return nil }
+        return panel
+    }
 }
 
 extension Skin2TouchSnapshot {
