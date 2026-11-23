@@ -958,6 +958,7 @@
     "input" : {
       "anyOf" : [
         {
+          "description" : "A classic input name (a, start), or a dotted semantic input from the registry (arcade.coin1), present only while the app has input.<name>.",
           "type" : "string"
         },
         {

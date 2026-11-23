@@ -185,7 +185,8 @@ public enum Skin2Schema {
 
         // Controls
         defs["input"] = any([
-            ["type": "string"],
+            ["type": "string",
+             "description": "A classic input name (a, start), or a dotted semantic input from the registry (arcade.coin1), present only while the app has input.<name>."],
             obj(["up": tok(["type": "string"]), "down": tok(["type": "string"]), "left": tok(["type": "string"]), "right": tok(["type": "string"])],
                 required: ["up", "down", "left", "right"]),
         ])

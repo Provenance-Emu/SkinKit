@@ -26,6 +26,9 @@ public enum Skin2Capabilities {
         if capability.hasPrefix(picturePrefix) {
             return pictureSources.contains(String(capability.dropFirst(picturePrefix.count)))
         }
+        if capability.hasPrefix(inputPrefix) {
+            return Skin2SemanticInputs.entry(String(capability.dropFirst(inputPrefix.count))) != nil
+        }
         return false
     }
 }

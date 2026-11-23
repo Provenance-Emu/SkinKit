@@ -103,7 +103,7 @@ extension Skin2Document {
         return out
     }
 
-    /// Every registered capability the skin's content names (`has`, a panel's `needs`): what an app could supply
+    /// Every registered capability the skin's content names (`has`, a panel's `needs`, a semantic control): what an app could supply
     /// to change the layout. The validator resolves the layout with all of them on as well as with none.
     public var mentionedCapabilities: Set<String> {
         var out: Set<String> = []
@@ -114,6 +114,7 @@ extension Skin2Document {
             for w in n.when { add(w.condition); add(w.patch.visible) }
             for s in n.states.values { for p in s.patch { add(p.visible) } }
             out.formUnion(n.panel?.needs ?? [])
+            out.formUnion(n.semanticInputs.map(Skin2Capabilities.input))
         }
         return out.filter(Skin2Capabilities.isKnown)
     }

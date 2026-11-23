@@ -187,10 +187,11 @@ public struct Skin2Resolver {
                             closed: shelf && !environment.flags.contains(panel.openFlag), fixed: !shelf)
     }
 
-    /// Whether a node that passed `visible` exists here at all: a panel needs its capabilities, a closed shelf
+    /// Whether a node that passed `visible` exists here at all: a panel needs its capabilities, a semantic control needs its input wired, a closed shelf
     /// keeps only its handle, a fixed panel drops it. An absent node takes no space.
     func isPresent(_ n: Skin2Node, pointer: String) -> Bool {
         if let panel = n.panel, !panel.needs.allSatisfy(environment.capabilities.contains) { return false }
+        if n.type == .control, !n.semanticInputs.allSatisfy({ environment.capabilities.contains(Skin2Capabilities.input($0)) }) { return false }
         guard let ctx = panelContext else { return true }
         if ctx.closed {
             guard let handle = ctx.handle else { return false }

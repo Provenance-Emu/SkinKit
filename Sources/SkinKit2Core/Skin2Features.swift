@@ -90,6 +90,7 @@ public enum Skin2Features {
         if n.material != nil { used.insert("materials") }
         if n.type == .text { used.insert("text") }
         if n.isAccessoryScreen { used.insert("screens.accessory") }
+        if !n.semanticInputs.isEmpty { used.insert("inputs.semantic") }
         if let panel = n.panel {
             used.insert("panels")
             if !panel.needs.isEmpty { used.insert("capabilities") }

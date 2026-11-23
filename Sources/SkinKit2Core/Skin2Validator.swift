@@ -401,6 +401,21 @@ public enum Skin2Validator {
             }
             if names.isEmpty { error(p, "a control needs input or inputs\(suffix)") }
 
+            // Semantic inputs (dotted names): from the registry, momentary, on a button or a trigger.
+            let semantic = n.semanticInputs
+            for name in semantic {
+                guard let entry = Skin2SemanticInputs.entry(name) else {
+                    error(p, "\"\(name)\" is not a semantic input (\(Skin2SemanticInputs.all.map(\.name).joined(separator: ", ")))\(suffix)")
+                    continue
+                }
+                if entry.kind == .twoPosition {
+                    error(p, "\"\(name)\" is a two-position switch; the switch control is not built yet\(suffix)")
+                } else if kind != .button, kind != .trigger {
+                    error(p, "\"\(name)\" is a semantic input: put it on a button or a trigger, not a \(kind.rawValue)\(suffix)")
+                }
+            }
+            if !semantic.isEmpty, kind != .button, kind != .trigger { return }
+
             switch kind {
             case .touchSurface:
                 for name in names where !Skin2Inputs.touchSurface.contains(name) {
@@ -414,7 +429,8 @@ public enum Skin2Validator {
             case .button, .trigger, .dpad, .thumbstick:
                 for gt in doc.gameTypes {
                     guard let system = Skin2Inputs.inputs(forGameType: gt) else { continue }
-                    for name in names where !system.contains(name) && !Skin2Inputs.common.contains(name) && !Skin2Inputs.actions.contains(name) {
+                    for name in names where !system.contains(name) && !Skin2Inputs.common.contains(name) && !Skin2Inputs.actions.contains(name)
+                        && !Skin2SemanticInputs.isSemantic(name) {
                         error(p, "\"\(name)\" is not an input of game type \(gt)\(suffix)")
                     }
                 }
