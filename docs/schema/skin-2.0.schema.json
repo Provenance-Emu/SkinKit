@@ -2225,6 +2225,30 @@
             }
           ]
         },
+        "sampling" : {
+          "anyOf" : [
+            {
+              "enum" : [
+                "nearest",
+                "linear"
+              ]
+            },
+            {
+              "$ref" : "#/$defs/reference"
+            }
+          ]
+        },
+        "source" : {
+          "anyOf" : [
+            {
+              "description" : "What the screen shows: game (default), or a picture the app supplies (vmu.p1, vmu.p2, vmu.p3, vmu.p4).",
+              "type" : "string"
+            },
+            {
+              "$ref" : "#/$defs/reference"
+            }
+          ]
+        },
         "type" : {
           "const" : "screen"
         },

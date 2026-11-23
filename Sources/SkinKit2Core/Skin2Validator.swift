@@ -157,8 +157,13 @@ public enum Skin2Validator {
                 warn("/gameTypes/\(i)", "no input table for game type \"\(gt)\"; its inputs are not checked")
             }
             if let screens = doc.screens {
-                for (i, id) in screens.enumerated() where doc.node(id: id)?.type != .screen {
-                    error("/screens/\(i)", "\"\(id)\" is not the id of a screen node")
+                for (i, id) in screens.enumerated() {
+                    let node = doc.node(id: id)
+                    if node?.type != .screen {
+                        error("/screens/\(i)", "\"\(id)\" is not the id of a screen node")
+                    } else if node?.isAccessoryScreen == true {
+                        error("/screens/\(i)", "\"\(id)\" is an accessory screen; screens lists game screens")
+                    }
                 }
             }
         }
@@ -173,6 +178,11 @@ public enum Skin2Validator {
         mutating func checkTree(_ doc: Skin2Document, label: String) {
             let suffix = label.isEmpty ? "" : " (\(label))"
             let count = doc.root.nodeCount
+            var accessory = 0
+            doc.root.preorder { if $0.isAccessoryScreen { accessory += 1 } }
+            if accessory > Skin2Capabilities.maxAccessoryScreens {
+                error("/root", "the skin has \(accessory) accessory screens; the limit is \(Skin2Capabilities.maxAccessoryScreens) accessory screens\(suffix)")
+            }
             if count > Skin2Document.maxNodes {
                 error("/root", "the skin has \(count) nodes after expanding parts; the limit is \(Skin2Document.maxNodes)\(suffix)")
             }
@@ -218,12 +228,19 @@ public enum Skin2Validator {
                     ids[id] = p
                 }
             }
-            if n.type == .screen { seenScreen = true }
+            if n.type == .screen, !n.isAccessoryScreen { seenScreen = true }
 
             switch n.type {
             case .control: checkControl(n, at: p, doc: doc, suffix: suffix)
             case .screen:
                 if n.id == nil { error(p, "a screen needs an id\(suffix)") }
+                if n.isAccessoryScreen, let source = n.source {
+                    if !Skin2Capabilities.pictureSources.contains(source) {
+                        error(p + "/source", "\"\(source)\" is not a picture source: use game or \(Skin2Capabilities.pictureSources.joined(separator: ", "))\(suffix)")
+                    }
+                    if n.screenRole != nil { error(p + "/role", "an accessory screen takes no role: it is never the game picture\(suffix)") }
+                    if n.placement != nil { error(p + "/placement", "an accessory screen takes no placement\(suffix)") }
+                }
             case .group:
                 if (n.stack != nil || n.grid != nil), n.layout?.size != nil, n.layout?.frame == nil, n.layout?.inset == nil {
                     warn(p + "/layout/size", "a stack or grid group takes its size from its children; size is ignored (use frame or inset for a fixed size)\(suffix)")

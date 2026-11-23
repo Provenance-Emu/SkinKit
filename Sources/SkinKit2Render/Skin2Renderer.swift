@@ -18,6 +18,9 @@ public struct Skin2RenderOptions {
     /// The bytes of a file the skin references: an image `src` (a path under `assets/`) or a font as
     /// `fonts/<family>`. Nil or a missing file draws nothing for that image and the default face for that font.
     public var asset: ((String) -> Data?)?
+    /// Stills for accessory screens, by source name (`vmu.p1`). A screen whose source is missing draws nothing
+    /// (or its placeholder). Live hosts draw the pictures in their own layers and leave this empty.
+    public var pictures: [String: CGImage] = [:]
 
     public init(states: [String: Skin2ControlState] = [:], screenPlaceholders: Bool = false, showHitFrames: Bool = false,
                 asset: ((String) -> Data?)? = nil) {
@@ -133,6 +136,7 @@ private struct Painter {
         if let v = c.minHeight, e.size.height < v { return false }
         if let v = c.theme, v != resolution.theme { return false }
         if let v = c.variant, v != resolution.variant { return false }
+        if let v = c.has, !v.allSatisfy(e.capabilities.contains) { return false }
         return true
     }
 
@@ -262,7 +266,19 @@ private struct Painter {
                 ctx.restoreGState()
             }
         case .screen:
-            if options.screenPlaceholders { drawScreen(frame, in: ctx) }
+            if n.isAccessoryScreen, let source = n.source {
+                if let picture = options.pictures[source] {
+                    ctx.saveGState()
+                    ctx.interpolationQuality = (n.sampling ?? .nearest) == .nearest ? .none : .high
+                    ctx.drawTopDown(picture, in: frame)
+                    ctx.restoreGState()
+                } else if options.screenPlaceholders {
+                    drawScreen(frame, in: ctx)
+                    drawSourceLabel(source, in: frame, ctx: ctx)
+                }
+            } else if options.screenPlaceholders {
+                drawScreen(frame, in: ctx)
+            }
         case .group, .control:
             break
         }
@@ -623,6 +639,15 @@ private struct Painter {
                 ctx.drawTopDown(image, in: rect)
             }
         }
+    }
+
+    /// The source's name centred in an accessory screen's placeholder, so a preview says what goes there.
+    func drawSourceLabel(_ source: String, in frame: CGRect, ctx: CGContext) {
+        guard let font = Skin2Text.defaultFont(.regular) else { return }
+        let size = max(6, min(frame.height * 0.3, frame.width / CGFloat(max(1, source.count)) * 1.4))
+        ctx.addPath(Skin2Text.path(source, font: font, size: size, align: .center, fit: true, in: frame.insetBy(dx: 2, dy: 2)))
+        ctx.setFillColor(Skin2Color2CG.cg(Skin2Color(hex: "#8080A0")!))
+        ctx.fillPath()
     }
 
     func drawScreen(_ frame: CGRect, in ctx: CGContext) {

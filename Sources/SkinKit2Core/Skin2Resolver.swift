@@ -67,7 +67,10 @@ public struct Skin2Resolution: Equatable, Sendable {
     /// Every visible node, parents first, in document order.
     public var nodes: [Skin2ResolvedNode] { root.preorder }
     public var controls: [Skin2ResolvedNode] { nodes.filter { $0.node.type == .control } }
-    public var screens: [Skin2ResolvedNode] { nodes.filter { $0.node.type == .screen } }
+    /// Game screens. Accessory screens are in `accessoryScreens`.
+    public var screens: [Skin2ResolvedNode] { nodes.filter { $0.node.type == .screen && !$0.node.isAccessoryScreen } }
+    /// Screens that show an app-supplied picture (`source`), in document order.
+    public var accessoryScreens: [Skin2ResolvedNode] { nodes.filter { $0.node.isAccessoryScreen } }
     public func node(id: String) -> Skin2ResolvedNode? { nodes.first { $0.node.id == id } }
 }
 
@@ -201,7 +204,8 @@ public struct Skin2Resolver {
         } else {
             var ow = length(L.size?.width, along: ref.width)
             var oh = length(L.size?.height, along: ref.height)
-            if let aspect = L.aspect ?? (n.type == .screen ? n.aspect : nil) {
+            let own = n.type == .screen ? n.aspect ?? (n.isAccessoryScreen ? Skin2Capabilities.nativeAspect[n.source ?? ""] : nil) : nil
+            if let aspect = L.aspect ?? own {
                 if let ww = ow, oh == nil { oh = ww / aspect } else if let hh = oh, ow == nil { ow = hh * aspect }
             }
             w = ow ?? ref.width
@@ -285,7 +289,7 @@ public struct Skin2Resolver {
             if let o = edit.opacity { opacity *= o }
         }
         if let id = n.id { areas[id] = frame }
-        if n.type == .screen, screenArea == nil { screenArea = frame }
+        if n.type == .screen, !n.isAccessoryScreen, screenArea == nil { screenArea = frame }
 
         var hitFrame: Skin2Rect?
         var travel: Double?

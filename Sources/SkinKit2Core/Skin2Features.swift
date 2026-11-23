@@ -89,6 +89,7 @@ public enum Skin2Features {
         }
         if n.material != nil { used.insert("materials") }
         if n.type == .text { used.insert("text") }
+        if n.isAccessoryScreen { used.insert("screens.accessory") }
         if !n.states.isEmpty {
             used.insert("states")
             for s in n.states.values { for p in s.patch { scanPatch(p, into: &used) } }

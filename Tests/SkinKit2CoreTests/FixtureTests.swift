@@ -7,12 +7,12 @@ import Testing
 ///
 /// Recorded files: `<trait>.layout.json` (base), `<trait>.variant-<name>.layout.json` (every variant), and
 /// `<trait>.theme-<name>.layout.json` only for themes whose tokens move something (otherwise the theme's layout
-/// is the base layout). `SKIN2_RECORD=1 xcrun swift test --filter SkinKit2CoreTests` rewrites them.
+/// is the base layout), and `<trait>.scene-<name>.layout.json` for every scene in the fixture's `scenes.json`. `SKIN2_RECORD=1 xcrun swift test --filter SkinKit2CoreTests` rewrites them.
 @Suite("Format 2.0 fixtures")
 struct FixtureTests {
     @Test("The fixture set is complete")
     func fixtureSet() {
-        #expect(Skin2Paths.fixtureNames == ["dual-screen", "effects", "gamecube-icube", "layout", "paint", "paths", "shapes", "stacks-grids",
+        #expect(Skin2Paths.fixtureNames == ["accessory-screen", "dual-screen", "effects", "gamecube-icube", "layout", "paint", "paths", "shapes", "stacks-grids",
                                             "states", "std-keypad", "std-parts", "strokes", "text", "variants"])
     }
 
@@ -65,6 +65,15 @@ struct FixtureTests {
         }
     }
 
+    /// `scenes.json` beside `skin.json`: named app situations (`{scene: {capabilities, flags, pictures}}`), each
+    /// recorded as `<trait>.scene-<name>.layout.json`.
+    static func scenes(_ name: String) throws -> [(String, Set<String>, Set<String>)] {
+        let url = Skin2Paths.fixtures.appendingPathComponent("\(name)/scenes.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+        let root = try JSONDecoder().decode([String: [String: [String]]].self, from: Data(contentsOf: url))
+        return root.keys.sorted().map { ($0, Set(root[$0]?["capabilities"] ?? []), Set(root[$0]?["flags"] ?? [])) }
+    }
+
     /// File name → bytes for every layout this fixture records.
     static func records(_ name: String) throws -> [String: Data] {
         let base = try Skin2Document.fixture(name)
@@ -81,6 +90,13 @@ struct FixtureTests {
                 let doc = try Skin2Document.fixture(name, theme: theme)
                 let record = Skin2LayoutRecord(Skin2Resolver.resolve(doc, in: trait.environment), trait: trait.name)
                 if record.nodes != baseRecord.nodes { out["\(trait.name).theme-\(theme).layout.json"] = try record.encoded() }
+            }
+            for (scene, capabilities, flags) in try Self.scenes(name) {
+                var environment = trait.environment
+                environment.capabilities = capabilities
+                environment.flags = flags
+                out["\(trait.name).scene-\(scene).layout.json"] =
+                    try Skin2LayoutRecord(Skin2Resolver.resolve(base, in: environment), trait: trait.name).encoded()
             }
         }
         return out

@@ -10,6 +10,12 @@ public enum Skin2Capabilities {
     /// The pictures an app may supply to an accessory screen, by source name.
     public static let pictureSources: [String] = ["vmu.p1", "vmu.p2", "vmu.p3", "vmu.p4"]
 
+    /// Width / height of each picture source: an accessory screen without an `aspect` takes it.
+    public static let nativeAspect: [String: Double] = Dictionary(uniqueKeysWithValues: pictureSources.map { ($0, 48.0 / 32.0) })
+
+    /// The most accessory screens a skin may have.
+    public static let maxAccessoryScreens = 4
+
     /// The capability for a picture source: `vmu.p1` → `picture.vmu.p1`.
     public static func picture(_ source: String) -> String { picturePrefix + source }
 

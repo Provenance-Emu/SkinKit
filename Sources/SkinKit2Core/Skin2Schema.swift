@@ -227,6 +227,9 @@ public enum Skin2Schema {
             "aspect": tok(num(exclusiveMin: 0)), "role": tok(enumOf(Skin2ScreenRole.allCases.map(\.rawValue))),
             "filters": ["type": "array", "items": obj(["name": tok(["type": "string"]), "params": ["type": "object"]], required: ["name"])],
             "placement": tok(enumOf(Skin2ScreenPlacement.allCases.map(\.rawValue))),
+            "source": tok(["type": "string",
+                           "description": .string("What the screen shows: game (default), or a picture the app supplies (\(Skin2Capabilities.pictureSources.joined(separator: ", "))).")]),
+            "sampling": tok(enumOf(Skin2Sampling.allCases.map(\.rawValue))),
         ])
         defs["partInstance"] = obj([
             "use": ["type": "string", "pattern": .string(Skin2Preprocessor.partNamePattern)], "with": ["type": "object"],

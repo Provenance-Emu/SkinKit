@@ -9,6 +9,8 @@ public enum Skin2ControlKind: String, Codable, Sendable, CaseIterable { case but
 public enum Skin2ArtRole: String, Codable, Sendable, CaseIterable { case knob, base, highlight }
 public enum Skin2ScreenRole: String, Codable, Sendable, CaseIterable { case main, top, bottom, touch }
 public enum Skin2ScreenPlacement: String, Codable, Sendable, CaseIterable { case app, controller }
+/// How a supplied picture is scaled into an accessory screen's frame.
+public enum Skin2Sampling: String, Codable, Sendable, CaseIterable { case nearest, linear }
 public enum Skin2TextAlign: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
 
 /// A d-pad's four inputs.
@@ -135,6 +137,16 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     public var screenRole: Skin2ScreenRole?
     public var filters: [Skin2ScreenFilter]
     public var placement: Skin2ScreenPlacement?
+    /// What the screen shows: nil or `game` is the game picture; any other name is a picture the app supplies
+    /// (`vmu.p1`; see `Skin2Capabilities.pictureSources`), which makes this an accessory screen.
+    public var source: String?
+    /// Accessory screens: how the picture is scaled into the frame (default `nearest`).
+    public var sampling: Skin2Sampling?
+
+    public static let gameSource = "game"
+
+    /// A screen that shows an app-supplied picture, never the game: not the viewport, not a classic screen.
+    public var isAccessoryScreen: Bool { type == .screen && source != nil && source != Self.gameSource }
 
     public init(type: Skin2NodeType, id: String? = nil, layout: Skin2Layout? = nil, children: [Skin2Node] = []) {
         self.type = type; self.id = id; self.layout = layout; self.children = children
@@ -146,7 +158,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     enum K: String, CodingKey {
         case type, id, layout, when, visible, opacity, effects, `repeat`, role, children, stack, grid
         case shape, fills, strokes, material, src, mode, tint, text, font, color, align, fit
-        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement
+        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement, source, sampling
     }
 
     public init(from decoder: Decoder) throws {
@@ -209,6 +221,8 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
             aspect = try c.decodeIfPresent(Double.self, forKey: .aspect)
             filters = try c.decodeIfPresent([Skin2ScreenFilter].self, forKey: .filters) ?? []
             placement = try c.decodeIfPresent(Skin2ScreenPlacement.self, forKey: .placement)
+            source = try c.decodeIfPresent(String.self, forKey: .source)
+            sampling = try c.decodeIfPresent(Skin2Sampling.self, forKey: .sampling)
             if let aspect { try c.ensure(aspect > 0, .aspect, "aspect must be above 0") }
         }
     }
