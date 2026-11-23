@@ -4,7 +4,7 @@ Date: 2026-11-23. Status: draft for owner approval.
 
 ## Why
 
-The built-in TVs (Living Room TV, Studio Monitor, Computer Monitor) are format 2 skin
+The built-in TVs (seven at the time of building; the draft named the three in an older checkout) are format 2 skin
 documents drawn on a fixed 1920x1080 canvas. On a 16:9 screen that is the whole screen. On
 anything else the app has two bad choices:
 
@@ -61,8 +61,18 @@ the tube keeps its aspect, and it stays centred. The preset does not assume 16:9
 code does (`TVBezelShader.sceneAspect`, the `9/16` factor in `geometryValues`, and
 `TVBezelArtwork.canvas`).
 
-Not measured: `uborder-koko-ambi` (the room-light preset). The builder must repeat the
-measurement for it before relying on it; see "Room light".
+`uborder-koko-ambi` (the room-light preset) was measured the same way on 2026-11-23, with its
+built-in tube look left on, so the bright area found is smaller than the tube (dark corners):
+
+| Output | Bright area found | Height / output width |
+| --- | --- | --- |
+| 1920x1080 | 860x645, centred | 33.6% |
+| 1440x1080 | 670x481, centred | 33.4% |
+| 2560x1080 | 1108x869, centred | 33.9% |
+| 1080x1080 | 522x362, centred | 33.5% |
+
+The ratio is the same at every shape as at 16:9, where this preset is known to line up with
+the artwork, so room light is allowed on any canvas.
 
 ## Approaches considered
 
