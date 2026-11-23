@@ -61,6 +61,13 @@ public struct TVBezelArtwork {
         tubeRect = CGRect(x: frame.x, y: frame.y, width: frame.width, height: frame.height)
     }
 
+    /// Where the visible node `id` sits on the canvas; `nil` when the document has none or it
+    /// is hidden on this canvas.
+    func frame(ofNode id: String) -> CGRect? {
+        guard let frame = resolution.node(id: id)?.frame else { return nil }
+        return CGRect(x: frame.x, y: frame.y, width: frame.width, height: frame.height)
+    }
+
     /// The bundled artwork of `bezel`, laid out on `canvas`.
     public init(bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas) throws {
         guard let url = TVBezelCatalog.folderURL?.appendingPathComponent(bezel.artwork) else {
