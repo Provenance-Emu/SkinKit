@@ -117,6 +117,25 @@ struct TVBezelSceneTests {
 
     private let bezel = TVBezelCatalog.bundled.first
 
+    @Test("A scene made for a canvas carries it, keys on it and sizes its tube from its width")
+    func sceneForCanvas() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let canvas = CGSize(width: 1440, height: 1080)
+        let key = TVBezelScene.key(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480, canvas: canvas)
+        #expect(key != TVBezelScene.key(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480))
+        let scene = try #require(TVBezelScene.make(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480,
+                                                   key: key, canvas: canvas) { _ in true })
+        #expect(scene.canvas == canvas)
+        #expect(scene.values["fr_zoom"] == Float(scene.tubeRect.height / canvas.width * 100))
+    }
+
+    @Test("The default canvas leaves a scene's key as it was")
+    func defaultCanvasKey() throws {
+        let bezel = try #require(bezel)
+        #expect(TVBezelScene.key(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480)
+                == "\(bezel.id)|480|false|false")
+    }
+
     @Test("A built-in TV becomes a preset, its values and its cabinet as a PNG")
     func builtIn() throws {
         let bezel = try #require(bezel)

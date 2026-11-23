@@ -66,6 +66,15 @@ struct TVBezelCatalogTests {
         }
     }
 
+    @Test("Artwork drawn for a canvas has that canvas's proportions")
+    func artworkImageProportions() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let artwork = try TVBezelArtwork(bezel: bezel, canvas: CGSize(width: 1440, height: 1080))
+        let image = try #require(artwork.image(pixelWidth: 480))
+        #expect(image.width == 480 && image.height == 360)
+        #expect(artwork.tubeHeightOverCanvasWidth == artwork.tubeRect.height / 1440)
+    }
+
     @Test("Artwork renders at the size asked for")
     func artworkRenders() throws {
         let bezel = try #require(bezels.first)
