@@ -177,6 +177,65 @@ struct TVBezelSceneTests {
 @Suite("TVBezelLayout")
 struct TVBezelLayoutTests {
 
+    @Test("From a seat, a built-in TV's artwork is the whole container and the tube is centred in it")
+    func seatedLayoutFillsTheContainer() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let container = CGSize(width: 1440, height: 1080)
+        let layout = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: CGSize(width: 4, height: 3),
+                                                seat: .back))
+        #expect(layout.artworkFrame == CGRect(origin: .zero, size: container))
+        #expect(layout.screenFrame == CGRect(x: 216, y: 162, width: 1008, height: 756))
+        #expect(layout.canvas == container)
+        #expect(layout.placement == .behindPicture)
+        // Half the size, same shape: everything halves.
+        let half = try #require(TVBezelLayout(bezel: bezel, container: CGSize(width: 720, height: 540),
+                                              pictureAspect: CGSize(width: 4, height: 3), seat: .back))
+        #expect(half.screenFrame == CGRect(x: 108, y: 81, width: 504, height: 378))
+    }
+
+    @Test("A closer seat draws the tube larger in the same container")
+    func closerSeat() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let container = CGSize(width: 1200, height: 900)
+        let front = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: CGSize(width: 4, height: 3),
+                                               seat: .front))
+        #expect(front.screenFrame == CGRect(x: 96, y: 72, width: 1008, height: 756))
+        let back = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: CGSize(width: 4, height: 3),
+                                              seat: .back))
+        #expect(back.screenFrame.width < front.screenFrame.width)
+    }
+
+    @Test("A container outside the supported shapes gets the nearest canvas, fitted whole")
+    func seatedLayoutOutsideTheRange() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let layout = try #require(TVBezelLayout(bezel: bezel, container: CGSize(width: 1000, height: 1000),
+                                                pictureAspect: CGSize(width: 4, height: 3), seat: .back))
+        #expect(layout.canvas == CGSize(width: 1440, height: 1080))
+        #expect(layout.artworkFrame == CGRect(x: 0, y: 125, width: 1000, height: 750))
+    }
+
+    @Test("Without a seat the layout is the fixed 16:9 one, and an image bezel has no canvas")
+    func unseatedLayoutUnchanged() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let layout = try #require(TVBezelLayout(bezel: bezel, container: CGSize(width: 1440, height: 1080),
+                                                pictureAspect: CGSize(width: 4, height: 3)))
+        #expect(layout.artworkFrame == CGRect(x: 0, y: 135, width: 1440, height: 810))
+        #expect(layout.canvas == TVBezelArtwork.canvas)
+    }
+
+    @Test("Plain artwork drawn for a canvas has its shape, with the tube painted black")
+    func plainArtworkForCanvas() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let canvas = CGSize(width: 1440, height: 1080)
+        let image = try #require(TVBezelPlainArtwork.image(for: bezel, maxPixel: 480, canvas: canvas))
+        #expect(image.width == 480 && image.height == 360)
+        #expect(TVBezelPlainArtwork.tubeRect(of: bezel, canvas: canvas) == CGRect(x: 216, y: 162, width: 1008, height: 756))
+        #expect(TVBezelPlainArtwork.tubeRect(of: bezel) == CGRect(x: 456, y: 162, width: 1008, height: 756))
+        let data = try #require(image.dataProvider?.data as Data?)
+        let centre = (180 * image.bytesPerRow) + 240 * 4
+        #expect(data[centre] == 0 && data[centre + 1] == 0 && data[centre + 2] == 0)
+    }
+
     @Test("A built-in TV fills a 16:9 container, with a 4:3 picture filling its tube")
     func builtIn() throws {
         let bezel = try #require(TVBezelCatalog.bezel(id: "living-room-tv"))

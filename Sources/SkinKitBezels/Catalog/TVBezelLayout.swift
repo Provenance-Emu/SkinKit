@@ -28,12 +28,21 @@ public struct TVBezelLayout: Equatable, Sendable {
     /// The game picture inside the screen.
     public let pictureFrame: CGRect
     public let placement: Placement
+    /// The canvas a built-in TV's artwork is drawn on for this layout: pass it to
+    /// `TVBezelPlainArtwork.image(for:maxPixel:canvas:)` or `TVBezelArtworkView`. `nil` for an
+    /// image bezel, which is its own picture.
+    public let canvas: CGSize?
 
     /// `nil` for a TV with no artwork of its own (a shader-only preset), an empty container
     /// or artwork that cannot be read.
     ///
-    /// - Parameter pictureAspect: the picture's shape (only the ratio matters).
-    public init?(bezel: TVBezel, container: CGSize, pictureAspect: CGSize) {
+    /// - Parameters:
+    ///   - pictureAspect: the picture's shape (only the ratio matters).
+    ///   - seat: where the player sits. With a seat, a built-in TV's room is drawn for the
+    ///     container's shape (`TVBezelCanvas`), so the artwork is the whole container on
+    ///     anything from 4:3 to 2.4:1. Without one the room is the fixed 16:9 scene, fitted
+    ///     inside the container. An image bezel ignores it.
+    public init?(bezel: TVBezel, container: CGSize, pictureAspect: CGSize, seat: TVBezelSeat? = nil) {
         guard container.width > 0, container.height > 0 else { return nil }
         let bounds = CGRect(origin: .zero, size: container)
         if let art = bezel.image {
@@ -45,11 +54,16 @@ public struct TVBezelLayout: Equatable, Sendable {
                                  width: art.screen.width * scale, height: art.screen.height * scale)
             pictureFrame = BezelPictureFit.rect(aspect: pictureAspect, in: screenFrame)
             placement = .abovePicture
+            canvas = nil
             return
         }
-        guard bezel.presetID == nil, let tube = TVBezelPlainArtwork.tubeRect(of: bezel) else { return nil }
-        let frame = Self.aspectFit(aspect: TVBezelArtwork.canvas, in: bounds)
-        let scale = frame.width / TVBezelArtwork.canvas.width
+        let artworkCanvas = seat.map { TVBezelCanvas.size(display: container, seat: $0) } ?? TVBezelArtwork.canvas
+        guard bezel.presetID == nil, let tube = TVBezelPlainArtwork.tubeRect(of: bezel, canvas: artworkCanvas) else { return nil }
+        // A canvas made for this container has its proportions, so the fit is the container.
+        let fitted = Self.aspectFit(aspect: artworkCanvas, in: bounds)
+        let frame = seat != nil && TVBezelCanvas.fitsDisplay(container) ? bounds : fitted
+        let scale = frame.width / artworkCanvas.width
+        canvas = artworkCanvas
         artworkFrame = frame
         screenFrame = CGRect(x: frame.minX + tube.minX * scale, y: frame.minY + tube.minY * scale,
                              width: tube.width * scale, height: tube.height * scale)
@@ -75,25 +89,35 @@ public enum TVBezelPlainArtwork {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var tubes: [String: CGRect] = [:]
 
-    /// A built-in TV's tube in canvas points (`TVBezelArtwork.canvas`). Reads the TV's skin
-    /// document the first time; `nil` for a TV without one.
-    public static func tubeRect(of bezel: TVBezel) -> CGRect? {
+    /// A built-in TV's tube in `canvas` points. Lays the TV's skin document out the first
+    /// time for each canvas; `nil` for a TV without one.
+    public static func tubeRect(of bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas) -> CGRect? {
         guard bezel.image == nil, bezel.presetID == nil else { return nil }
-        if let known = lock.withLock({ tubes[bezel.id] }) { return known }
-        guard let tube = try? TVBezelArtwork(bezel: bezel).tubeRect else { return nil }
-        lock.withLock { tubes[bezel.id] = tube }
+        let key = "\(bezel.id)|\(canvas.width)x\(canvas.height)"
+        if let known = lock.withLock({ tubes[key] }) { return known }
+        guard let tube = try? TVBezelArtwork(bezel: bezel, canvas: canvas).tubeRect else { return nil }
+        lock.withLock {
+            // A window being resized asks for a new canvas every frame: do not keep them all.
+            if tubes.count >= tubeCacheLimit { tubes.removeAll(keepingCapacity: true) }
+            tubes[key] = tube
+        }
         return tube
     }
+
+    /// How many laid-out tubes are remembered before the cache starts over.
+    private static let tubeCacheLimit = 64
 
     /// The TV's artwork no larger than `maxPixel` on its longer side: an image bezel as it is,
     /// a built-in TV's cabinet and room with the tube painted black. Slow: call it off the
     /// main thread. `nil` for a shader-only TV or artwork that cannot be read.
-    public static func image(for bezel: TVBezel, maxPixel: CGFloat) -> CGImage? {
+    ///
+    /// - Parameter canvas: the canvas a built-in TV is laid out on (`TVBezelLayout.canvas`).
+    public static func image(for bezel: TVBezel, maxPixel: CGFloat, canvas: CGSize = TVBezelArtwork.canvas) -> CGImage? {
         guard maxPixel >= 1 else { return nil }
         if let art = bezel.image {
             return TVBezelImage.displayImage(art.fileURL, maxPixel: maxPixel)
         }
-        guard bezel.presetID == nil, let artwork = try? TVBezelArtwork(bezel: bezel),
+        guard bezel.presetID == nil, let artwork = try? TVBezelArtwork(bezel: bezel, canvas: canvas),
               let cabinet = artwork.image(pixelWidth: maxPixel) else { return nil }
         let (width, height) = (cabinet.width, cabinet.height)
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
@@ -101,7 +125,7 @@ public enum TVBezelPlainArtwork {
                                       bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return cabinet }
         context.draw(cabinet, in: CGRect(x: 0, y: 0, width: width, height: height))
         // The context's origin is at the bottom left; the canvas's is at the top left.
-        let scale = CGFloat(width) / TVBezelArtwork.canvas.width
+        let scale = CGFloat(width) / artwork.canvasSize.width
         let tube = artwork.tubeRect
         let rect = CGRect(x: tube.minX * scale, y: CGFloat(height) - tube.maxY * scale,
                           width: tube.width * scale, height: tube.height * scale)
