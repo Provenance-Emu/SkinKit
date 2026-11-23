@@ -298,6 +298,9 @@ public enum Skin2Validator {
             }
             checkPaintLengths(n, at: p, suffix: suffix)
 
+            if n.duplicate, n.type != .screen, n.type != .control {
+                error(p + "/duplicate", "duplicate belongs on a screen or a control: it says the node does not claim its picture or input\(suffix)")
+            }
             if n.role == .knob, context.control?.kind != .thumbstick {
                 error(p + "/role", "role knob belongs inside a thumbstick control\(suffix)")
             }

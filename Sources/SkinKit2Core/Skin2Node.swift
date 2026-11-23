@@ -94,6 +94,9 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     @Skin2Boxed public var `repeat`: Skin2Repeat?
     /// `role` on anything but a screen.
     public var role: Skin2ArtRole?
+    /// On a screen or a control: an intentional second copy that does not claim its picture or input
+    /// (`Skin2Provided`).
+    public var duplicate: Bool = false
 
     // group and control
     public var children: [Skin2Node]
@@ -160,7 +163,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     enum K: String, CodingKey {
         case type, id, layout, when, visible, opacity, effects, `repeat`, role, children, stack, grid
         case shape, fills, strokes, material, src, mode, tint, text, font, color, align, fit
-        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement, source, sampling, panel
+        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement, source, sampling, panel, duplicate
     }
 
     public init(from decoder: Decoder) throws {
@@ -177,6 +180,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
         opacity = try c.decodeUnit(.opacity)
         effects = try c.decodeIfPresent([Skin2Effect].self, forKey: .effects) ?? []
         self.repeat = try c.decodeIfPresent(Skin2Repeat.self, forKey: .repeat)
+        duplicate = try c.decodeIfPresent(Bool.self, forKey: .duplicate) ?? false
         children = []; fills = []; strokes = []; states = [:]; filters = []
         if type == .screen {
             screenRole = try c.decodeIfPresent(Skin2ScreenRole.self, forKey: .role)

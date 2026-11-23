@@ -211,6 +211,9 @@
             }
           ]
         },
+        "duplicate" : {
+          "type" : "boolean"
+        },
         "effects" : {
           "items" : {
             "$ref" : "#/$defs/effect"
@@ -2186,6 +2189,10 @@
               "$ref" : "#/$defs/reference"
             }
           ]
+        },
+        "duplicate" : {
+          "description" : "An intentional second copy: it does not claim its picture or input, so the app keeps its own.",
+          "type" : "boolean"
         },
         "effects" : {
           "items" : {

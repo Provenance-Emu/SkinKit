@@ -231,6 +231,7 @@ public enum Skin2Schema {
             "hit": obj(["extend": ref("edgeLengths")]), "travel": ref("length"),
             "states": ["type": "object", "propertyNames": enumOf(Skin2State.names.sorted()), "additionalProperties": ref("state")],
             "haptic": obj(["style": tok(["type": "string"]), "intensity": ref("unit")]), "children": children,
+            "duplicate": ["type": "boolean"],
         ], required: ["kind"])
         defs["screenNode"] = node(.screen, [
             "aspect": tok(num(exclusiveMin: 0)), "role": tok(enumOf(Skin2ScreenRole.allCases.map(\.rawValue))),
@@ -239,6 +240,7 @@ public enum Skin2Schema {
             "source": tok(["type": "string",
                            "description": .string("What the screen shows: game (default), or a picture the app supplies (\(Skin2Capabilities.pictureSources.joined(separator: ", "))).")]),
             "sampling": tok(enumOf(Skin2Sampling.allCases.map(\.rawValue))),
+            "duplicate": ["type": "boolean", "description": "An intentional second copy: it does not claim its picture or input, so the app keeps its own."],
         ])
         defs["partInstance"] = obj([
             "use": ["type": "string", "pattern": .string(Skin2Preprocessor.partNamePattern)], "with": ["type": "object"],

@@ -67,6 +67,8 @@ public struct Skin2Resolution: Equatable, Sendable {
     public var warnings: [Skin2LayoutWarning]
     /// The panels that are present (their `needs` are met), in document order.
     public var panels: [Skin2ResolvedPanel] = []
+    /// What the skin gives the player itself in this layout, so the app can hide its own copy.
+    public var provided: Skin2Provided = .none
 
     /// Every visible node, parents first, in document order.
     public var nodes: [Skin2ResolvedNode] { root.preorder }
@@ -126,6 +128,20 @@ public struct Skin2Resolver {
 
     public static func resolve(_ document: Skin2Document, in environment: Skin2Environment,
                                edits: [String: Skin2Edit] = [:]) -> Skin2Resolution {
+        var resolution = layout(document, in: environment, edits: edits)
+        // A closed shelf the player can open still provides what it holds: lay those shelves out open to see what.
+        let closed = resolution.panels.filter { $0.presentation == .shelf && !$0.isOpen && $0.handleReachable }.map(\.panel)
+        var opened: Skin2Resolution?
+        if !closed.isEmpty {
+            var open = environment
+            open.flags.formUnion(closed.map(\.openFlag))
+            opened = layout(document, in: open, edits: edits)
+        }
+        resolution.provided = Skin2Provided(resolution, opened: opened, closed: Set(closed.map(\.name)))
+        return resolution
+    }
+
+    private static func layout(_ document: Skin2Document, in environment: Skin2Environment, edits: [String: Skin2Edit]) -> Skin2Resolution {
         var r = Skin2Resolver(document: document, environment: environment, edits: edits)
         let canvas = environment.canvasRect
         let root = r.resolve(document.root, pointer: "/root", parent: canvas)
