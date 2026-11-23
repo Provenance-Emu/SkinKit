@@ -48,7 +48,9 @@ public enum TVBezelCanvas {
     }
 
     /// Whether `display`'s shape is one the canvas can match exactly. When it is not, the
-    /// canvas from `size(display:seat:)` has another shape and the app must place it itself.
+    /// canvas from `size(display:seat:)` has another shape and the app places it itself: it
+    /// must keep the scene's tube (`TVBezelScene.tubeRect`) on the display, because plainly
+    /// covering a very wide or very narrow display with the clamped canvas crops the tube.
     public static func fitsDisplay(_ display: CGSize) -> Bool {
         guard display.width > 0, display.height > 0 else { return false }
         let ratio = display.width / display.height

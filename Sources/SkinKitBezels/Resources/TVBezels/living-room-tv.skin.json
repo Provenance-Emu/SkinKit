@@ -267,7 +267,7 @@
             ],
             "when": [
               {
-                "minWidth": 1600,
+                "minWidth": 1660,
                 "layout": {
                   "frame": [
                     250,
@@ -319,7 +319,7 @@
             ],
             "when": [
               {
-                "minWidth": 1600,
+                "minWidth": 1660,
                 "layout": {
                   "frame": [
                     1614,
@@ -395,7 +395,7 @@
             ],
             "when": [
               {
-                "minWidth": 1600,
+                "minWidth": 1660,
                 "layout": {
                   "frame": [
                     150,
@@ -447,7 +447,7 @@
             ],
             "when": [
               {
-                "minWidth": 1600,
+                "minWidth": 1660,
                 "layout": {
                   "frame": [
                     150,
@@ -489,7 +489,7 @@
             },
             "when": [
               {
-                "minWidth": 1600,
+                "minWidth": 1660,
                 "layout": {
                   "frame": [
                     170,
@@ -548,7 +548,7 @@
               }
             ],
             "visible": {
-              "minWidth": 1600
+              "minWidth": 1660
             }
           },
           {
@@ -580,7 +580,7 @@
               }
             },
             "visible": {
-              "minWidth": 1600
+              "minWidth": 1660
             }
           },
           {
@@ -630,7 +630,7 @@
               }
             ],
             "visible": {
-              "minWidth": 1600
+              "minWidth": 1660
             }
           },
           {
@@ -662,7 +662,7 @@
               }
             },
             "visible": {
-              "minWidth": 1600
+              "minWidth": 1660
             }
           },
           {

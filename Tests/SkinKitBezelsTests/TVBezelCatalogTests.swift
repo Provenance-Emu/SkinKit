@@ -127,6 +127,23 @@ struct TVBezelCatalogTests {
         }
     }
 
+    @Test("From the back, at every canvas width, the cabinet and the parts that come and go have wall beside them")
+    func widthSweep() throws {
+        let parts = ["living-room-tv": ["cabinet", "cloth-left", "cloth-right"],
+                     "flat-tube-tv": ["cabinet", "speaker-left", "speaker-right"],
+                     "dorm-tv": ["cabinet", "poster-left", "poster-right"]]
+        for (id, nodes) in parts {
+            let bezel = try #require(TVBezelCatalog.bezel(id: id))
+            for width in stride(from: CGFloat(1440), through: 2592, by: 12) {
+                let artwork = try TVBezelArtwork(bezel: bezel, canvas: CGSize(width: width, height: 1080))
+                for node in nodes {
+                    guard let frame = artwork.frame(ofNode: node) else { continue }
+                    #expect(frame.minX >= 20 && frame.maxX <= width - 20, "\(id) \(node) at \(width): \(frame)")
+                }
+            }
+        }
+    }
+
     @Test("The Living Room TV has its speakers only where they fit")
     func livingRoomSpeakers() throws {
         let bezel = try #require(TVBezelCatalog.bezel(id: "living-room-tv"))

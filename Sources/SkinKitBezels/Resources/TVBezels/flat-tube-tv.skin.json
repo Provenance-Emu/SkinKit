@@ -495,7 +495,7 @@
             ],
             "when": [
               {
-                "minWidth": 1560,
+                "minWidth": 1568,
                 "layout": {
                   "frame": [
                     196,
@@ -547,7 +547,7 @@
             ],
             "when": [
               {
-                "minWidth": 1560,
+                "minWidth": 1568,
                 "layout": {
                   "frame": [
                     196,
@@ -606,7 +606,7 @@
               }
             ],
             "visible": {
-              "minWidth": 1560
+              "minWidth": 1568
             }
           },
           {
@@ -639,7 +639,7 @@
               }
             },
             "visible": {
-              "minWidth": 1560
+              "minWidth": 1568
             }
           },
           {
@@ -689,7 +689,7 @@
               }
             ],
             "visible": {
-              "minWidth": 1560
+              "minWidth": 1568
             }
           },
           {
@@ -722,7 +722,7 @@
               }
             },
             "visible": {
-              "minWidth": 1560
+              "minWidth": 1568
             }
           },
           {
