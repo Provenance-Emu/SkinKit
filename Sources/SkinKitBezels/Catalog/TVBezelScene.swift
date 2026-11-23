@@ -11,14 +11,16 @@ import Foundation
 /// Everything a slang filter chain needs to draw one TV on one display.
 ///
 /// The scene is drawn in two stages. The game goes through the tube look into a texture the
-/// size of the tube; then the preset named here runs over the whole 16:9 scene with that
+/// size of the tube; then the preset named here runs over the whole scene (`canvas`) with that
 /// texture as its picture, `values` as its parameters and `borderPNG` as its `BORDER` texture.
 /// The package runs no shader: the app's own chain does.
 public struct TVBezelScene: Sendable, Equatable {
     /// Identifies this TV at this size, room light and glass. A chain loaded for another key
     /// must reload: its `BORDER` texture differs.
     public let key: String
-    /// The tube in the artwork's canvas points (`TVBezelArtwork.canvas`).
+    /// The canvas the scene is laid out on, in points: the scene's proportions.
+    public let canvas: CGSize
+    /// The tube in `canvas` points.
     public let tubeRect: CGRect
     /// The preset to run (`TVBezelShader.presetID(libraryPath:)`).
     public let presetID: String
@@ -28,8 +30,10 @@ public struct TVBezelScene: Sendable, Equatable {
     /// texture. `nil` for a standalone preset, which brings its own.
     public let borderPNG: Data?
 
-    public init(key: String, tubeRect: CGRect, presetID: String, values: [String: Float], borderPNG: Data?) {
+    public init(key: String, tubeRect: CGRect, presetID: String, values: [String: Float], borderPNG: Data?,
+                canvas: CGSize = TVBezelArtwork.canvas) {
         self.key = key
+        self.canvas = canvas
         self.tubeRect = tubeRect
         self.presetID = presetID
         self.values = values
@@ -39,9 +43,13 @@ public struct TVBezelScene: Sendable, Equatable {
     /// The tube's width over its height: the shape the picture is fitted into.
     public var tubeAspect: CGSize { tubeRect.size }
 
-    /// The key of `bezel` drawn `scenePixelWidth` pixels wide.
-    public static func key(bezel: TVBezel, lightsRoom: Bool, flatGlass: Bool, scenePixelWidth: CGFloat) -> String {
-        "\(bezel.id)|\(Int(scenePixelWidth))|\(lightsRoom)|\(flatGlass)"
+    /// The key of `bezel` drawn `scenePixelWidth` pixels wide on `canvas`.
+    public static func key(bezel: TVBezel, lightsRoom: Bool, flatGlass: Bool, scenePixelWidth: CGFloat,
+                           canvas: CGSize = TVBezelArtwork.canvas) -> String {
+        let base = "\(bezel.id)|\(Int(scenePixelWidth))|\(lightsRoom)|\(flatGlass)"
+        // A standalone preset draws its own scene, so the canvas does not change it.
+        guard canvas != TVBezelArtwork.canvas, bezel.presetID == nil else { return base }
+        return base + "|\(Int(canvas.width.rounded()))x\(Int(canvas.height.rounded()))"
     }
 
     /// Loads `bezel`'s artwork and draws it `scenePixelWidth` pixels wide. Slow: call it off
@@ -51,9 +59,12 @@ public struct TVBezelScene: Sendable, Equatable {
     ///   - lightsRoom: use the preset that lights the room, falling back to the plain one
     ///     when the library does not have it.
     ///   - flatGlass: switch the glass's own curvature off.
-    ///   - key: identifies this TV at this size (see `key(bezel:lightsRoom:flatGlass:scenePixelWidth:)`).
+    ///   - key: identifies this TV at this size (see `key(bezel:lightsRoom:flatGlass:scenePixelWidth:canvas:)`).
+    ///   - canvas: the canvas to lay the TV out on (`TVBezelCanvas.size(display:seat:)`). A
+    ///     standalone preset ignores it.
     ///   - hasPreset: whether the app's shader library has a preset id.
     public static func make(bezel: TVBezel, lightsRoom: Bool, flatGlass: Bool, scenePixelWidth: CGFloat, key: String,
+                            canvas: CGSize = TVBezelArtwork.canvas,
                             hasPreset: (String) -> Bool = BezelEnvironment.current.hasShaderPreset) -> TVBezelScene? {
         if let presetID = bezel.presetID {
             guard hasPreset(presetID) else { return nil }
@@ -73,7 +84,7 @@ public struct TVBezelScene: Sendable, Equatable {
         }
         let artwork: TVBezelArtwork
         do {
-            artwork = try TVBezelArtwork(bezel: bezel)
+            artwork = try TVBezelArtwork(bezel: bezel, canvas: canvas)
         } catch {
             BezelLog.error("TV bezels: artwork of '\(bezel.id)' is unusable: \(error)")
             return nil
@@ -83,10 +94,11 @@ public struct TVBezelScene: Sendable, Equatable {
             return nil
         }
         var values = TVBezelShader.values(frame: bezel.frame, tubeAspect: artwork.tubeAspect,
-                                          tubeHeightFraction: artwork.tubeHeightFraction, lightsRoom: lit)
+                                          tubeHeightOverSceneWidth: artwork.tubeHeightOverCanvasWidth, lightsRoom: lit)
         if flatGlass {
             values[TVBezelShader.glassCurvatureName] = 0
         }
-        return TVBezelScene(key: key, tubeRect: artwork.tubeRect, presetID: presetID, values: values, borderPNG: png)
+        return TVBezelScene(key: key, tubeRect: artwork.tubeRect, presetID: presetID, values: values, borderPNG: png,
+                            canvas: canvas)
     }
 }

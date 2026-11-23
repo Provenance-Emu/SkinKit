@@ -66,6 +66,106 @@ struct TVBezelCatalogTests {
         }
     }
 
+    /// Displays at the ends and the middle of the supported range.
+    private static let shapes = [CGSize(width: 4, height: 3), CGSize(width: 16, height: 9), CGSize(width: 12, height: 5)]
+    /// Each built-in TV's cabinet node and the floor it stands on.
+    private static let furniture = ["living-room-tv": (cabinet: "cabinet", floor: "carpet"),
+                                    "studio-monitor": (cabinet: "body", floor: "shelf"),
+                                    "computer-monitor": (cabinet: "case", floor: "desk"),
+                                    "flat-tube-tv": (cabinet: "cabinet", floor: "floor"),
+                                    "dorm-tv": (cabinet: "cabinet", floor: "desk"),
+                                    "vga-monitor": (cabinet: "case", floor: "desk")]
+
+    @Test("Every built-in TV keeps a centred tube of one size at every shape, inside the canvas")
+    func tubeAcrossShapes() throws {
+        for bezel in bezels where bezel.presetID == nil {
+            for seat in TVBezelSeat.allCases {
+                var sizes = Set<String>()
+                for shape in Self.shapes {
+                    let canvas = TVBezelCanvas.size(display: shape, seat: seat)
+                    let tube = try TVBezelArtwork(bezel: bezel, canvas: canvas).tubeRect
+                    let where_ = Comment(rawValue: "\(bezel.id) \(seat) \(shape)")
+                    #expect(abs(tube.midX - canvas.width / 2) < 0.5 && abs(tube.midY - canvas.height / 2) < 0.5, where_)
+                    #expect(CGRect(origin: .zero, size: canvas).contains(tube), where_)
+                    sizes.insert("\(Int(tube.width))x\(Int(tube.height))")
+                }
+                #expect(sizes.count == 1, "\(bezel.id) \(seat): \(sizes)")
+            }
+        }
+    }
+
+    @Test("From the back at 16:9 the tubes are where they were")
+    func backSixteenNineUnchanged() throws {
+        let expected = ["living-room-tv": CGRect(x: 480, y: 180, width: 960, height: 720),
+                        "studio-monitor": CGRect(x: 456, y: 162, width: 1008, height: 756),
+                        "computer-monitor": CGRect(x: 456, y: 162, width: 1008, height: 756),
+                        "flat-tube-tv": CGRect(x: 440, y: 150, width: 1040, height: 780),
+                        "dorm-tv": CGRect(x: 480, y: 180, width: 960, height: 720),
+                        "vga-monitor": CGRect(x: 432, y: 144, width: 1056, height: 792),
+                        "candy-cabinet": CGRect(x: 440, y: 150, width: 1040, height: 780)]
+        for (id, tube) in expected {
+            let bezel = try #require(TVBezelCatalog.bezel(id: id))
+            #expect(try TVBezelArtwork(bezel: bezel).tubeRect == tube, "\(id)")
+        }
+    }
+
+    @Test("From the back the cabinet fits every shape with wall beside it, on a floor as wide as the canvas")
+    func cabinetFits() throws {
+        for (id, nodes) in Self.furniture {
+            let bezel = try #require(TVBezelCatalog.bezel(id: id))
+            for shape in Self.shapes {
+                let canvas = TVBezelCanvas.size(display: shape)
+                let artwork = try TVBezelArtwork(bezel: bezel, canvas: canvas)
+                let where_ = Comment(rawValue: "\(id) \(shape)")
+                let cabinet = try #require(artwork.frame(ofNode: nodes.cabinet), where_)
+                #expect(cabinet.minX >= 20 && cabinet.maxX <= canvas.width - 20, where_)
+                #expect(abs(cabinet.midX - canvas.width / 2) < 0.5, where_)
+                let floor = try #require(artwork.frame(ofNode: nodes.floor), where_)
+                #expect(floor.minX <= 0 && floor.maxX >= canvas.width, where_)
+                #expect(floor.minY < cabinet.maxY + 80 && floor.maxY >= canvas.height, where_)
+            }
+        }
+    }
+
+    @Test("From the back, at every canvas width, the cabinet and the parts that come and go have wall beside them")
+    func widthSweep() throws {
+        let parts = ["living-room-tv": ["cabinet", "cloth-left", "cloth-right"],
+                     "flat-tube-tv": ["cabinet", "speaker-left", "speaker-right"],
+                     "dorm-tv": ["cabinet", "poster-left", "poster-right"]]
+        for (id, nodes) in parts {
+            let bezel = try #require(TVBezelCatalog.bezel(id: id))
+            for width in stride(from: CGFloat(1440), through: 2592, by: 12) {
+                let artwork = try TVBezelArtwork(bezel: bezel, canvas: CGSize(width: width, height: 1080))
+                for node in nodes {
+                    guard let frame = artwork.frame(ofNode: node) else { continue }
+                    #expect(frame.minX >= 20 && frame.maxX <= width - 20, "\(id) \(node) at \(width): \(frame)")
+                }
+            }
+        }
+    }
+
+    @Test("The Living Room TV has its speakers only where they fit")
+    func livingRoomSpeakers() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "living-room-tv"))
+        let narrow = try TVBezelArtwork(bezel: bezel, canvas: TVBezelCanvas.size(display: CGSize(width: 4, height: 3)))
+        #expect(narrow.frame(ofNode: "cloth-left") == nil && narrow.frame(ofNode: "cloth-right") == nil)
+        let wide = try TVBezelArtwork(bezel: bezel)
+        #expect(wide.frame(ofNode: "cloth-left") == CGRect(x: 186, y: 138, width: 252, height: 806))
+        #expect(wide.frame(ofNode: "cabinet") == CGRect(x: 150, y: 84, width: 1620, height: 922))
+        let flat = try #require(TVBezelCatalog.bezel(id: "flat-tube-tv"))
+        #expect(try TVBezelArtwork(bezel: flat, canvas: narrow.canvasSize).frame(ofNode: "speaker-left") == nil)
+        #expect(try TVBezelArtwork(bezel: flat).frame(ofNode: "cabinet") == CGRect(x: 196, y: 80, width: 1528, height: 912))
+    }
+
+    @Test("Artwork drawn for a canvas has that canvas's proportions")
+    func artworkImageProportions() throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: "studio-monitor"))
+        let artwork = try TVBezelArtwork(bezel: bezel, canvas: CGSize(width: 1440, height: 1080))
+        let image = try #require(artwork.image(pixelWidth: 480))
+        #expect(image.width == 480 && image.height == 360)
+        #expect(artwork.tubeHeightOverCanvasWidth == artwork.tubeRect.height / 1440)
+    }
+
     @Test("Artwork renders at the size asked for")
     func artworkRenders() throws {
         let bezel = try #require(bezels.first)
