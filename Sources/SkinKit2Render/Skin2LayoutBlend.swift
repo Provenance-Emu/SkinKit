@@ -1,6 +1,19 @@
 import Foundation
 import SkinKit2Core
 
+extension Skin2Resolution {
+    /// The opacity a node is drawn with: its own times every ancestor's. 1 when the node is not in the layout.
+    public func effectiveOpacity(of pointer: String) -> Double {
+        var node = root, opacity = root.opacity
+        while node.pointer != pointer {
+            guard let next = node.children.first(where: { pointer == $0.pointer || pointer.hasPrefix($0.pointer + "/") }) else { return 1 }
+            node = next
+            opacity *= next.opacity
+        }
+        return opacity
+    }
+}
+
 /// The layout part-way between two resolved layouts of one skin, for a host animating a change (a shelf opening).
 public enum Skin2LayoutBlend {
     /// `progress` 0 is `from`, 1 is `to`. A node in both layouts moves and fades in a straight line between its two

@@ -1,4 +1,5 @@
 #if canImport(UIKit)
+import Combine
 import SkinKit2Core
 import SkinKit2Render
 import SkinKitCore
@@ -13,6 +14,12 @@ import UIKit
 /// one finger per stick, a finger dragging across buttons. Pressed `scale`s ease in over 80 ms (6.4) and each
 /// press plays the control's haptic. The rules live in `SkinKit2Render` (`Skin2TouchTracker`, `Skin2Haptics`,
 /// `Skin2ScaleEasing`) and are tested on the macOS host. tvOS draws the skin without touch handling.
+///
+/// Accessory panels: the app says what it can supply right now in `capabilities` and hands over the pictures in a
+/// `Skin2PictureStore`. Each accessory screen the app can fill gets a layer of its own, with the skin drawn in
+/// parts under and over it; a skin with none is one canvas as before. The view owns which shelves are open (their
+/// handles toggle them, and never reach `onInput`) and reports what the skin itself gives the player through
+/// `onProvidedChange`, so the app can hide its own copy and bring it back the moment the skin stops.
 public struct Skin2SkinView: View {
     public let document: Skin2Document
     public var device: Skin2Device
@@ -34,6 +41,29 @@ public struct Skin2SkinView: View {
     public var onLayout: ((Skin2Resolution) -> Void)?
     /// Called when the view lets go of everything (it disappears, or the canvas changes shape mid-touch).
     public var onReleaseAll: () -> Void
+    /// What the app and the running game can supply now (`picture.vmu.p1`, `input.arcade.coin1`).
+    public var capabilities: Set<String>
+    /// The app's pictures for accessory screens. Nil: accessory screens show nothing.
+    public var pictures: Skin2PictureStore?
+    /// Names the skin when remembering which shelves the player left open. Nil: not remembered.
+    public var skinIdentifier: String?
+    /// What the skin provides, on appear and whenever it changes; `.none` when the view goes away. `pictures` holds
+    /// only sources the app has delivered a picture for.
+    public var onProvidedChange: ((Skin2Provided) -> Void)?
+
+    @StateObject private var panelState: Skin2PanelState
+    @State private var delivered: Set<String> = []
+    @State private var transition: Transition?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// A shelf opening or closing: the layout it started from and when.
+    private struct Transition: Equatable {
+        var from: Skin2Resolution
+        var start: TimeInterval
+    }
+
+    /// How long a shelf takes to open or close.
+    static let shelfDuration: TimeInterval = 0.2
 
     @State private var snapshot = Skin2TouchSnapshot.empty
     @State private var easing = Skin2ScaleEasing()
@@ -45,7 +75,14 @@ public struct Skin2SkinView: View {
                 asset: (@Sendable (String) -> Data?)? = nil,
                 onInput: @escaping (Skin2InputEvent) -> Void = { _ in },
                 onLayout: ((Skin2Resolution) -> Void)? = nil,
-                onReleaseAll: @escaping () -> Void = {}, safeAreaOverride: Skin2Insets? = nil) {
+                onReleaseAll: @escaping () -> Void = {}, safeAreaOverride: Skin2Insets? = nil,
+                capabilities: Set<String> = [], pictures: Skin2PictureStore? = nil, skinIdentifier: String? = nil,
+                onProvidedChange: ((Skin2Provided) -> Void)? = nil) {
+        self.capabilities = capabilities
+        self.pictures = pictures
+        self.skinIdentifier = skinIdentifier
+        self.onProvidedChange = onProvidedChange
+        _panelState = StateObject(wrappedValue: Skin2PanelState(document: document, skinIdentifier: skinIdentifier))
         self.safeAreaOverride = safeAreaOverride
         self.document = document
         self.device = device
@@ -68,6 +105,16 @@ public struct Skin2SkinView: View {
         var device: Skin2Device
         var displayType: Skin2DisplayType
         var flags: Set<String>
+        var capabilities: Set<String>
+    }
+
+    /// The app's flags plus the open flags of the shelves; the skin view owns every `panel.*` flag.
+    private var allFlags: Set<String> {
+        flags.filter { !$0.hasPrefix(Skin2Panel.flagPrefix) }.union(panelState.flags)
+    }
+
+    private var deliveredChanges: AnyPublisher<Set<String>, Never> {
+        pictures?.deliveredChanges ?? Just([]).eraseToAnyPublisher()
     }
 
     public var body: some View {
@@ -80,25 +127,114 @@ public struct Skin2SkinView: View {
                 let resolution = resolve(size: inner.size, insets: insets)
                 let tester = Skin2HitTester(resolution)
                 let key = LayoutKey(size: inner.size, insets: [insets.top, insets.leading, insets.bottom, insets.trailing],
-                                    device: device, displayType: displayType, flags: flags)
-                TimelineView(.animation(minimumInterval: nil, paused: !isEasing)) { timeline in
-                    Canvas(rendersAsynchronously: false) { context, _ in
-                        let options = Skin2RenderOptions(states: drawnStates(at: timeline.date.timeIntervalSinceReferenceDate),
-                                                         screenPlaceholders: screenPlaceholders,
-                                                         showHitFrames: showHitFrames, asset: asset)
-                        context.withCGContext { cg in Skin2Renderer.draw(resolution, in: cg, options: options) }
-                    }
+                                    device: device, displayType: displayType, flags: allFlags, capabilities: capabilities)
+                let provided = resolution.provided.keeping(pictures: delivered)
+                TimelineView(.animation(minimumInterval: nil, paused: !isAnimating)) { timeline in
+                    let now = timeline.date.timeIntervalSinceReferenceDate
+                    layers(drawnLayout(resolution, at: now), states: drawnStates(at: now))
                 }
                 #if os(iOS)
                 .overlay(
-                    Skin2TouchSurface(tester: tester, onSnapshot: { apply($0, tester: tester) }, onReleaseAll: onReleaseAll)
+                    Skin2TouchSurface(tester: tester, onSnapshot: { apply($0, tester: tester, resolution: resolution) },
+                                      onReleaseAll: onReleaseAll)
                 )
+                .overlay(handleAccessibility(resolution, tester: tester))
                 #endif
                 .task(id: key) { onLayout?(resolution) }
+                .task(id: provided) { onProvidedChange?(provided) }
             }
             .ignoresSafeArea()
         }
+        .onReceive(deliveredChanges) { delivered = $0 }
+        .onChange(of: document) { _, new in panelState.adopt(document: new, skinIdentifier: skinIdentifier) }
+        .onDisappear { onProvidedChange?(.none) }
     }
+
+    // MARK: Layers
+
+    /// The skin as one canvas, or, when the app can fill accessory screens, in parts with each screen's picture
+    /// in a layer between the part under it and the part over it.
+    @ViewBuilder
+    private func layers(_ layout: Skin2Resolution, states: [String: Skin2ControlState]) -> some View {
+        let live = pictures == nil ? [] : layout.accessoryScreens.filter { screen in
+            screen.node.source.map { capabilities.contains(Skin2Capabilities.picture($0)) } ?? false
+        }
+        if let pictures, !live.isEmpty {
+            ZStack(alignment: .topLeading) {
+                canvas(layout, part: .upTo(screen: live[0].pointer), states: states)
+                ForEach(Array(live.enumerated()), id: \.element.pointer) { index, screen in
+                    Skin2PictureLayerView(store: pictures, source: screen.node.source ?? "", sampling: screen.node.sampling ?? .nearest)
+                        .frame(width: screen.frame.width, height: screen.frame.height)
+                        .position(x: screen.frame.midX, y: screen.frame.midY)
+                        .opacity(layout.effectiveOpacity(of: screen.pointer))
+                        .allowsHitTesting(false)
+                    canvas(layout, part: index + 1 < live.count ? .between(after: screen.pointer, upTo: live[index + 1].pointer)
+                                                                : .after(screen: screen.pointer), states: states)
+                }
+            }
+        } else {
+            canvas(layout, part: .all, states: states)
+        }
+    }
+
+    private func canvas(_ layout: Skin2Resolution, part: Skin2DrawPart, states: [String: Skin2ControlState]) -> some View {
+        Canvas(rendersAsynchronously: false) { context, _ in
+            var options = Skin2RenderOptions(states: states, screenPlaceholders: screenPlaceholders, showHitFrames: showHitFrames, asset: asset)
+            options.part = part
+            context.withCGContext { cg in Skin2Renderer.draw(layout, in: cg, options: options) }
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// The layout to draw: while a shelf moves, the blend between where it started and where it is going.
+    private func drawnLayout(_ resolution: Skin2Resolution, at now: TimeInterval) -> Skin2Resolution {
+        guard let transition, transition.from.environment.size == resolution.environment.size else { return resolution }
+        let t = (now - transition.start) / Self.shelfDuration
+        guard t < 1 else { return resolution }
+        let eased = max(0, t) * max(0, t) * (3 - 2 * max(0, t))
+        return Skin2LayoutBlend.blend(from: transition.from, to: resolution, progress: eased)
+    }
+
+    private var isAnimating: Bool {
+        if let transition, Self.now < transition.start + Self.shelfDuration { return true }
+        return isEasing
+    }
+
+    // MARK: Shelves
+
+    /// Opens or closes a shelf. The new layout arrives on the next pass; the touch layer lets go of any control
+    /// the new layout no longer has, which releases the app's inputs.
+    private func toggle(_ panel: String, from resolution: Skin2Resolution) {
+        if !reduceMotion {
+            transition = Transition(from: resolution, start: Self.now)
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.shelfDuration + 0.02) {
+                if let current = transition, Self.now >= current.start + Self.shelfDuration { transition = nil }
+                tick &+= 1
+            }
+        }
+        panelState.toggle(panel)
+    }
+
+    #if os(iOS)
+    /// Each shelf's handle as a button for VoiceOver: "Visual Memory, open".
+    private func handleAccessibility(_ resolution: Skin2Resolution, tester: Skin2HitTester) -> some View {
+        ZStack(alignment: .topLeading) {
+            Color.clear
+            ForEach(resolution.panels.filter { $0.presentation == .shelf }, id: \.panel.name) { panel in
+                if let handle = tester.controls.first(where: { $0.togglesPanel == panel.panel.name }) {
+                    Color.clear
+                        .frame(width: handle.hitFrame.width, height: handle.hitFrame.height)
+                        .position(x: handle.hitFrame.midX, y: handle.hitFrame.midY)
+                        .accessibilityElement()
+                        .accessibilityLabel(Text(verbatim: "\(panel.panel.label ?? panel.panel.name), \(panel.isOpen ? "open" : "closed")"))
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityAction { toggle(panel.panel.name, from: resolution) }
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+    #endif
 
     static var now: TimeInterval { Date.timeIntervalSinceReferenceDate }
 
@@ -111,7 +247,7 @@ public struct Skin2SkinView: View {
     func resolve(size: CGSize, insets: EdgeInsets) -> Skin2Resolution {
         let env = Skin2Environment(size: Skin2Size(width: size.width, height: size.height),
                                    safeArea: Skin2Insets(top: insets.top, left: insets.leading, bottom: insets.bottom, right: insets.trailing),
-                                   device: device, displayType: displayType, flags: flags)
+                                   device: device, displayType: displayType, flags: allFlags, capabilities: capabilities)
         return Skin2Resolver.resolve(document, in: env, edits: edits)
     }
 
@@ -126,10 +262,12 @@ public struct Skin2SkinView: View {
 
     #if os(iOS)
     /// A touch change: ease the scales, play haptics, tell the host.
-    private func apply(_ new: Skin2TouchSnapshot, tester: Skin2HitTester) {
+    private func apply(_ new: Skin2TouchSnapshot, tester: Skin2HitTester, resolution: Skin2Resolution) {
         let old = snapshot
         guard new != old else { return }
         snapshot = new
+        // A shelf's handle belongs to this view: it toggles the shelf and is never an input event.
+        for panel in skin2PanelToggles(from: old, to: new, tester: tester) { toggle(panel, from: resolution) }
         let now = Self.now
         easing.update(pressed: Set(new.states.filter { $0.value.isPressed }.keys), at: now)
         // Re-evaluate once the ease is over so the timeline pauses again.

@@ -124,6 +124,9 @@ struct DeltaSkinFormat2View: View {
     let isInEmulator: Bool
     let inputHandler: any DeltaSkinInputHandling
     let onViewportFrameChange: ((CGRect) -> Void)?
+    var capabilities: Set<String> = []
+    var pictures: Skin2PictureStore?
+    var onProvidedChange: ((Skin2Provided) -> Void)?
 
     @State private var bridge = Skin2InputBridge()
     @State private var lastViewport: CGRect?
@@ -143,7 +146,11 @@ struct DeltaSkinFormat2View: View {
                 lastViewport = frame
                 onViewportFrameChange?(frame)
             },
-            onReleaseAll: { bridge.releaseAll(sink: sink) }
+            onReleaseAll: { bridge.releaseAll(sink: sink) },
+            capabilities: capabilities,
+            pictures: pictures,
+            skinIdentifier: skin.identifier,
+            onProvidedChange: onProvidedChange
         )
         .onDisappear { bridge.releaseAll(sink: sink) }
     }

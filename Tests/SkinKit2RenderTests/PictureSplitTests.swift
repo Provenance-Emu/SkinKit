@@ -216,4 +216,17 @@ struct LayoutBlendTests {
         #expect(start.node(id: "vmuPanel")?.frame.x == x0 && start.node(id: "vmu.lcd")?.opacity == 0)
         #expect(start.node(id: "vmuTab")?.frame == closed.node(id: "vmuTab")?.frame)
     }
+
+    @Test("A node's drawn opacity multiplies down the tree")
+    func effectiveOpacity() throws {
+        let doc = try renderSkin(#"""
+        { "type": "group", "id": "g", "opacity": 0.5, "children": [
+          { "type": "screen", "id": "lcd", "source": "vmu.p1", "opacity": 0.5, "layout": { "frame": [0, 0, 48, 32] } } ] }
+        """#, extra: #""optional": ["screens.accessory"]"#)
+        let r = Skin2Resolver.resolve(doc, in: Skin2Environment(size: Skin2Size(width: 100, height: 100)))
+        let lcd = try #require(r.node(id: "lcd"))
+        #expect(r.effectiveOpacity(of: lcd.pointer) == 0.25)
+        #expect(r.effectiveOpacity(of: "/root") == 1)
+        #expect(r.effectiveOpacity(of: "/root/children/9") == 1)
+    }
 }
