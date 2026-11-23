@@ -23,7 +23,7 @@ public enum SkinKit2Render {
         "materials", "text",
         "parts", "parts.std@2.0", "tokens", "themes", "variants", "states",
         "controls.dpad", "controls.thumbstick", "controls.touchSurface",
-        "capabilities", "screens.accessory", "panels", "inputs.semantic",
+        "capabilities", "screens.accessory", "panels", "inputs.semantic", "parts.std@2.1",
     ]
 
     /// True when this renderer draws every feature in `requires`.

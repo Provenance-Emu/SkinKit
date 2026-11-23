@@ -18,12 +18,17 @@ import Foundation
 /// | `std.stick` | thumbstick, dished base, octagonal gate, knob | `input`, `knob`, `top`, `bottom`, `glow` |
 /// | `std.stickWithClick` | as `std.stick` plus `click` | `input`, `click`, `knob`, `top`, `bottom`, `glow` |
 /// | `std.keypadKey` | button, rounded key | `input`, `label`, `color`, `labelColor`, `cornerRadius` |
+/// | `std.vmu` (`parts.std@2.1`) | none: a memory unit's housing around an accessory screen | `source` (`vmu.p1`), `body`, `bodyShade`, `window`, `glass` (0 to 1, the glare over the screen; default 1), `buttons` (0 or 1: 1 draws the unit's keys as art, not controls; default 0) |
 ///
 /// Inner nodes carry ids (`body`, `cross`, `arrow`), so each instance needs an `id`; they are scoped to it
 /// (`a.body`). A skin may not define parts named `std.*`.
 public enum Skin2StdParts {
     public static let featureName = "parts.std@2.0"
     public static let prefix = "std."
+    /// The feature a skin lists when it uses a part added in 2.1. A reader that lacks it draws the baked skin.
+    public static let featureName21 = "parts.std@2.1"
+    /// The parts added in 2.1.
+    public static let parts21: Set<String> = ["std.vmu"]
 
     /// Every standard part by name. Empty if the resource can't be read (a skin that uses one then fails to load
     /// with "no part named", and the app falls back to the baked classic skin).

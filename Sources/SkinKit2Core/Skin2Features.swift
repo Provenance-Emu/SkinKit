@@ -32,7 +32,11 @@ public enum Skin2Features {
         case .object(let o):
             if let name = o["use"]?.stringValue {
                 used.insert("parts")
-                if name.hasPrefix("std.") { used.insert("parts.std@2.0") }
+                if Skin2StdParts.parts21.contains(name) {
+                    used.insert(Skin2StdParts.featureName21)
+                } else if name.hasPrefix(Skin2StdParts.prefix) {
+                    used.insert(Skin2StdParts.featureName)
+                }
             }
             for value in o.values { scanUses(value, into: &used) }
         case .array(let a):

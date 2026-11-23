@@ -5,7 +5,7 @@ import Testing
 /// The standard parts library (`parts.std@2.0`), the thumbstick `click` input and the section 11 image limits.
 @Suite("Standard parts, thumbstick click, image limits")
 struct StdPartsTests {
-    static let allNames = ["std.dpad", "std.faceButton", "std.keypadKey", "std.kidneyButton", "std.pill", "std.stick", "std.stickWithClick", "std.triggerBar"]
+    static let allNames = ["std.dpad", "std.faceButton", "std.keypadKey", "std.kidneyButton", "std.pill", "std.stick", "std.stickWithClick", "std.triggerBar", "std.vmu"]
 
     static let psx = #"["com.provenance.psx"]"#
     static let pad = #"["layout.anchors", "shapes.parametric", "paint.gradients", "effects.shadow", "text", "parts", "parts.std@2.0", "states", "layout.repeat", "controls.dpad", "controls.thumbstick"]"#
@@ -16,7 +16,7 @@ struct StdPartsTests {
 
     // MARK: The library
 
-    @Test("The library holds the eight standard parts, and each is a valid part")
+    @Test("The library holds the standard parts, and each is a valid part")
     func libraryParts() throws {
         #expect(Skin2StdParts.names == Self.allNames)
         let defs = Skin2Schema.document["$defs"] ?? .null

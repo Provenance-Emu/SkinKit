@@ -230,3 +230,18 @@ struct LayoutBlendTests {
         #expect(r.effectiveOpacity(of: "/root/children/9") == 1)
     }
 }
+
+@Suite("Old readers and the VMU skin")
+struct VMUSkinReaderTests {
+    @Test("A reader without parts.std@2.1 draws the bake")
+    func vmuSkinRequiresStdParts21() throws {
+        let doc = try Skin2Document.load(data: RenderPaths.skinData("dreamcast-vmu"))
+        #expect(SkinKit2Render.supports(doc.requires))
+        // A reader pinned before this work: everything this build draws except the new part library.
+        let older = SkinKit2Render.supportedFeatures.subtracting(["parts.std@2.1"])
+        #expect(!doc.requires.allSatisfy(older.contains))
+        #expect(doc.requires.filter { !older.contains($0) } == ["parts.std@2.1"])
+        let info = Skin2SourceInfo(source: "skin.json", formatVersion: doc.formatVersion, requires: doc.requires)
+        #expect(info.isRenderable)
+    }
+}
