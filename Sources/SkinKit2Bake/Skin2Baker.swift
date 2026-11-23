@@ -97,6 +97,9 @@ private struct Builder {
         let label = labels.isEmpty ? nil : labels.joined(separator: " — ")
         let traits = Skin2TraitSet.sets(for: base)
         let doc = try Skin2Document.load(data: source, theme: theme, variant: variant)
+        var leavesOut = false
+        base.root.preorder { if $0.panel != nil || $0.isAccessoryScreen || !$0.semanticInputs.isEmpty { leavesOut = true } }
+        if leavesOut, !warnings.contains(Self.notBaked) { warnings.append(Self.notBaked) }
         let baseRepresentations = try representations(doc, traits: traits, native: native, stacksScreens: stacksScreens, prefix: "base")
         var identifier = base.identifier
         if gameIndex > 0 { identifier += ".game\(gameIndex)" }
@@ -150,7 +153,7 @@ private struct Builder {
             files[name] = data
         }
         if let preview = traits.first(where: { $0.name == "iphone-edgeToEdge-portrait" }) {
-            let resolution = Skin2Resolver.resolve(doc, in: preview.environment)
+            let resolution = classic(Skin2Resolver.resolve(doc, in: preview.environment))
             guard let image = Skin2Renderer.image(resolution, options: renderOptions(vector: false)) else { throw Skin2BakeError.artwork("preview.png") }
             let data = NSMutableData()
             guard let encoder = CGImageDestinationCreateWithData(data, UTType.png.identifier as CFString, 1, nil) else {
@@ -175,7 +178,7 @@ private struct Builder {
     ) throws -> Representations {
         var result: Representations = [:]
         for trait in traits {
-            let resolution = Skin2Resolver.resolve(document, in: trait.environment)
+            let resolution = classic(Skin2Resolver.resolve(document, in: trait.environment))
             let path = "bake/\(prefix)-\(trait.name)"
             var background = resolution
             background.root = withoutKnobs(resolution.root)
@@ -250,6 +253,28 @@ private struct Builder {
         context.endPDFPage()
         context.closePDF()
         return stablePDF(data as Data)
+    }
+
+    static let notBaked = "panels, accessory screens and semantic controls are not baked"
+
+    /// The layout a classic skin can hold: panels, accessory screens and semantic controls are a format 2 reader's
+    /// to show, so they are taken out of the art, the items and the screens. A bake is resolved with no
+    /// capabilities, which already drops panels that need one; this also drops those that need nothing. The rest
+    /// of the layout keeps its frames.
+    func classic(_ resolution: Skin2Resolution) -> Skin2Resolution {
+        func keep(_ node: Skin2ResolvedNode) -> Bool {
+            node.node.panel == nil && !node.node.isAccessoryScreen && node.node.semanticInputs.isEmpty
+        }
+        func prune(_ node: Skin2ResolvedNode) -> Skin2ResolvedNode {
+            var node = node
+            node.children = node.children.filter(keep).map(prune)
+            return node
+        }
+        var out = resolution
+        out.root = prune(resolution.root)
+        out.panels = []
+        out.provided = .none
+        return out
     }
 
     func withoutKnobs(_ node: Skin2ResolvedNode) -> Skin2ResolvedNode {
