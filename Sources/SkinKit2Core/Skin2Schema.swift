@@ -89,6 +89,8 @@ public enum Skin2Schema {
             "displayType": tok(enumOf(Skin2DisplayType.allCases.map(\.rawValue))),
             "flag": tok(["type": "string"]), "minWidth": tok(num()), "minHeight": tok(num()),
             "theme": tok(["type": "string"]), "variant": tok(["type": "string"]),
+            "has": any([["type": "string"], ["type": "array", "items": ["type": "string"], "minItems": 1]],
+                       description: "Capabilities the app must supply now (picture.vmu.p1, input.<name>): one name or a list, all needed."),
         ]
         defs["condition"] = obj(conditionProps)
         defs["visibility"] = any([tok(["type": "boolean"]), ref("condition")])
@@ -266,6 +268,7 @@ public enum Skin2Schema {
             "properties": [
                 "formatVersion": ["type": "string", "pattern": .string(Skin2Document.formatVersionPattern)],
                 "requires": strings,
+                "optional": strings,
                 "identifier": ["type": "string"],
                 "name": ["type": "string"],
                 "author": ["type": "string"],

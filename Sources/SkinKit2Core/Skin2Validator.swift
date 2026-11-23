@@ -129,12 +129,21 @@ public enum Skin2Validator {
 
         mutating func checkDocumentKeys(_ doc: Skin2Document, json: Skin2JSON, documents: [Skin2Document]) {
             let used = Skin2Features.used(source: json, documents: documents)
-            let listed = Set(doc.requires)
+            let listed = Set(doc.requires).union(doc.optional)
             for (i, name) in doc.requires.enumerated() where !Skin2Features.all.contains(name) {
                 warn("/requires/\(i)", "\"\(name)\" is not a 2.0 feature name; readers that don't know it fall back to the classic skin")
             }
             for name in used.subtracting(listed).sorted() {
-                error("/requires", "the skin uses \(name) but does not list it in requires")
+                error("/requires", "the skin uses \(name) but does not list it in requires or optional")
+            }
+            for (i, name) in doc.optional.enumerated() {
+                if !Skin2Features.all.contains(name) {
+                    error("/optional/\(i)", "\"\(name)\" is not a 2.0 feature name")
+                } else if doc.requires.contains(name) {
+                    error("/optional/\(i)", "\(name) is in both requires and optional; list it once")
+                } else if !used.contains(name) {
+                    warn("/optional/\(i)", "optional lists \(name), which the skin does not use")
+                }
             }
             for (i, name) in doc.requires.enumerated() where Skin2Features.all.contains(name) && !used.contains(name) {
                 warn("/requires/\(i)", "requires lists \(name), which the skin does not use")
@@ -187,6 +196,18 @@ public enum Skin2Validator {
                 case .screen?:
                     if !seenScreen { error(lp + "/anchor/to", "anchors to screen, but no screen node comes earlier\(suffix)") }
                 default: break
+                }
+            }
+
+            var conditions: [(Skin2Condition, String)] = []
+            if case .when(let c)? = n.visible { conditions.append((c, p + "/visible")) }
+            for (i, w) in n.when.enumerated() {
+                conditions.append((w.condition, "\(p)/when/\(i)"))
+                if case .when(let c)? = w.patch.visible { conditions.append((c, "\(p)/when/\(i)/visible")) }
+            }
+            for (c, cp) in conditions {
+                for name in c.has ?? [] where !Skin2Capabilities.isKnown(name) {
+                    error(cp + "/has", "\"\(name)\" is not a capability (\(Skin2Capabilities.pictureSources.map(Skin2Capabilities.picture).joined(separator: ", ")), input.<name>)\(suffix)")
                 }
             }
 

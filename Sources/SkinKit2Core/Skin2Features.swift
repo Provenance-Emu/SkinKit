@@ -12,6 +12,7 @@ public enum Skin2Features {
         "parts", "tokens", "themes", "variants", "states",
         "controls.dpad", "controls.thumbstick", "controls.touchSurface",
         "parts.std@2.0",
+        "capabilities", "screens.accessory", "panels", "inputs.semantic", "parts.std@2.1",
     ]
 
     /// The features `source` uses. `documents` are its decoded forms (the base and each variant), whose content
@@ -55,14 +56,24 @@ public enum Skin2Features {
         }
     }
 
+    private static func scanCondition(_ c: Skin2Condition?, into used: inout Set<String>) {
+        if c?.has != nil { used.insert("capabilities") }
+    }
+
+    private static func scanVisibility(_ v: Skin2Visibility?, into used: inout Set<String>) {
+        if case .when(let c)? = v { scanCondition(c, into: &used) }
+    }
+
     private static func scanPatch(_ p: Skin2Patch, into used: inout Set<String>) {
+        scanVisibility(p.visible, into: &used)
         scanLayout(p.layout, into: &used)
         scanPaints(p.fills ?? [], into: &used)
     }
 
     static func scan(_ n: Skin2Node, into used: inout Set<String>) {
         scanLayout(n.layout, into: &used)
-        for w in n.when { scanPatch(w.patch, into: &used) }
+        scanVisibility(n.visible, into: &used)
+        for w in n.when { scanCondition(w.condition, into: &used); scanPatch(w.patch, into: &used) }
         if n.stack != nil { used.insert("layout.stack") }
         if n.grid != nil { used.insert("layout.grid") }
         if n.repeat != nil { used.insert("layout.repeat") }

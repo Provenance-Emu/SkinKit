@@ -122,6 +122,21 @@
             }
           ]
         },
+        "has" : {
+          "anyOf" : [
+            {
+              "type" : "string"
+            },
+            {
+              "items" : {
+                "type" : "string"
+              },
+              "minItems" : 1,
+              "type" : "array"
+            }
+          ],
+          "description" : "Capabilities the app must supply now (picture.vmu.p1, input.<name>): one name or a list, all needed."
+        },
         "minHeight" : {
           "anyOf" : [
             {
@@ -3880,6 +3895,21 @@
             }
           ]
         },
+        "has" : {
+          "anyOf" : [
+            {
+              "type" : "string"
+            },
+            {
+              "items" : {
+                "type" : "string"
+              },
+              "minItems" : 1,
+              "type" : "array"
+            }
+          ],
+          "description" : "Capabilities the app must supply now (picture.vmu.p1, input.<name>): one name or a list, all needed."
+        },
         "layout" : {
           "anyOf" : [
             {
@@ -4023,6 +4053,12 @@
     },
     "name" : {
       "type" : "string"
+    },
+    "optional" : {
+      "items" : {
+        "type" : "string"
+      },
+      "type" : "array"
     },
     "parts" : {
       "additionalProperties" : {

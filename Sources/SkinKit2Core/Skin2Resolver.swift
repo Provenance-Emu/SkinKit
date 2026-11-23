@@ -126,6 +126,7 @@ public struct Skin2Resolver {
         if let v = c.minHeight, environment.size.height < v { return false }
         if let v = c.theme, v != document.theme { return false }
         if let v = c.variant, v != document.variant { return false }
+        if let v = c.has, !v.allSatisfy(environment.capabilities.contains) { return false }
         return true
     }
 

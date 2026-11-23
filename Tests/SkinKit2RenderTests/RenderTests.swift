@@ -316,3 +316,20 @@ struct HitTestingTests {
         }
     }
 }
+
+@Suite("Optional features")
+struct OptionalFeatureTests {
+    @Test("A feature the reader lacks blocks it only when required")
+    func optionalFeatureDoesNotBlockTheReader() throws {
+        let json = #"""
+        { "formatVersion": "2.0", "requires": [], "optional": ["future.thing"], "identifier": "t", "name": "T",
+          "gameTypes": ["snes"], "reference": { "shortSide": 390, "minScale": 1, "maxScale": 1 },
+          "root": { "type": "group" } }
+        """#
+        let doc = try Skin2Document.load(data: Data(json.utf8))
+        #expect(doc.optional == ["future.thing"])
+        #expect(SkinKit2Render.supports(doc.requires))
+        #expect(!SkinKit2Render.supports(doc.requires + doc.optional))
+        #expect(SkinKit2Render.supportedFeatures.contains("capabilities"))
+    }
+}
