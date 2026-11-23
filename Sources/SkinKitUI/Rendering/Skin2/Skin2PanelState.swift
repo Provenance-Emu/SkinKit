@@ -16,9 +16,19 @@ final class Skin2PanelState: ObservableObject {
     private var shelves: [Skin2Panel] = []
     private var skinIdentifier: String?
     private let defaults: UserDefaults
+    /// False where nothing can touch a handle (tvOS): every shelf is then open, because a closed one could never
+    /// be opened and would still hide the app's own copy of what it holds.
+    private let canToggle: Bool
 
-    init(document: Skin2Document, skinIdentifier: String?, defaults: UserDefaults = .standard) {
+    #if os(tvOS)
+    static let platformCanToggle = false
+    #else
+    static let platformCanToggle = true
+    #endif
+
+    init(document: Skin2Document, skinIdentifier: String?, defaults: UserDefaults = .standard, canToggle: Bool = Skin2PanelState.platformCanToggle) {
         self.defaults = defaults
+        self.canToggle = canToggle
         adopt(document: document, skinIdentifier: skinIdentifier)
     }
 
@@ -32,7 +42,7 @@ final class Skin2PanelState: ObservableObject {
         shelves = found
         self.skinIdentifier = skinIdentifier
         var open: Set<String> = []
-        for shelf in shelves where stored(shelf.name) ?? shelf.open { open.insert(shelf.openFlag) }
+        for shelf in shelves where !canToggle || (stored(shelf.name) ?? shelf.open) { open.insert(shelf.openFlag) }
         if open != flags { flags = open }
     }
 
@@ -42,7 +52,7 @@ final class Skin2PanelState: ObservableObject {
     }
 
     func toggle(_ panel: String) {
-        guard let shelf = shelves.first(where: { $0.name == panel }) else { return }
+        guard canToggle, let shelf = shelves.first(where: { $0.name == panel }) else { return }
         let open = !flags.contains(shelf.openFlag)
         if open { flags.insert(shelf.openFlag) } else { flags.remove(shelf.openFlag) }
         if let skinIdentifier { defaults.set(open, forKey: Self.key(skin: skinIdentifier, panel: panel)) }

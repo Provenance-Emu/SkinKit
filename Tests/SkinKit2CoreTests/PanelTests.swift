@@ -130,6 +130,20 @@ struct PanelTests {
         #expect(hidden.panels.first?.handleReachable == false)
     }
 
+    @Test("A handle flush with a fractional safe edge is still reachable")
+    func handleOnAFractionalSafeEdgeIsReachable() throws {
+        // The hit frame rounds to the half point (148.3 → 148.5); the safe area does not.
+        let doc = try Self.doc(Self.panel())
+        let env = Skin2Environment(size: Skin2Size(width: 390, height: 844), safeArea: Skin2Insets(top: 0, left: 0, bottom: 0, right: 241.7),
+                                   capabilities: Self.caps)
+        let r = Skin2Resolver.resolve(doc, in: env, edits: ["tab": Skin2Edit(offset: .init(x: 0.3, y: 0))])
+        #expect(r.node(id: "tab")?.hitFrame?.maxX == 148.5)
+        #expect(r.panels.first?.handleReachable == true)
+        #expect(r.provided.pictures == ["vmu.p1"])
+        let beyond = Skin2Resolver.resolve(doc, in: env, edits: ["tab": Skin2Edit(offset: .init(x: 1.5, y: 0))])
+        #expect(beyond.panels.first?.handleReachable == false)
+    }
+
     @Test("A stack sizes a closed shelf to its handle")
     func closedShelfInAStackTakesHandleSpace() throws {
         let children = #"""

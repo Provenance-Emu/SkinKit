@@ -414,7 +414,10 @@ public struct Skin2Resolver {
         var reachable = false
         if panel.presentation == .shelf, let handle = panelContext?.handle,
            let hit = children.flatMap(\.preorder).first(where: { $0.pointer == handle })?.hitFrame {
-            reachable = environment.safeRect.contains(hit)
+            // Hit frames are rounded to the half point and a live safe area is not, so a handle flush with the
+            // safe edge may sit up to half a point past it.
+            let slack = Skin2ResolvedPanel.reachSlack
+            reachable = environment.safeRect.outset(Skin2Insets(top: slack, left: slack, bottom: slack, right: slack)).contains(hit)
         }
         panels.append(Skin2ResolvedPanel(panel: panel, presentation: panel.presentation, isOpen: !(panelContext?.closed ?? false),
                                          handleReachable: reachable, frame: frame))

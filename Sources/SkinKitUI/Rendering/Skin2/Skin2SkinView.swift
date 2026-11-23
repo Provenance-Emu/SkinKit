@@ -52,7 +52,7 @@ public struct Skin2SkinView: View {
     public var onProvidedChange: ((Skin2Provided) -> Void)?
 
     @StateObject private var panelState: Skin2PanelState
-    @State private var delivered: Set<String> = []
+    @State private var delivered: Set<String>
     @State private var transition: Transition?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -82,6 +82,9 @@ public struct Skin2SkinView: View {
         self.pictures = pictures
         self.skinIdentifier = skinIdentifier
         self.onProvidedChange = onProvidedChange
+        // Seeded from the store, so a view that replaces another (a rotation that rebuilds it) reports the picture
+        // in its first report and the app's own copy does not flash.
+        _delivered = State(initialValue: pictures?.delivered ?? [])
         _panelState = StateObject(wrappedValue: Skin2PanelState(document: document, skinIdentifier: skinIdentifier))
         self.safeAreaOverride = safeAreaOverride
         self.document = document
@@ -141,7 +144,11 @@ public struct Skin2SkinView: View {
                 .overlay(handleAccessibility(resolution, tester: tester))
                 #endif
                 .task(id: key) { onLayout?(resolution) }
-                .task(id: provided) { onProvidedChange?(provided) }
+                .task(id: provided) {
+                    // A task cancelled before it ran belongs to a view that is already gone.
+                    guard !Task.isCancelled else { return }
+                    onProvidedChange?(provided)
+                }
             }
             .ignoresSafeArea()
         }

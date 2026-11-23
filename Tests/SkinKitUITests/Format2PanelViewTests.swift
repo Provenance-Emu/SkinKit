@@ -71,6 +71,29 @@ struct Format2PanelViewTests {
         #expect(defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix("SkinKit.format2") }.isEmpty)
     }
 
+    @Test("Where nothing can toggle a shelf, every shelf is open")
+    func shelvesStayOpenWithoutTouch() throws {
+        let defaults = Self.scratch()
+        defaults.set(false, forKey: Skin2PanelState.key(skin: "s", panel: "vmu"))
+        let state = Skin2PanelState(document: try Self.document(open: false), skinIdentifier: "s", defaults: defaults, canToggle: false)
+        #expect(state.flags == ["panel.vmu.open"])
+        state.toggle("vmu")
+        #expect(state.flags == ["panel.vmu.open"])
+        #expect(defaults.object(forKey: Skin2PanelState.key(skin: "s", panel: "vmu")) as? Bool == false)
+    }
+
+    @Test("A view that replaces another reports the picture in its first report")
+    func firstReportHasADeliveredPicture() async throws {
+        let store = Skin2PictureStore()
+        store.set(Self.image(), for: "vmu.p1")
+        let log = Log()
+        let window = host(Skin2SkinView(document: try Self.document(), capabilities: ["picture.vmu.p1"], pictures: store,
+                                        onProvidedChange: { log.provided.append($0) }))
+        #expect(await wait { !log.provided.isEmpty })
+        #expect(log.provided.first?.pictures == ["vmu.p1"])
+        window.isHidden = true
+    }
+
     // MARK: Hosted view
 
     final class Log { var provided: [Skin2Provided] = [] }

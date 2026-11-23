@@ -78,6 +78,9 @@ public struct Skin2ResolvedPanel: Equatable, Sendable {
     public var handleReachable: Bool
     /// The panel group's frame.
     public var frame: Skin2Rect
+
+    /// How far past the safe area a handle's rounded hit frame may reach and still count as reachable.
+    public static let reachSlack = 0.5
 }
 
 extension Skin2Node {
