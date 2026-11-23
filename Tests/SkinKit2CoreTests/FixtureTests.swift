@@ -12,7 +12,7 @@ import Testing
 struct FixtureTests {
     @Test("The fixture set is complete")
     func fixtureSet() {
-        #expect(Skin2Paths.fixtureNames == ["accessory-screen", "dual-screen", "effects", "gamecube-icube", "layout", "paint", "paths", "shapes", "stacks-grids",
+        #expect(Skin2Paths.fixtureNames == ["accessory-screen", "dual-screen", "effects", "gamecube-icube", "layout", "paint", "panels", "paths", "shapes", "stacks-grids",
                                             "states", "std-keypad", "std-parts", "strokes", "text", "variants"])
     }
 

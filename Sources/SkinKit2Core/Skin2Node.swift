@@ -86,12 +86,12 @@ public struct Skin2ScreenFilter: Equatable, Hashable, Sendable, Decodable {
 public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     public var type: Skin2NodeType
     public var id: String?
-    public var layout: Skin2Layout?
+    @Skin2Boxed public var layout: Skin2Layout?
     public var when: [Skin2Conditional]
-    public var visible: Skin2Visibility?
+    @Skin2Boxed public var visible: Skin2Visibility?
     public var opacity: Double?
     public var effects: [Skin2Effect]
-    public var `repeat`: Skin2Repeat?
+    @Skin2Boxed public var `repeat`: Skin2Repeat?
     /// `role` on anything but a screen.
     public var role: Skin2ArtRole?
 
@@ -100,9 +100,11 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     // group
     public var stack: Skin2Stack?
     public var grid: Skin2Grid?
+    /// Makes the group a panel: an accessory area shown only while the app can supply what it needs.
+    @Skin2Boxed public var panel: Skin2Panel?
 
     // shape
-    public var shape: Skin2Shape?
+    @Skin2Boxed public var shape: Skin2Shape?
     public var fills: [Skin2Paint]
     public var strokes: [Skin2Stroke]
     public var material: Skin2Material?
@@ -121,7 +123,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
 
     // control
     public var kind: Skin2ControlKind?
-    public var input: Skin2Input?
+    @Skin2Boxed public var input: Skin2Input?
     public var inputs: [String]?
     /// Thumbsticks only: the classic input the stick's press sends (`l3`, `r3`; 6.1). Kept apart from `inputNames`:
     /// the stick's axes are `input`, the click is a separate press the control host decides when to fire.
@@ -158,7 +160,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     enum K: String, CodingKey {
         case type, id, layout, when, visible, opacity, effects, `repeat`, role, children, stack, grid
         case shape, fills, strokes, material, src, mode, tint, text, font, color, align, fit
-        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement, source, sampling
+        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement, source, sampling, panel
     }
 
     public init(from decoder: Decoder) throws {
@@ -187,6 +189,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
             children = try c.decodeIfPresent([Skin2Node].self, forKey: .children) ?? []
             stack = try c.decodeIfPresent(Skin2Stack.self, forKey: .stack)
             grid = try c.decodeIfPresent(Skin2Grid.self, forKey: .grid)
+            panel = try c.decodeIfPresent(Skin2Panel.self, forKey: .panel)
             try c.ensure(stack == nil || grid == nil, .grid, "a group has a stack or a grid, not both")
         case .shape:
             shape = try c.decode(Skin2Shape.self, forKey: .shape)

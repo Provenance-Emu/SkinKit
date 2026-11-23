@@ -99,7 +99,15 @@ public enum Skin2Schema {
             "fills": ["type": "array", "items": ref("paint")], "strokes": ["type": "array", "items": ref("stroke")],
             "text": tok(["type": "string"]),
         ]
-        defs["when"] = obj(conditionProps.merging(patchProps) { a, _ in a })
+        let presentation = enumOf(Skin2PanelPresentation.allCases.map(\.rawValue))
+        defs["panel"] = obj([
+            "name": ["type": "string", "pattern": .string(Skin2Panel.namePattern), "maxLength": .number(Double(Skin2Panel.maxNameLength))],
+            "label": ["type": "string"], "needs": strings, "presentation": presentation,
+            "handle": ["type": "string", "pattern": .string(Skin2Panel.handlePattern)], "open": ["type": "boolean"],
+        ], required: ["name"], extra: [
+            "description": "An accessory area shown only while the app supplies every capability in needs. A shelf opens and closes by its handle, a control of kind action whose input is togglePanel; the skin reads the state as the flag panel.<name>.open.",
+        ])
+        defs["when"] = obj(conditionProps.merging(patchProps) { a, _ in a }.merging(["panel": obj(["presentation": presentation])]) { a, _ in a })
         defs["statePatch"] = obj(patchProps.merging(["target": tok(["type": "string", "pattern": .string(Skin2Patch.targetPattern)])]) { a, _ in a },
                                  required: ["target"])
         defs["state"] = obj(["scale": tok(num(exclusiveMin: 0)), "opacity": ref("unit"),
@@ -205,7 +213,7 @@ public enum Skin2Schema {
             obj(common.merging(props) { _, b in b }.merging(["type": ["const": .string(type.rawValue)]]) { _, b in b },
                 required: ["type"] + required, extra: extra)
         }
-        defs["group"] = node(.group, ["children": children, "stack": ref("stack"), "grid": ref("grid")],
+        defs["group"] = node(.group, ["children": children, "stack": ref("stack"), "grid": ref("grid"), "panel": ref("panel")],
                              extra: ["not": ["required": ["stack", "grid"]]])
         defs["shapeNode"] = node(.shape, ["shape": ref("shape"), "fills": ["type": "array", "items": ref("paint")],
                                           "strokes": ["type": "array", "items": ref("stroke")], "material": ref("material")],

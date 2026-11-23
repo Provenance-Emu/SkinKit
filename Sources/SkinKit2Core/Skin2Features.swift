@@ -90,6 +90,10 @@ public enum Skin2Features {
         if n.material != nil { used.insert("materials") }
         if n.type == .text { used.insert("text") }
         if n.isAccessoryScreen { used.insert("screens.accessory") }
+        if let panel = n.panel {
+            used.insert("panels")
+            if !panel.needs.isEmpty { used.insert("capabilities") }
+        }
         if !n.states.isEmpty {
             used.insert("states")
             for s in n.states.values { for p in s.patch { scanPatch(p, into: &used) } }
@@ -117,6 +121,7 @@ public enum Skin2Inputs {
     public static let actions: Set<String> = [
         "menu", "quickSave", "quickLoad", "fastForward", "toggleFastForward", "toggleAltRepresentations",
         "toggleKeyboard", "screenshot", "rewind", "pause", "reset", "restart", "keypad", "service",
+        Skin2Panel.toggleInput,
     ]
 
     /// `touchSurface` inputs.

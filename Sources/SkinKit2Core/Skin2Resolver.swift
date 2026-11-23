@@ -42,6 +42,8 @@ public struct Skin2ResolvedNode: Equatable, Sendable {
     /// Thumbsticks only: the knob's travel radius in canvas points.
     public var travel: Double?
     public var children: [Skin2ResolvedNode]
+    /// The name of the panel this node is in (the panel group included), or nil.
+    public var panelName: String? = nil
 
     public var id: String? { node.id }
 
@@ -63,6 +65,8 @@ public struct Skin2Resolution: Equatable, Sendable {
     public var theme: String?
     public var variant: String?
     public var warnings: [Skin2LayoutWarning]
+    /// The panels that are present (their `needs` are met), in document order.
+    public var panels: [Skin2ResolvedPanel] = []
 
     /// Every visible node, parents first, in document order.
     public var nodes: [Skin2ResolvedNode] { root.preorder }
@@ -99,6 +103,19 @@ public struct Skin2Resolver {
     private var areas: [String: Skin2Rect] = [:]
     private var screenArea: Skin2Rect?
     private var warnings: [Skin2LayoutWarning] = []
+    private var panels: [Skin2ResolvedPanel] = []
+
+    /// The panel whose group is being measured or laid out: which of its descendants are absent.
+    private struct PanelContext {
+        var name: String
+        /// Pointer of the handle control, when the panel names one that exists in the group.
+        var handle: String?
+        /// A closed shelf: only the handle, its art and the groups that hold it are present.
+        var closed: Bool
+        /// A fixed panel: the handle is absent.
+        var fixed: Bool
+    }
+    private var panelContext: PanelContext?
 
     public init(document: Skin2Document, environment: Skin2Environment, edits: [String: Skin2Edit] = [:]) {
         self.document = document
@@ -115,7 +132,7 @@ public struct Skin2Resolver {
             ?? Skin2ResolvedNode(pointer: "/root", node: document.root, exactFrame: canvas, frame: canvas, hitFrame: nil,
                                  opacity: 1, copies: [], travel: nil, children: [])
         return Skin2Resolution(root: root, unit: r.unit, environment: environment, theme: document.theme,
-                               variant: document.variant, warnings: r.warnings)
+                               variant: document.variant, warnings: r.warnings, panels: r.panels)
     }
 
     // MARK: Conditions
@@ -147,6 +164,40 @@ public struct Skin2Resolver {
         case .always(let b)?: return b
         case .when(let c)?: return matches(c)
         }
+    }
+
+    // MARK: Panels
+
+    /// True when `a` is `b` or an ancestor of it.
+    private static func holds(_ a: String, _ b: String) -> Bool { a == b || b.hasPrefix(a + "/") }
+
+    private static func pointer(ofID id: String, in node: Skin2Node, at pointer: String) -> String? {
+        for (i, child) in node.children.enumerated() {
+            let p = childPointer(pointer, i)
+            if child.id == id { return p }
+            if let found = Self.pointer(ofID: id, in: child, at: p) { return found }
+        }
+        return nil
+    }
+
+    private func context(for n: Skin2Node, pointer: String) -> PanelContext? {
+        guard let panel = n.panel else { return nil }
+        let shelf = panel.presentation == .shelf
+        return PanelContext(name: panel.name, handle: panel.handleID.flatMap { Self.pointer(ofID: $0, in: n, at: pointer) },
+                            closed: shelf && !environment.flags.contains(panel.openFlag), fixed: !shelf)
+    }
+
+    /// Whether a node that passed `visible` exists here at all: a panel needs its capabilities, a closed shelf
+    /// keeps only its handle, a fixed panel drops it. An absent node takes no space.
+    func isPresent(_ n: Skin2Node, pointer: String) -> Bool {
+        if let panel = n.panel, !panel.needs.allSatisfy(environment.capabilities.contains) { return false }
+        guard let ctx = panelContext else { return true }
+        if ctx.closed {
+            guard let handle = ctx.handle else { return false }
+            return Self.holds(pointer, handle) || Self.holds(handle, pointer)
+        }
+        if ctx.fixed, let handle = ctx.handle { return !Self.holds(handle, pointer) }
+        return true
     }
 
     // MARK: Areas
@@ -185,6 +236,11 @@ public struct Skin2Resolver {
     // MARK: Size
 
     private mutating func measure(_ n: Skin2Node, parent: Skin2Rect, pointer: String) -> Skin2Size {
+        // A panel group's context is set here and in `finish`, in place: the resolver recurses once per tree level
+        // with large frames, so it adds no call of its own.
+        let outerPanel = panelContext
+        if n.panel != nil { panelContext = context(for: n, pointer: pointer) }
+        defer { panelContext = outerPanel }
         let L = n.layout ?? Skin2Layout()
         let ref = referenceArea(n, parent: parent, pointer: pointer)
         var w: Double, h: Double
@@ -265,7 +321,7 @@ public struct Skin2Resolver {
 
     mutating func resolve(_ raw: Skin2Node, pointer: String, parent: Skin2Rect) -> Skin2ResolvedNode? {
         let n = effective(raw)
-        guard isVisible(n) else { return nil }
+        guard isVisible(n), isPresent(n, pointer: pointer) else { return nil }
         let size = measure(n, parent: parent, pointer: pointer)
         let frame = place(n, size: size, parent: parent, pointer: pointer)
         let ref = referenceArea(n, parent: parent, pointer: pointer)
@@ -276,6 +332,9 @@ public struct Skin2Resolver {
     /// stack or grid content is measured against it again); `parent` is the parent's frame.
     private mutating func finish(_ n: Skin2Node, pointer: String, frame placed: Skin2Rect, measureArea: Skin2Rect,
                                  parent: Skin2Rect) -> Skin2ResolvedNode? {
+        let outerPanel = panelContext
+        if n.panel != nil { panelContext = context(for: n, pointer: pointer) }
+        defer { panelContext = outerPanel }
         var frame = placed
         var opacity = n.opacity ?? 1
         if let id = n.id, let edit = edits[id] {
@@ -328,8 +387,20 @@ public struct Skin2Resolver {
             }
         }
 
+        if let panel = n.panel { record(panel, frame: frame.roundedToHalfPoint, children: children) }
         return Skin2ResolvedNode(pointer: pointer, node: n, exactFrame: frame, frame: frame.roundedToHalfPoint, hitFrame: hitFrame,
-                                 opacity: opacity, copies: copies, travel: travel, children: children)
+                                 opacity: opacity, copies: copies, travel: travel, children: children, panelName: panelContext?.name)
+    }
+
+    /// Notes a present panel once its group is laid out.
+    private mutating func record(_ panel: Skin2Panel, frame: Skin2Rect, children: [Skin2ResolvedNode]) {
+        var reachable = false
+        if panel.presentation == .shelf, let handle = panelContext?.handle,
+           let hit = children.flatMap(\.preorder).first(where: { $0.pointer == handle })?.hitFrame {
+            reachable = environment.safeRect.contains(hit)
+        }
+        panels.append(Skin2ResolvedPanel(panel: panel, presentation: panel.presentation, isOpen: !(panelContext?.closed ?? false),
+                                         handleReachable: reachable, frame: frame))
     }
 
     static func childPointer(_ p: String, _ i: Int) -> String { "\(p)/children/\(i)" }
@@ -347,7 +418,7 @@ public struct Skin2Resolver {
         var out: [Measured] = []
         for (i, child) in n.children.enumerated() {
             let c = effective(child)
-            guard isVisible(c) else { continue }
+            guard isVisible(c), isPresent(c, pointer: Self.childPointer(pointer, i)) else { continue }
             // A stacked or gridded child is placed by its group: its own `anchor.to` does not apply.
             var sizing = c
             sizing.layout?.anchor?.to = nil
