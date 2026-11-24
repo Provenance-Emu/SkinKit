@@ -59,11 +59,11 @@ public enum BezelChoice {
     @MainActor
     public static func fetchGameArtwork(for game: ExternalDisplayGameContext,
                                         settings: any BezelSettingsStore = BezelEnvironment.current.settings) async -> Bool {
-        guard settings.showsGameArtwork, settings.pinnedBezel(forGame: game.md5) == nil else { return false }
+        guard settings.showsGameArtwork, settings.pinnedBezel(forGame: game.gameID) == nil else { return false }
         let artwork = ExternalDisplayGameArtwork.shared
         let style = settings.bezelProjectStyle
-        guard artwork.begin(game: game.md5, style: style) else { return false }
+        guard artwork.begin(game: game.gameID, style: style) else { return false }
         guard let downloaded = await BezelProjectService.shared.artwork(for: game, style: style) else { return false }
-        return artwork.finish(game: game.md5, style: style, bezelID: downloaded.id)
+        return artwork.finish(game: game.gameID, style: style, bezelID: downloaded.id)
     }
 }

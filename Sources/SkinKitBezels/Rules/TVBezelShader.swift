@@ -36,7 +36,7 @@ public enum TVBezelShader {
     public static let ambientID = presetID(libraryPath: "bezel/uborder/uborder-koko-ambi")
     /// The preset texture that holds the room and the cabinet.
     public static let borderTextureName = "BORDER"
-    /// The scene's proportions. The presets' geometry assumes them.
+    /// The default scene's proportions, and a standalone preset's.
     public static let sceneAspect = CGSize(width: 16, height: 9)
 
     public static func presetID(lightsRoom: Bool) -> String {
@@ -52,11 +52,20 @@ public enum TVBezelShader {
     /// The presets size the tube by `fr_zoom`: its height as a percentage of the scene's
     /// width (measured: 40.5 gives a 774 px tube on a 1920 px wide scene).
     public static func geometryValues(tubeAspect: CGFloat, tubeHeightFraction: CGFloat) -> [String: Float] {
-        let widthsPerHeight = Float(sceneAspect.height / sceneAspect.width)
-        return [
+        geometryValues(tubeAspect: tubeAspect,
+                       tubeHeightOverSceneWidth: tubeHeightFraction * sceneAspect.height / sceneAspect.width)
+    }
+
+    /// Parameters that centre a tube of `tubeAspect` (width over height) whose height is
+    /// `tubeHeightOverSceneWidth` of the scene's width, on a scene of any shape.
+    ///
+    /// `fr_zoom` is that fraction as a percentage whatever the output's proportions
+    /// (measured at 16:9, 4:3, 2.37:1 and 1:1).
+    public static func geometryValues(tubeAspect: CGFloat, tubeHeightOverSceneWidth: CGFloat) -> [String: Float] {
+        [
             "fr_aspect_x": aspectDenominator * Float(tubeAspect),
             "fr_aspect_y": aspectDenominator,
-            "fr_zoom": Float(tubeHeightFraction) * widthsPerHeight * 100,
+            "fr_zoom": Float(tubeHeightOverSceneWidth * 100),
             "fr_center_x": 0,
             "fr_center_y": 0,
             "bz_center_x": 0,
@@ -85,9 +94,18 @@ public enum TVBezelShader {
                               tubeAspect: CGFloat,
                               tubeHeightFraction: CGFloat,
                               lightsRoom: Bool) -> [String: Float] {
+        values(frame: frame, tubeAspect: tubeAspect,
+               tubeHeightOverSceneWidth: tubeHeightFraction * sceneAspect.height / sceneAspect.width, lightsRoom: lightsRoom)
+    }
+
+    /// The same for a scene of any shape (see `geometryValues(tubeAspect:tubeHeightOverSceneWidth:)`).
+    public static func values(frame: [String: Float],
+                              tubeAspect: CGFloat,
+                              tubeHeightOverSceneWidth: CGFloat,
+                              lightsRoom: Bool) -> [String: Float] {
         var values = lightsRoom ? neutralTubeValues : [:]
         values.merge(frame) { _, tv in tv }
-        values.merge(geometryValues(tubeAspect: tubeAspect, tubeHeightFraction: tubeHeightFraction)) { _, geometry in geometry }
+        values.merge(geometryValues(tubeAspect: tubeAspect, tubeHeightOverSceneWidth: tubeHeightOverSceneWidth)) { _, geometry in geometry }
         return values
     }
 

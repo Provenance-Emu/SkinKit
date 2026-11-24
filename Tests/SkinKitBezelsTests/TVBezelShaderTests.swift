@@ -13,6 +13,13 @@ import Testing
 @Suite("TVBezelShader")
 struct TVBezelShaderTests {
 
+    @Test("fr_zoom is the tube's height as a percentage of the scene's width, at any scene shape")
+    func zoomFromSceneWidth() {
+        #expect(TVBezelShader.geometryValues(tubeAspect: 4.0 / 3.0, tubeHeightOverSceneWidth: 756.0 / 1440)["fr_zoom"] == 52.5)
+        #expect(TVBezelShader.geometryValues(tubeAspect: 4.0 / 3.0, tubeHeightFraction: 0.7)["fr_zoom"]
+                == TVBezelShader.geometryValues(tubeAspect: 4.0 / 3.0, tubeHeightOverSceneWidth: 0.7 * 9 / 16)["fr_zoom"])
+    }
+
     @Test("A 4:3 tube 72 % of the scene's height")
     func geometry() throws {
         let values = TVBezelShader.geometryValues(tubeAspect: 4.0 / 3.0, tubeHeightFraction: 0.72)

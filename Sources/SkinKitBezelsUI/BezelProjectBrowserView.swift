@@ -221,10 +221,10 @@ private struct BezelProjectEntryView: View {
             if let bezel {
                 Section {
                     if let game {
-                        Button(pins[game.md5] == bezel.id ? String(localized: "Used for This Game") : String(localized: "Use for This Game")) {
-                            pins[game.md5] = bezel.id
+                        Button(pins[game.gameID] == bezel.id ? String(localized: "Used for This Game") : String(localized: "Use for This Game")) {
+                            pins[game.gameID] = bezel.id
                         }
-                        .disabled(pins[game.md5] == bezel.id)
+                        .disabled(pins[game.gameID] == bezel.id)
                     }
                     Button(bezel.isListed ? String(localized: "In My Bezels") : String(localized: "Add to My Bezels")) {
                         Task { await fetch(listed: true) }

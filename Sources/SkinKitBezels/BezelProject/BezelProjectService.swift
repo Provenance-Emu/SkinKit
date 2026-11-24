@@ -9,7 +9,10 @@ import Foundation
 
 /// The running game as the bezel options and The Bezel Project's lists know it.
 public struct ExternalDisplayGameContext: Equatable, Sendable {
-    public let md5: String
+    /// The host app’s stable key for per-game bezel settings.
+    public let gameID: String
+
+    public var md5: String { gameID }
     /// The system's id (`BezelEnvironment.System.id`): the key The Bezel Project's table is read by.
     public let systemID: String
     /// The ROM's file name without its extension: what artwork is named after.
@@ -17,7 +20,11 @@ public struct ExternalDisplayGameContext: Equatable, Sendable {
     public let title: String
 
     public init(md5: String, systemID: String, romName: String, title: String) {
-        self.md5 = md5
+        self.init(gameID: md5, systemID: systemID, romName: romName, title: title)
+    }
+
+    public init(gameID: String, systemID: String, romName: String, title: String) {
+        self.gameID = gameID
         self.systemID = systemID
         self.romName = romName
         self.title = title

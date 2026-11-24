@@ -21,25 +21,30 @@ public struct BezelSwitcherStrip: View {
     let showsThisGameOnly: Bool
     /// Name the controller's buttons beside the actions.
     let showsControllerHints: Bool
+    let supportsRoomLight: Bool
     let onKeep: () -> Void
     let onCancel: () -> Void
     let onMore: () -> Void
 
     #if os(tvOS)
     @FocusState private var focusedItem: String?
-    /// Focus has reached the item the strip opened on. Until then a focus change is the system
-    /// placing focus, not the player choosing, and must not move the selection.
-    @State private var focusSettled = false
+    /// Which focus changes are the player choosing a TV.
+    @State private var focus = BezelStripFocus()
+
+    /// How many times, and how far apart, the strip asks for focus when it opens.
+    private static let focusAttempts = 20
+    private static let focusRetryDelay: Duration = .milliseconds(50)
     #endif
 
     public init(model: Binding<BezelSwitcherModel>, name: @escaping (BezelSwitcherModel.Item) -> String,
-                isLoading: Bool, showsThisGameOnly: Bool, showsControllerHints: Bool,
+                isLoading: Bool, showsThisGameOnly: Bool, showsControllerHints: Bool, supportsRoomLight: Bool = true,
                 onKeep: @escaping () -> Void, onCancel: @escaping () -> Void, onMore: @escaping () -> Void) {
         _model = model
         self.name = name
         self.isLoading = isLoading
         self.showsThisGameOnly = showsThisGameOnly
         self.showsControllerHints = showsControllerHints
+        self.supportsRoomLight = supportsRoomLight
         self.onKeep = onKeep
         self.onCancel = onCancel
         self.onMore = onMore
@@ -56,6 +61,9 @@ public struct BezelSwitcherStrip: View {
                     }
                     .padding(.horizontal, 16)
                 }
+                #if os(tvOS)
+                .focusSection()
+                #endif
                 .onAppear { proxy.scrollTo(model.selection.id, anchor: .center) }
                 .onChange(of: model.selection.id) { _, id in
                     withAnimation(.easeInOut(duration: 0.15)) { proxy.scrollTo(id, anchor: .center) }
@@ -68,28 +76,40 @@ public struct BezelSwitcherStrip: View {
                     action(model.thisGameOnly ? String(localized: "This game only: On") : String(localized: "This game only: Off"),
                            hint: "y.circle") { model.thisGameOnly.toggle() }
                 }
-                action(model.lightsRoom ? String(localized: "Room light: On") : String(localized: "Room light: Off"),
-                       hint: "x.circle") { model.lightsRoom.toggle() }
+                if supportsRoomLight {
+                    action(model.lightsRoom ? String(localized: "Room light: On") : String(localized: "Room light: Off"),
+                           hint: "x.circle") { model.lightsRoom.toggle() }
+                }
                 Spacer(minLength: 0)
                 if isLoading { ProgressView() }
             }
             .padding(.horizontal, 16)
+            #if os(tvOS)
+            // The buttons sit at the left and the selected TV in the middle: as a section the
+            // row is reached by moving down from any TV, not only from one right above a button.
+            .focusSection()
+            #endif
         }
         .padding(.vertical, 12)
         .background(.regularMaterial)
         #if os(tvOS)
         .defaultFocus($focusedItem, model.selection.id)
-        .onChange(of: focusedItem) { _, id in
-            guard let id else { return }
-            guard focusSettled else {
-                if id == model.selection.id {
-                    focusSettled = true
-                } else {
-                    focusedItem = model.selection.id
-                }
-                return
+        .task {
+            // The host disables the control that opened the strip, and tvOS leaves focus on it
+            // until something asks for it: left and right then do nothing. Take it, and keep
+            // asking until it has arrived on the list once.
+            for _ in 0..<Self.focusAttempts {
+                guard !focus.isOnList else { break }
+                focusedItem = model.selection.id
+                try? await Task.sleep(for: Self.focusRetryDelay)
             }
-            model.select(id: id)
+        }
+        .onChange(of: focusedItem) { _, id in
+            switch focus.focusChanged(to: id, selection: model.selection.id) {
+            case .none: break
+            case .moveFocus(let id): focusedItem = id
+            case .select(let id): model.select(id: id)
+            }
         }
         .onExitCommand(perform: onCancel)
         #endif
@@ -166,6 +186,7 @@ public struct BezelSwitcherHost: View {
     let commands: AnyPublisher<BezelNavigationCommand, Never>?
     /// Name the controller's buttons beside the actions.
     let showsControllerHints: Bool
+    let supportsRoomLight: Bool
     /// The strip is done (kept or cancelled): go back to the pause menu.
     let onClose: () -> Void
     /// Open the bezel library in the strip's place.
@@ -187,10 +208,12 @@ public struct BezelSwitcherHost: View {
 
     @MainActor
     public init(session: any BezelSwitcherSession, commands: AnyPublisher<BezelNavigationCommand, Never>?,
-                showsControllerHints: Bool, onClose: @escaping () -> Void, onMore: @escaping () -> Void) {
+                showsControllerHints: Bool, supportsRoomLight: Bool = true,
+                onClose: @escaping () -> Void, onMore: @escaping () -> Void) {
         self.session = session
         self.commands = commands
         self.showsControllerHints = showsControllerHints
+        self.supportsRoomLight = supportsRoomLight
         self.onClose = onClose
         self.onMore = onMore
         let settings = BezelEnvironment.current.settings
@@ -201,7 +224,7 @@ public struct BezelSwitcherHost: View {
             yours: TVBezelLibrary.shared.listed.map(\.id),
             current: pinned ?? settings.chosenBezel,
             gameHasPin: pinned != nil,
-            lightsRoom: TVBezelRoomLight.isOn))
+            lightsRoom: supportsRoomLight && TVBezelRoomLight.isOn))
     }
 
     private struct PreviewKey: Equatable {
@@ -215,6 +238,7 @@ public struct BezelSwitcherHost: View {
                            isLoading: isLoading,
                            showsThisGameOnly: session.bezelGameID != nil,
                            showsControllerHints: commands != nil && showsControllerHints,
+                           supportsRoomLight: supportsRoomLight,
                            onKeep: keep,
                            onCancel: cancel,
                            onMore: more)
@@ -264,7 +288,8 @@ public struct BezelSwitcherHost: View {
         case .nextGroup: model.jumpGroup(1)
         case .activate: keep()
         case .back: cancel()
-        case .toggleRoomLight: model.lightsRoom.toggle()
+        case .toggleRoomLight:
+            if supportsRoomLight { model.lightsRoom.toggle() }
         case .toggleThisGameOnly:
             if session.bezelGameID != nil { model.thisGameOnly.toggle() }
         case .up, .down: break
@@ -285,7 +310,7 @@ public struct BezelSwitcherHost: View {
             }
         }
         // Only a change is stored: an untouched setting keeps going by the device.
-        if commit.lightsRoom != TVBezelRoomLight.isOn { TVBezelRoomLight.set(commit.lightsRoom) }
+        if supportsRoomLight, commit.lightsRoom != TVBezelRoomLight.isOn { TVBezelRoomLight.set(commit.lightsRoom) }
         session.bezelPreview = nil
         onClose()
     }
