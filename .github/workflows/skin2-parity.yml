@@ -35,7 +35,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: Provenance-Emu/skins
-          ref: main
+          # Use the renderer with accessory-panel support until Provenance-Emu/skins#104 merges.
+          ref: 91ab266fac833d3b4ad219470c6e6f2fa6bab891
           path: .skins-parity
           persist-credentials: false
 
