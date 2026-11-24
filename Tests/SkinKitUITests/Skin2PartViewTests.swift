@@ -41,6 +41,9 @@ struct Skin2PartViewTests {
         let size = CGSize(width: 240, height: 160)
         let controller = UIHostingController(rootView: Skin2PartView(part: "std.vmu", capabilities: ["picture.vmu.p1"], pictures: store)
             .frame(width: size.width, height: size.height))
+        // The small window stands in for an embedded slot. A full-screen tvOS host
+        // would apply overscan insets before proposing a size to the slot.
+        controller.safeAreaRegions = []
         let window = UIWindow(frame: CGRect(origin: .zero, size: size))
         window.rootViewController = controller
         window.makeKeyAndVisible()

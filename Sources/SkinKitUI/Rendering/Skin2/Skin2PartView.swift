@@ -27,7 +27,7 @@ public struct Skin2PartView: View {
     public var body: some View {
         if let document {
             Skin2SkinView(document: document, screenPlaceholders: pictures == nil, playsHaptics: false,
-                          safeAreaOverride: .zero, capabilities: capabilities, pictures: pictures)
+                          safeAreaOverride: .zero, capabilities: capabilities, pictures: pictures, extendsIntoSafeArea: false)
         }
     }
 

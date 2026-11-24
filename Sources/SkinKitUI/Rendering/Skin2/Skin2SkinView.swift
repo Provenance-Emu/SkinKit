@@ -51,6 +51,8 @@ public struct Skin2SkinView: View {
     /// only sources the app has delivered a picture for.
     public var onProvidedChange: ((Skin2Provided) -> Void)?
 
+    private let extendsIntoSafeArea: Bool
+
     @StateObject private var panelState: Skin2PanelState
     @State private var delivered: Set<String>
     @State private var transition: Transition?
@@ -69,6 +71,7 @@ public struct Skin2SkinView: View {
     @State private var easing = Skin2ScaleEasing()
     @State private var tick = 0
 
+    /// Set `extendsIntoSafeArea` to false when embedding the skin in a bounded view.
     public init(document: Skin2Document, device: Skin2Device = .iphone, displayType: Skin2DisplayType = .edgeToEdge,
                 flags: Set<String> = [], edits: [String: Skin2Edit] = [:], screenPlaceholders: Bool = false,
                 showHitFrames: Bool = false, selected: Set<String> = [], playsHaptics: Bool = true,
@@ -77,7 +80,8 @@ public struct Skin2SkinView: View {
                 onLayout: ((Skin2Resolution) -> Void)? = nil,
                 onReleaseAll: @escaping () -> Void = {}, safeAreaOverride: Skin2Insets? = nil,
                 capabilities: Set<String> = [], pictures: Skin2PictureStore? = nil, skinIdentifier: String? = nil,
-                onProvidedChange: ((Skin2Provided) -> Void)? = nil) {
+                onProvidedChange: ((Skin2Provided) -> Void)? = nil, extendsIntoSafeArea: Bool = true) {
+        self.extendsIntoSafeArea = extendsIntoSafeArea
         self.capabilities = capabilities
         self.pictures = pictures
         self.skinIdentifier = skinIdentifier
@@ -150,7 +154,7 @@ public struct Skin2SkinView: View {
                     onProvidedChange?(provided)
                 }
             }
-            .ignoresSafeArea()
+            .ignoresSafeArea(edges: extendsIntoSafeArea ? .all : [])
         }
         .onReceive(deliveredChanges) { delivered = $0 }
         .onChange(of: document) { _, new in panelState.adopt(document: new, skinIdentifier: skinIdentifier) }

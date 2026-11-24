@@ -42,20 +42,20 @@ struct Format2PanelViewTests {
 
     @Test("A shelf starts as the document says")
     func panelStateStartsFromTheDocument() throws {
-        #expect(Skin2PanelState(document: try Self.document(open: true), skinIdentifier: "s", defaults: Self.scratch()).flags == ["panel.vmu.open"])
-        #expect(Skin2PanelState(document: try Self.document(open: false), skinIdentifier: "s", defaults: Self.scratch()).flags == [])
+        #expect(Skin2PanelState(document: try Self.document(open: true), skinIdentifier: "s", defaults: Self.scratch(), canToggle: true).flags == ["panel.vmu.open"])
+        #expect(Skin2PanelState(document: try Self.document(open: false), skinIdentifier: "s", defaults: Self.scratch(), canToggle: true).flags == [])
     }
 
     @Test("A toggled shelf is remembered per skin")
     func panelStateRemembersPerSkin() throws {
         let defaults = Self.scratch()
         let doc = try Self.document(open: true)
-        let state = Skin2PanelState(document: doc, skinIdentifier: "com.example.one", defaults: defaults)
+        let state = Skin2PanelState(document: doc, skinIdentifier: "com.example.one", defaults: defaults, canToggle: true)
         state.toggle("vmu")
         #expect(state.flags == [])
         #expect(defaults.object(forKey: "SkinKit.format2.panelOpen.com.example.one.vmu") as? Bool == false)
-        #expect(Skin2PanelState(document: doc, skinIdentifier: "com.example.one", defaults: defaults).flags == [])
-        #expect(Skin2PanelState(document: doc, skinIdentifier: "com.example.two", defaults: defaults).flags == ["panel.vmu.open"])
+        #expect(Skin2PanelState(document: doc, skinIdentifier: "com.example.one", defaults: defaults, canToggle: true).flags == [])
+        #expect(Skin2PanelState(document: doc, skinIdentifier: "com.example.two", defaults: defaults, canToggle: true).flags == ["panel.vmu.open"])
         state.toggle("vmu")
         #expect(state.flags == ["panel.vmu.open"])
         state.toggle("nope")
@@ -65,7 +65,7 @@ struct Format2PanelViewTests {
     @Test("Without a skin identifier nothing is stored")
     func nilIdentifierStoresNothing() throws {
         let defaults = Self.scratch()
-        let state = Skin2PanelState(document: try Self.document(open: false), skinIdentifier: nil, defaults: defaults)
+        let state = Skin2PanelState(document: try Self.document(open: false), skinIdentifier: nil, defaults: defaults, canToggle: true)
         state.toggle("vmu")
         #expect(state.flags == ["panel.vmu.open"])
         #expect(defaults.dictionaryRepresentation().keys.filter { $0.hasPrefix("SkinKit.format2") }.isEmpty)
