@@ -20,12 +20,12 @@ public struct TVBezelArtworkView: View {
     /// The canvas a built-in TV is laid out on (`TVBezelLayout.canvas`); `nil` is the fixed 16:9 one.
     var canvas: CGSize?
     /// Called on the main actor when the artwork is on screen, or could not be read.
-    var onLoad: ((Bool) -> Void)?
+    var onLoad: (@MainActor (Bool) -> Void)?
 
     @Environment(\.displayScale) private var displayScale
     @State private var image: CGImage?
 
-    public init(bezel: TVBezel, canvas: CGSize? = nil, onLoad: ((Bool) -> Void)? = nil) {
+    public init(bezel: TVBezel, canvas: CGSize? = nil, onLoad: (@MainActor (Bool) -> Void)? = nil) {
         self.bezel = bezel
         self.canvas = canvas
         self.onLoad = onLoad
