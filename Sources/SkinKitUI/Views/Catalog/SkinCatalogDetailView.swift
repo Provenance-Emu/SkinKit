@@ -130,7 +130,7 @@ public struct SkinCatalogDetailView: View {
             .scrollIndicators(.hidden)
         }
         .skinKitBackdropColorScheme()
-        .navigationTitle("Skin Details")
+        .navigationTitle(Text(catalog: "Skin Details"))
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -289,7 +289,7 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "gamecontroller.fill")
                             .font(.system(size: 60))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                        Text("NO PREVIEW")
+                        Text(catalog: "NO PREVIEW")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
                             .tracking(2)
@@ -383,7 +383,7 @@ public struct SkinCatalogDetailView: View {
                 label.underline(pattern: .dot)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Opens \(creator.displayName)'s profile")
+            .accessibilityHint(Text(catalog: "Opens \(creator.displayName)'s profile"))
         } else {
             label
         }
@@ -441,7 +441,7 @@ public struct SkinCatalogDetailView: View {
     }
 
     /// A single stat card rendered inside the stats grid.
-    private func statCard(icon: String, value: String, label: String) -> some View {
+    private func statCard(icon: String, value: String, label: LocalizedStringKey) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 18))
@@ -452,7 +452,7 @@ public struct SkinCatalogDetailView: View {
                 Text(value)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                Text(label)
+                Text(catalog: label)
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -468,8 +468,7 @@ public struct SkinCatalogDetailView: View {
                         .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
                 )
         )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(label), \(value)"))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Action Section (Download & Install)
@@ -496,7 +495,7 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                        Text("INSTALLED")
+                        Text(catalog: "INSTALLED")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                             .tracking(1)
@@ -526,7 +525,7 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 16))
                             .foregroundColor(.orange)
-                        Text("DOWNLOAD FAILED")
+                        Text(catalog: "DOWNLOAD FAILED")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(.orange)
                             .tracking(1)
@@ -550,7 +549,7 @@ public struct SkinCatalogDetailView: View {
         HStack(spacing: 12) {
             ProgressView()
                 .tint(SkinKitTheme.current.pink)
-            Text("INSTALLING...")
+            Text(catalog: "INSTALLING...")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .tracking(1)
@@ -574,7 +573,7 @@ public struct SkinCatalogDetailView: View {
                     .font(.system(size: 18))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
 
-                Text("DOWNLOAD & INSTALL")
+                Text(catalog: "DOWNLOAD & INSTALL")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -596,7 +595,7 @@ public struct SkinCatalogDetailView: View {
     private func downloadProgressView(progress: Double) -> some View {
         VStack(spacing: 8) {
             HStack {
-                Text("DOWNLOADING...")
+                Text(catalog: "DOWNLOADING...")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -765,8 +764,8 @@ public struct SkinCatalogDetailView: View {
         return URL(string: "https://\(trimmed)")
     }
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
+        Text(catalog: title)
             .font(.system(size: 11, weight: .bold, design: .rounded))
             .tracking(2)
             .foregroundColor(.white.opacity(0.4))
@@ -860,7 +859,7 @@ public struct SkinCatalogDetailView: View {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 16))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                    Text("SET AS ACTIVE SKIN")
+                    Text(catalog: "SET AS ACTIVE SKIN")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                         .tracking(1)
@@ -879,7 +878,7 @@ public struct SkinCatalogDetailView: View {
             HStack(spacing: 12) {
                 ProgressView()
                     .tint(SkinKitTheme.current.pink)
-                Text("ACTIVATING...")
+                Text(catalog: "ACTIVATING...")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -897,7 +896,7 @@ public struct SkinCatalogDetailView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16))
                     .foregroundColor(.green)
-                Text("SKIN ACTIVATED")
+                Text(catalog: "SKIN ACTIVATED")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(.green)
                     .tracking(1)
@@ -922,7 +921,7 @@ public struct SkinCatalogDetailView: View {
                     activationTask?.cancel()
                     activationTask = Task { await activateSkin(for: system) }
                 } label: {
-                    Text("RETRY")
+                    Text(catalog: "RETRY")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                         .tracking(1)

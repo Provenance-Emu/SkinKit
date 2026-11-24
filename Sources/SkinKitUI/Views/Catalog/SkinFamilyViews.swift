@@ -199,7 +199,7 @@ struct SkinFamilyVariantsSection: View {
                             Image(systemName: "eye.fill")
                                 .font(.system(size: 10))
                                 .foregroundColor(.white.opacity(0.5))
-                                .accessibilityLabel("Showing")
+                                .accessibilityLabel(Text(catalog: "Showing"))
                         }
                         if member.hasPackedVariants {
                             Text("+\(member.variants.count)")
@@ -238,7 +238,7 @@ struct SkinFamilyVariantsSection: View {
     private func packedVariants(_ entry: SkinCatalogEntry) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if family.isMultiFile {
-                Text("\(family.label(for: entry)) also includes:")
+                Text(catalog: "\(family.label(for: entry)) also includes:")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -252,7 +252,7 @@ struct SkinFamilyVariantsSection: View {
                         .foregroundColor(.white.opacity(0.85))
                 }
             }
-            Text("One download brings all of these.")
+            Text(catalog: "One download brings all of these.")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.45))
         }
@@ -285,7 +285,7 @@ struct SkinFamilyMemberAction: View {
             // Installing from the detail view's own button.
             ProgressView()
                 .tint(SkinKitTheme.current.pink)
-                .accessibilityLabel("Installing \(family.label(for: member))")
+                .accessibilityLabel(Text(catalog: "Installing \(family.label(for: member))"))
         case .idle:
             Button {
                 model.install(member)
@@ -296,21 +296,21 @@ struct SkinFamilyMemberAction: View {
             }
             .buttonStyle(.plain)
             .disabled(model.isInstallingPlan)
-            .accessibilityLabel("Install \(family.label(for: member))")
+            .accessibilityLabel(Text(catalog: "Install \(family.label(for: member))"))
         case let .downloading(progress):
             ProgressView(value: progress)
                 .progressViewStyle(.circular)
                 .tint(SkinKitTheme.current.pink)
-                .accessibilityLabel("Downloading \(family.label(for: member))")
+                .accessibilityLabel(Text(catalog: "Downloading \(family.label(for: member))"))
         case .installing:
             ProgressView()
                 .tint(SkinKitTheme.current.pink)
-                .accessibilityLabel("Installing \(family.label(for: member))")
+                .accessibilityLabel(Text(catalog: "Installing \(family.label(for: member))"))
         case .installed:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 22))
                 .foregroundColor(.green)
-                .accessibilityLabel("\(family.label(for: member)) installed")
+                .accessibilityLabel(Text(catalog: "\(family.label(for: member)) installed"))
         case .failed:
             Button {
                 model.install(member)
@@ -320,7 +320,7 @@ struct SkinFamilyMemberAction: View {
                     .foregroundColor(.orange)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Retry \(family.label(for: member))")
+            .accessibilityLabel(Text(catalog: "Retry \(family.label(for: member))"))
         }
     }
 }
@@ -336,7 +336,7 @@ struct SkinFamilyBadge: View {
         if family.hasVariants {
             HStack(spacing: 3) {
                 Image(systemName: "square.stack.3d.up.fill")
-                Text("\(family.variantCount) VARIANTS")
+                Text(catalog: "\(family.variantCount) VARIANTS")
             }
             .font(.system(size: fontSize, weight: .bold, design: .rounded))
             .tracking(0.5)
@@ -345,7 +345,7 @@ struct SkinFamilyBadge: View {
             .foregroundColor(.white)
             .background(Capsule().fill(Color.black.opacity(0.75)))
             .overlay(Capsule().strokeBorder(SkinKitTheme.current.gradient, lineWidth: 0.75))
-            .accessibilityLabel("\(family.variantCount) variants")
+            .accessibilityLabel(Text(catalog: "\(family.variantCount) variants"))
         }
     }
 }

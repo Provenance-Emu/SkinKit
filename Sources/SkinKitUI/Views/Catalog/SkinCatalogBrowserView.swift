@@ -180,7 +180,7 @@ public struct SkinCatalogBrowserView: View {
         }
         .skinKitBackdropColorScheme()
         .skinAchievementToasts()
-        .navigationTitle("Skin Catalog")
+        .navigationTitle(Text(catalog: "Skin Catalog"))
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -193,7 +193,7 @@ public struct SkinCatalogBrowserView: View {
                     Image(systemName: showingFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 }
-                .accessibilityLabel(showingFilters ? "Hide filters" : "Show filters")
+                .accessibilityLabel(showingFilters ? Text(catalog: "Hide filters") : Text(catalog: "Show filters"))
                 .transaction { $0.animation = nil }
             }
 
@@ -207,7 +207,7 @@ public struct SkinCatalogBrowserView: View {
                         .animation(isRefreshing ? .linear(duration: 0.8).repeatForever(autoreverses: false) : .none, value: isRefreshing)
                 }
                 .disabled(isRefreshing)
-                .accessibilityLabel("Refresh catalog")
+                .accessibilityLabel(Text(catalog: "Refresh catalog"))
                 .transaction { $0.animation = nil }
             }
         }
@@ -273,13 +273,13 @@ public struct SkinCatalogBrowserView: View {
 
     private var headerView: some View {
         VStack(spacing: 6) {
-            Text("BROWSE SKINS")
+            Text(catalog: "BROWSE SKINS")
                 .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .padding(.top, 16)
                 .shadow(color: SkinKitTheme.current.pink.opacity(glowIntensity * 0.5), radius: 3)
 
-            Text("Download skins from the community catalog")
+            Text(catalog: "Download skins from the community catalog")
                 .font(.subheadline)
                 .foregroundColor(.white.opacity(0.7))
                 .padding(.bottom, 10)
@@ -304,7 +304,9 @@ public struct SkinCatalogBrowserView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
 
-            TextField("Search by name, author, or tag...", text: $searchText)
+            TextField(text: $searchText, prompt: Text(catalog: "Search by name, author, or tag...")) {
+                Text(catalog: "Search by name, author, or tag...")
+            }
                 .foregroundColor(.white)
                 .tint(SkinKitTheme.current.pink)
             #if !os(tvOS)
@@ -394,13 +396,13 @@ public struct SkinCatalogBrowserView: View {
 
                 // Sort picker
                 HStack {
-                    Text("SORT:")
+                    Text(catalog: "SORT:")
                         .font(.system(size: 11, weight: .bold, design: .rounded))
                         .foregroundColor(.white.opacity(0.6))
                         .tracking(1)
 
                     ForEach(SkinSortOption.allCases, id: \.self) { option in
-                        filterChip(option.displayName, isSelected: sortOption == option) {
+                        filterChip(Text(catalog: option.displayName), isSelected: sortOption == option) {
                             sortOption = option
                         }
                     }
@@ -422,7 +424,7 @@ public struct SkinCatalogBrowserView: View {
         VStack(alignment: .leading, spacing: 8) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    storeCategoryChip(Text("All"), count: storeListing?.entries.count, id: nil)
+                    storeCategoryChip(Text(catalog: "All"), count: storeListing?.entries.count, id: nil)
                     ForEach(storeListing?.categories ?? []) { category in
                         storeCategoryChip(
                             Text(verbatim: store?.categoryTitle(category.section) ?? category.section.title),
@@ -482,8 +484,12 @@ public struct SkinCatalogBrowserView: View {
     }
 
     private func filterChip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        filterChip(Text(title), isSelected: isSelected, action: action)
+    }
+
+    private func filterChip(_ title: Text, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
+            title
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .tracking(0.5)
                 .padding(.horizontal, 10)
@@ -567,7 +573,7 @@ public struct SkinCatalogBrowserView: View {
     private var followShelfView: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text("NEW FROM CREATORS YOU FOLLOW")
+                Text(catalog: "NEW FROM CREATORS YOU FOLLOW")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .tracking(1)
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
@@ -578,7 +584,7 @@ public struct SkinCatalogBrowserView: View {
                         .padding(.horizontal, 7)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(SkinKitTheme.current.pink))
-                        .accessibilityLabel("\(followFeed.unseenCount) new")
+                        .accessibilityLabel(Text(catalog: "\(followFeed.unseenCount) new"))
                 }
                 Spacer()
                 Button("See all") {
@@ -615,7 +621,7 @@ public struct SkinCatalogBrowserView: View {
                                     .fill(SkinKitTheme.current.pink)
                                     .frame(width: 10, height: 10)
                                     .padding(8)
-                                    .accessibilityLabel("New")
+                                    .accessibilityLabel(Text(catalog: "New"))
                             }
                         }
                     }
@@ -698,7 +704,7 @@ public struct SkinCatalogBrowserView: View {
                     }
             }
 
-            Text("LOADING CATALOG")
+            Text(catalog: "LOADING CATALOG")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .tracking(2)
@@ -716,7 +722,7 @@ public struct SkinCatalogBrowserView: View {
                 .font(.system(size: 50))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
 
-            Text("CATALOG UNAVAILABLE")
+            Text(catalog: "CATALOG UNAVAILABLE")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .tracking(2)
@@ -730,7 +736,7 @@ public struct SkinCatalogBrowserView: View {
             Button {
                 Task { await loadCatalog() }
             } label: {
-                Text("TRY AGAIN")
+                Text(catalog: "TRY AGAIN")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
                     .padding(.vertical, 10)
@@ -759,12 +765,14 @@ public struct SkinCatalogBrowserView: View {
                 .font(.system(size: 50))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
 
-            Text("NO SKINS FOUND")
+            Text(catalog: "NO SKINS FOUND")
                 .font(.system(size: 20, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .tracking(2)
 
-            Text(searchText.isEmpty ? "The catalog has no skins matching your filters." : "No skins match \"\(searchText)\".")
+            (searchText.isEmpty
+                ? Text(catalog: "The catalog has no skins matching your filters.")
+                : Text(catalog: "No skins match \"\(searchText)\"."))
                 .font(.system(size: 14))
                 .foregroundColor(.white.opacity(0.7))
                 .multilineTextAlignment(.center)
@@ -780,7 +788,7 @@ public struct SkinCatalogBrowserView: View {
                     followingOnly = false
                     Task { await applyFilters() }
                 } label: {
-                    Text("CLEAR FILTERS")
+                    Text(catalog: "CLEAR FILTERS")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
                         .padding(.vertical, 10)
@@ -1124,7 +1132,7 @@ private struct CatalogSkinCard<Destination: View>: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(credit)
-            .accessibilityHint("Opens \(creators[0].creator.displayName)'s profile")
+            .accessibilityHint(Text(catalog: "Opens \(creators[0].creator.displayName)'s profile"))
         default:
             Menu {
                 ForEach(creators) { creator in
@@ -1135,7 +1143,7 @@ private struct CatalogSkinCard<Destination: View>: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(credit)
-            .accessibilityHint("Choose a creator's profile to open")
+            .accessibilityHint(Text(catalog: "Choose a creator's profile to open"))
         }
     }
 
@@ -1189,7 +1197,7 @@ func formatSkinDownloadCount(_ count: Int) -> String {
 
 #if !os(tvOS)
 private extension SkinSortOption {
-    var displayName: String {
+    var displayName: LocalizedStringKey {
         switch self {
         case .popular:     return "Most viewed"
         case .recent:      return "Recent"

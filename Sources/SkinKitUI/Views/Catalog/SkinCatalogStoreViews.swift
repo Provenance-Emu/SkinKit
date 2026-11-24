@@ -62,7 +62,7 @@ struct SkinStoreOfflineBanner: View {
             Image(systemName: "wifi.slash")
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Offline. Showing skins from your last visit.")
+                Text(catalog: "Offline. Showing skins from your last visit.")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.white)
                 Text(message)
@@ -106,7 +106,7 @@ struct SkinStoreDetailActionSection: View {
                 HStack(spacing: 12) {
                     ProgressView()
                         .tint(SkinKitTheme.current.pink)
-                    Text("INSTALLING...")
+                    Text(catalog: "INSTALLING...")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                         .tracking(1)
@@ -117,7 +117,7 @@ struct SkinStoreDetailActionSection: View {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 18))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                    Text("INSTALLED")
+                    Text(catalog: "INSTALLED")
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                         .tracking(1)
@@ -129,7 +129,7 @@ struct SkinStoreDetailActionSection: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 16))
                             .foregroundColor(.orange)
-                        Text("DOWNLOAD FAILED")
+                        Text(catalog: "DOWNLOAD FAILED")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(.orange)
                             .tracking(1)
@@ -159,7 +159,7 @@ struct SkinStoreDetailActionSection: View {
                 Image(systemName: "arrow.down.circle.fill")
                     .font(.system(size: 18))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                Text("DOWNLOAD & INSTALL")
+                Text(catalog: "DOWNLOAD & INSTALL")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -172,7 +172,7 @@ struct SkinStoreDetailActionSection: View {
     private func downloading(_ progress: Double) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("DOWNLOADING...")
+                Text(catalog: "DOWNLOADING...")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -194,7 +194,7 @@ struct SkinStoreDetailActionSection: View {
                     .foregroundColor(.white.opacity(0.6))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Cancel Download")
+            .accessibilityLabel(Text(catalog: "Cancel Download"))
         }
         .padding(.horizontal, 14)
         .modifier(SkinStorePanel())
@@ -219,7 +219,9 @@ struct SkinStoreVariantsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(family.isMultiFile ? "VARIANTS (\(family.members.count))" : "INCLUDES \(current.variants.count) VARIANTS")
+                (family.isMultiFile
+                    ? Text(catalog: "VARIANTS (\(family.members.count))")
+                    : Text(catalog: "INCLUDES \(current.variants.count) VARIANTS"))
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .tracking(2)
                     .foregroundColor(.white.opacity(0.4))
@@ -247,8 +249,11 @@ struct SkinStoreVariantsSection: View {
         return Button {
             installer.startInstall(plan)
         } label: {
-            Label(remaining == 0 ? "ALL INSTALLED" : "INSTALL ALL (\(remaining))",
-                  systemImage: remaining == 0 ? "checkmark.circle.fill" : "square.and.arrow.down.on.square")
+            Label {
+                remaining == 0 ? Text(catalog: "ALL INSTALLED") : Text(catalog: "INSTALL ALL (\(remaining))")
+            } icon: {
+                Image(systemName: remaining == 0 ? "checkmark.circle.fill" : "square.and.arrow.down.on.square")
+            }
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .padding(.horizontal, 10)
@@ -257,7 +262,9 @@ struct SkinStoreVariantsSection: View {
         }
         .buttonStyle(.plain)
         .disabled(remaining == 0 || installer.isBusy(plan))
-        .accessibilityLabel(remaining == 0 ? "All variants installed" : "Install all \(remaining) variants")
+        .accessibilityLabel(
+            remaining == 0 ? Text(catalog: "All variants installed") : Text(catalog: "Install all \(remaining) variants")
+        )
     }
 
     private func memberRow(_ member: SkinCatalogEntry) -> some View {
@@ -273,7 +280,7 @@ struct SkinStoreVariantsSection: View {
                             Image(systemName: "eye.fill")
                                 .font(.system(size: 10))
                                 .foregroundColor(.white.opacity(0.5))
-                                .accessibilityLabel("Showing")
+                                .accessibilityLabel(Text(catalog: "Showing"))
                         }
                         if member.hasPackedVariants {
                             Text("+\(member.variants.count)")
@@ -321,7 +328,7 @@ struct SkinStoreVariantsSection: View {
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Install \(label)")
+            .accessibilityLabel(Text(catalog: "Install \(label)"))
         case let .downloading(progress):
             Button {
                 // "Install all" owns a plan task; a single install owns a member task.
@@ -338,17 +345,17 @@ struct SkinStoreVariantsSection: View {
                 }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Downloading \(label)")
-            .accessibilityHint("Cancels the download")
+            .accessibilityLabel(Text(catalog: "Downloading \(label)"))
+            .accessibilityHint(Text(catalog: "Cancels the download"))
         case .installing:
             ProgressView()
                 .tint(SkinKitTheme.current.pink)
-                .accessibilityLabel("Installing \(label)")
+                .accessibilityLabel(Text(catalog: "Installing \(label)"))
         case .installed:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 22))
                 .foregroundColor(.green)
-                .accessibilityLabel("\(label) installed")
+                .accessibilityLabel(Text(catalog: "\(label) installed"))
         case .failed:
             Button {
                 installer.startInstall(member)
@@ -358,14 +365,14 @@ struct SkinStoreVariantsSection: View {
                     .foregroundColor(.orange)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Retry \(label)")
+            .accessibilityLabel(Text(catalog: "Retry \(label)"))
         }
     }
 
     private func packedVariants(_ entry: SkinCatalogEntry) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             if family.isMultiFile {
-                Text("\(family.label(for: entry)) also includes:")
+                Text(catalog: "\(family.label(for: entry)) also includes:")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -379,7 +386,7 @@ struct SkinStoreVariantsSection: View {
                         .foregroundColor(.white.opacity(0.85))
                 }
             }
-            Text("One download brings all of these.")
+            Text(catalog: "One download brings all of these.")
                 .font(.system(size: 11))
                 .foregroundColor(.white.opacity(0.45))
         }
