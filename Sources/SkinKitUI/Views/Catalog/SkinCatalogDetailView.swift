@@ -35,6 +35,10 @@ public struct SkinCatalogDetailView: View {
     private let family: SkinFamily?
     /// The whole catalog's family index, so installs store the label the store showed.
     private let familyIndex: SkinFamilyIndex?
+    /// The host's store, when the browser is scoped to one: installs go through its installer, and
+    /// the parts that read Provenance's skin library (activation, Send to RetroArch, creator
+    /// profiles) are not shown.
+    private let store: SkinCatalogStoreHost?
 
     // MARK: - State
 
@@ -86,12 +90,14 @@ public struct SkinCatalogDetailView: View {
         entry: SkinCatalogEntry,
         family: SkinFamily? = nil,
         familyIndex: SkinFamilyIndex? = nil,
+        store: SkinCatalogStoreHost? = nil,
         activationContextSystemIdentifier: DeltaSkinSystem? = nil,
         activationContextGameId: String? = nil
     ) {
         self.entry = entry
         self.family = family
         self.familyIndex = familyIndex
+        self.store = store
         let modelFamily = family ?? SkinFamily(id: "entry:\(entry.id)", groupId: nil, name: entry.name, members: [entry], labels: [:])
         _familyModel = StateObject(wrappedValue: SkinFamilyInstallModel(family: modelFamily, familyIndex: familyIndex))
         self.activationContextSystemIdentifier = activationContextSystemIdentifier
@@ -111,8 +117,8 @@ public struct SkinCatalogDetailView: View {
                     metadataSection
                     descriptionSection
                     statsSection
-                    actionSection
-                    familySection
+                    installSection
+                    variantsSection
                     systemTagsSection
                     if !entry.tags.isEmpty {
                         tagsSection(entry.tags)
@@ -124,7 +130,7 @@ public struct SkinCatalogDetailView: View {
             .scrollIndicators(.hidden)
         }
         .skinKitBackdropColorScheme()
-        .navigationTitle("Skin Details")
+        .navigationTitle(Text(catalog: "Skin Details"))
         #if !os(tvOS)
         .navigationBarTitleDisplayMode(.inline)
         #endif
@@ -134,18 +140,19 @@ public struct SkinCatalogDetailView: View {
             }
             // Check if this skin is already installed locally so the
             // action section shows "INSTALLED" instead of "DOWNLOAD".
-            Task { await checkIfAlreadyInstalled() }
+            // A store's installer already knows; it never scans Provenance's library.
+            if store == nil { Task { await checkIfAlreadyInstalled() } }
         }
         .onChange(of: skinManager.skinsAreLoaded) { _, loaded in
             // Re-check once skins finish loading (scan may complete after
             // onAppear if it was triggered lazily).
-            if loaded { Task { await checkIfAlreadyInstalled() } }
+            if loaded, store == nil { Task { await checkIfAlreadyInstalled() } }
         }
         .onChange(of: skinManager.loadedSkins.count) { _, _ in
             // Re-check after subsequent imports or rescans so the
             // installed state stays accurate even when skinsAreLoaded
             // was already true.
-            Task { await checkIfAlreadyInstalled() }
+            if store == nil { Task { await checkIfAlreadyInstalled() } }
         }
         .onDisappear {
             downloadTask?.cancel()
@@ -157,12 +164,14 @@ public struct SkinCatalogDetailView: View {
             activationContextGameId: activationContextGameId
         )
         .task {
+            // Creator profiles install into Provenance's library, so a store keeps plain credits.
+            guard store == nil else { return }
             creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
         #if !os(tvOS)
         // Offer Send to RetroArch once the skin is installed (also right after the download finishes).
         .task(id: downloadState) {
-            guard downloadState == .installed else { retroArchCandidate = nil; return }
+            guard store == nil, downloadState == .installed else { retroArchCandidate = nil; return }
             let skins = (try? await skinManager.availableSkins()) ?? []
             if let skin = matchingInstalledSkin(for: entry, in: skins), RetroArchSendAvailability.isSupported(skin: skin) {
                 retroArchCandidate = RetroArchSendItem(skin: skin)
@@ -172,6 +181,56 @@ public struct SkinCatalogDetailView: View {
         }
         .retroArchSendSheet(item: $retroArchPresented)
         #endif
+    }
+
+    // MARK: - Store or library
+
+    /// Download & Install: the store's installer when a host scopes the browser, else Provenance's
+    /// own download into `DeltaSkinManager`.
+    @ViewBuilder
+    private var installSection: some View {
+        #if os(tvOS)
+        actionSection
+        #else
+        if let store {
+            SkinStoreDetailActionSection(entry: entry, store: store, installer: store.installer)
+        } else {
+            actionSection
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var variantsSection: some View {
+        #if os(tvOS)
+        familySection
+        #else
+        if let store {
+            let shown = family ?? familyModel.family
+            if shown.isMultiFile || entry.hasPackedVariants {
+                SkinStoreVariantsSection(
+                    family: shown,
+                    current: entry,
+                    store: store,
+                    installer: store.installer,
+                    destination: memberDestination
+                )
+            }
+        } else {
+            familySection
+        }
+        #endif
+    }
+
+    private func memberDestination(_ member: SkinCatalogEntry) -> AnyView {
+        AnyView(SkinCatalogDetailView(
+            entry: member,
+            family: family,
+            familyIndex: familyIndex,
+            store: store,
+            activationContextSystemIdentifier: activationContextSystemIdentifier,
+            activationContextGameId: activationContextGameId
+        ))
     }
 
     // MARK: - Family Section
@@ -185,15 +244,7 @@ public struct SkinCatalogDetailView: View {
                 family: shown,
                 current: entry,
                 model: familyModel,
-                destination: { member in
-                    AnyView(SkinCatalogDetailView(
-                        entry: member,
-                        family: family,
-                        familyIndex: familyIndex,
-                        activationContextSystemIdentifier: activationContextSystemIdentifier,
-                        activationContextGameId: activationContextGameId
-                    ))
-                }
+                destination: memberDestination
             )
         }
     }
@@ -238,7 +289,7 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "gamecontroller.fill")
                             .font(.system(size: 60))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                        Text("NO PREVIEW")
+                        Text(catalog: "NO PREVIEW")
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.5))
                             .tracking(2)
@@ -311,7 +362,7 @@ public struct SkinCatalogDetailView: View {
     /// Follow / Following for the entry's creator (follow creators spec §3), on the credit row.
     @ViewBuilder
     private var followButton: some View {
-        if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
+        if store == nil, let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
             SkinCreatorFollowButton(slug: creator.slug, displayName: creator.displayName)
                 .padding(.leading, 6)
         }
@@ -325,14 +376,14 @@ public struct SkinCatalogDetailView: View {
         let label = Text("by \(entry.author ?? "Unknown")")
             .font(.system(size: 14))
             .foregroundColor(.white.opacity(0.7))
-        if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
+        if store == nil, let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
             Button {
                 profileCreator = SkinCreatorCredit(creator: creator, entry: entry)
             } label: {
                 label.underline(pattern: .dot)
             }
             .buttonStyle(.plain)
-            .accessibilityHint("Opens \(creator.displayName)'s profile")
+            .accessibilityHint(Text(catalog: "Opens \(creator.displayName)'s profile"))
         } else {
             label
         }
@@ -390,7 +441,7 @@ public struct SkinCatalogDetailView: View {
     }
 
     /// A single stat card rendered inside the stats grid.
-    private func statCard(icon: String, value: String, label: String) -> some View {
+    private func statCard(icon: String, value: String, label: LocalizedStringKey) -> some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 18))
@@ -401,7 +452,7 @@ public struct SkinCatalogDetailView: View {
                 Text(value)
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-                Text(label)
+                Text(catalog: label)
                     .font(.system(size: 10))
                     .foregroundColor(.white.opacity(0.5))
             }
@@ -417,8 +468,7 @@ public struct SkinCatalogDetailView: View {
                         .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
                 )
         )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("\(label), \(value)"))
+        .accessibilityElement(children: .combine)
     }
 
     // MARK: - Action Section (Download & Install)
@@ -445,7 +495,7 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.system(size: 18))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                        Text("INSTALLED")
+                        Text(catalog: "INSTALLED")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                             .tracking(1)
@@ -475,7 +525,7 @@ public struct SkinCatalogDetailView: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 16))
                             .foregroundColor(.orange)
-                        Text("DOWNLOAD FAILED")
+                        Text(catalog: "DOWNLOAD FAILED")
                             .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(.orange)
                             .tracking(1)
@@ -499,7 +549,7 @@ public struct SkinCatalogDetailView: View {
         HStack(spacing: 12) {
             ProgressView()
                 .tint(SkinKitTheme.current.pink)
-            Text("INSTALLING...")
+            Text(catalog: "INSTALLING...")
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                 .tracking(1)
@@ -523,7 +573,7 @@ public struct SkinCatalogDetailView: View {
                     .font(.system(size: 18))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
 
-                Text("DOWNLOAD & INSTALL")
+                Text(catalog: "DOWNLOAD & INSTALL")
                     .font(.system(size: 16, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -545,7 +595,7 @@ public struct SkinCatalogDetailView: View {
     private func downloadProgressView(progress: Double) -> some View {
         VStack(spacing: 8) {
             HStack {
-                Text("DOWNLOADING...")
+                Text(catalog: "DOWNLOADING...")
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -714,8 +764,8 @@ public struct SkinCatalogDetailView: View {
         return URL(string: "https://\(trimmed)")
     }
 
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
+    private func sectionHeader(_ title: LocalizedStringKey) -> some View {
+        Text(catalog: title)
             .font(.system(size: 11, weight: .bold, design: .rounded))
             .tracking(2)
             .foregroundColor(.white.opacity(0.4))
@@ -809,7 +859,7 @@ public struct SkinCatalogDetailView: View {
                     Image(systemName: "checkmark.seal.fill")
                         .font(.system(size: 16))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
-                    Text("SET AS ACTIVE SKIN")
+                    Text(catalog: "SET AS ACTIVE SKIN")
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                         .tracking(1)
@@ -828,7 +878,7 @@ public struct SkinCatalogDetailView: View {
             HStack(spacing: 12) {
                 ProgressView()
                     .tint(SkinKitTheme.current.pink)
-                Text("ACTIVATING...")
+                Text(catalog: "ACTIVATING...")
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                     .tracking(1)
@@ -846,7 +896,7 @@ public struct SkinCatalogDetailView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16))
                     .foregroundColor(.green)
-                Text("SKIN ACTIVATED")
+                Text(catalog: "SKIN ACTIVATED")
                     .font(.system(size: 15, weight: .bold, design: .rounded))
                     .foregroundColor(.green)
                     .tracking(1)
@@ -871,7 +921,7 @@ public struct SkinCatalogDetailView: View {
                     activationTask?.cancel()
                     activationTask = Task { await activateSkin(for: system) }
                 } label: {
-                    Text("RETRY")
+                    Text(catalog: "RETRY")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundStyle(SkinKitTheme.current.horizontalGradient)
                         .tracking(1)
