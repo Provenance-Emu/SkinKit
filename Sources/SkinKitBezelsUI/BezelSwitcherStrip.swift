@@ -27,9 +27,12 @@ public struct BezelSwitcherStrip: View {
 
     #if os(tvOS)
     @FocusState private var focusedItem: String?
-    /// Focus has reached the item the strip opened on. Until then a focus change is the system
-    /// placing focus, not the player choosing, and must not move the selection.
-    @State private var focusSettled = false
+    /// Which focus changes are the player choosing a TV.
+    @State private var focus = BezelStripFocus()
+
+    /// How many times, and how far apart, the strip asks for focus when it opens.
+    private static let focusAttempts = 20
+    private static let focusRetryDelay: Duration = .milliseconds(50)
     #endif
 
     public init(model: Binding<BezelSwitcherModel>, name: @escaping (BezelSwitcherModel.Item) -> String,
@@ -56,6 +59,9 @@ public struct BezelSwitcherStrip: View {
                     }
                     .padding(.horizontal, 16)
                 }
+                #if os(tvOS)
+                .focusSection()
+                #endif
                 .onAppear { proxy.scrollTo(model.selection.id, anchor: .center) }
                 .onChange(of: model.selection.id) { _, id in
                     withAnimation(.easeInOut(duration: 0.15)) { proxy.scrollTo(id, anchor: .center) }
@@ -74,22 +80,32 @@ public struct BezelSwitcherStrip: View {
                 if isLoading { ProgressView() }
             }
             .padding(.horizontal, 16)
+            #if os(tvOS)
+            // The buttons sit at the left and the selected TV in the middle: as a section the
+            // row is reached by moving down from any TV, not only from one right above a button.
+            .focusSection()
+            #endif
         }
         .padding(.vertical, 12)
         .background(.regularMaterial)
         #if os(tvOS)
         .defaultFocus($focusedItem, model.selection.id)
-        .onChange(of: focusedItem) { _, id in
-            guard let id else { return }
-            guard focusSettled else {
-                if id == model.selection.id {
-                    focusSettled = true
-                } else {
-                    focusedItem = model.selection.id
-                }
-                return
+        .task {
+            // The host disables the control that opened the strip, and tvOS leaves focus on it
+            // until something asks for it: left and right then do nothing. Take it, and keep
+            // asking until it has arrived on the list once.
+            for _ in 0..<Self.focusAttempts {
+                guard !focus.isOnList else { break }
+                focusedItem = model.selection.id
+                try? await Task.sleep(for: Self.focusRetryDelay)
             }
-            model.select(id: id)
+        }
+        .onChange(of: focusedItem) { _, id in
+            switch focus.focusChanged(to: id, selection: model.selection.id) {
+            case .none: break
+            case .moveFocus(let id): focusedItem = id
+            case .select(let id): model.select(id: id)
+            }
         }
         .onExitCommand(perform: onCancel)
         #endif
