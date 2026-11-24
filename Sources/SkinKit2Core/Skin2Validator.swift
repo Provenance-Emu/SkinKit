@@ -173,6 +173,7 @@ public enum Skin2Validator {
         struct Context {
             var control: Skin2Node?
             var controlPointer: String?
+            var hasRepeatingAncestor = false
             /// The enclosing panel, and the id of the control that is its handle.
             var panel: Skin2Panel?
         }
@@ -256,6 +257,11 @@ public enum Skin2Validator {
                     }
                     if n.screenRole != nil { error(p + "/role", "an accessory screen takes no role: it is never the game picture\(suffix)") }
                     if n.placement != nil { error(p + "/placement", "an accessory screen takes no placement\(suffix)") }
+                    if (n.repeat?.count ?? 1) > 1 {
+                        error(p + "/repeat", "an accessory screen cannot repeat\(suffix)")
+                    } else if context.hasRepeatingAncestor {
+                        error(p, "an accessory screen cannot have a repeating ancestor\(suffix)")
+                    }
                 }
             case .group:
                 if let panel = n.panel { checkPanel(panel, node: n, at: p, context: context, suffix: suffix) }
@@ -318,8 +324,11 @@ public enum Skin2Validator {
             }
             if n.type == .control {
                 if context.control != nil { error(p, "a control inside a control is art, not a control\(suffix)") }
-                inner = Context(control: n, controlPointer: p)
+                inner.control = n
+                inner.controlPointer = p
+                inner.panel = nil
             }
+            inner.hasRepeatingAncestor = context.hasRepeatingAncestor || (n.repeat?.count ?? 1) > 1
             for (i, child) in n.children.enumerated() {
                 visit(child, pointer: "\(p)/children/\(i)", context: inner, doc: doc, ids: &ids, seenScreen: &seenScreen, suffix: suffix)
             }
@@ -526,14 +535,19 @@ public enum Skin2Validator {
             var reportedPairs: Set<[String]> = []
             var reportedSmall: Set<String> = []
             var reportedHandles: Set<String> = []
-            // What the app supplies changes the layout, and so does a shelf opening: check each combination.
+            // Shelves open independently. The panel limit bounds the number of flag sets to 64.
+            guard doc.panels.count <= Skin2Panel.maxPanels else { return }
+            var shelfNames: [String] = []
+            doc.root.preorder { if let panel = $0.panel, $0.panelCanBeShelf { shelfNames.append(panel.name) } }
+            let names = Array(Set(shelfNames)).sorted()
             let capabilities = doc.mentionedCapabilities
-            let open = Set(doc.panels.map(\.openFlag))
-            var situations: [(capabilities: Set<String>, flags: Set<String>, label: String)] = [([], [], "")]
-            if !capabilities.isEmpty { situations.append((capabilities, [], ", capabilities on")) }
-            if !open.isEmpty {
-                situations.append(([], open, ", shelves open"))
-                if !capabilities.isEmpty { situations.append((capabilities, open, ", capabilities on, shelves open")) }
+            var situations: [(capabilities: Set<String>, flags: Set<String>, label: String)] = []
+            for mask in 0..<(1 << names.count) {
+                let open = names.enumerated().compactMap { mask & (1 << $0.offset) == 0 ? nil : $0.element }
+                let flags = Set(open.map { "\(Skin2Panel.flagPrefix)\($0).open" })
+                let label = open.isEmpty ? "" : ", open shelves: " + open.joined(separator: ", ")
+                situations.append(([], flags, label))
+                if !capabilities.isEmpty { situations.append((capabilities, flags, ", capabilities on" + label)) }
             }
             for base in Skin2TraitSet.sets(for: doc) { for situation in situations {
                 var environment = base.environment

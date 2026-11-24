@@ -118,7 +118,7 @@ Rules:
 - Nodes after the screen in document order draw over it (glass, a glare, a tinted window). This is live §2's draw-order rule; slice 1 builds it for accessory screens only.
 - In the rest frame, in bakes and in classic output it draws nothing. A renderer handed a still for the source draws it, so fixtures cover it in Swift and TypeScript. Previews (`screenPlaceholders`) draw a placeholder marked with the source's name.
 - A live effects `paint.picture` may name an accessory screen by `#id` once that design is built. Nothing extra is needed here.
-- At most four accessory screens per skin.
+- A skin supports up to four accessory screens. Each screen and its ancestors may have only one copy. Use separate screen nodes if the same picture needs to appear in multiple places.
 
 ### 3. Panels
 
@@ -151,7 +151,7 @@ A `group` node gains `panel`. Its children are ordinary nodes, usually one part 
 - **Opening and closing** re-resolves the layout. The host animates frames and opacity between the two resolved layouts over 200 ms; with Reduce Motion on it switches without moving. Held inputs inside a closing shelf are released first.
 - **The validator** requires that a shelf's handle exists, is inside the group, is at least 44×44 pt in its hit frame, does not overlap another control's hit frame in either state, and lies inside the safe area in both states on every bake trait. It rejects a panel inside a panel and duplicate names. At most six panels per skin.
 - **Accessibility:** the handle is a button named "`label`, open" or "closed". Panel controls get labels from the semantic input registry (§4) unless the node gives one. On tvOS and with a hardware controller a shelf starts and stays as its `open` value, because there is no touch to move it (the TV mount in slice 2 defines focus movement).
-- **Flags named `panel.*` are reserved** for the skin view; an app may not supply them. The validator already resolves the layout once per bake trait set (`Skin2TraitSet.sets(for:)`); for a document with shelves it resolves each trait with every shelf open and with every shelf closed.
+- **Flags named `panel.*` are reserved** for the skin view; an app may not supply them. The validator already resolves the layout once per bake trait set (`Skin2TraitSet.sets(for:)`); for a document with shelves it checks every combination of open and closed shelves for each trait.
 - **When `presentation` changes by condition:** `handle` is required if any condition can make the panel a shelf. While the panel is fixed the handle is absent (not drawn, not hit-tested) and the stored open state is kept but ignored.
 - **Remembering:** the skin view reports changes of open state; `SkinKitUI` stores it per skin identifier and panel name beside the skin's theme selection.
 

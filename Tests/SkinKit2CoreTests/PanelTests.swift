@@ -205,6 +205,22 @@ struct PanelTests {
         #expect(Self.report(Self.panel() + "," + a).errors.isEmpty)
     }
 
+    @Test("Handles that collide only in a mixed shelf state are rejected")
+    func handlesOverlapWithOneShelfOpen() {
+        func shelf(_ id: String, closedX: Int, openX: Int) -> String {
+            #"""
+            {"type":"group","id":"\#(id)",
+             "panel":{"name":"\#(id)","presentation":"shelf","handle":"#\#(id)Tab"},
+             "children":[{"type":"control","id":"\#(id)Tab","kind":"action","input":"togglePanel",
+               "layout":{"frame":[\#(closedX),100,48,48]},
+               "when":[{"flag":"panel.\#(id).open","layout":{"frame":[\#(openX),100,48,48]}}]}]}
+            """#
+        }
+        let report = Self.report(shelf("left", closedX: 100, openX: 180) + "," + shelf("right", closedX: 180, openX: 100))
+        #expect(Self.has(report.errors, "overlaps #rightTab"))
+        #expect(Self.has(report.errors, "open shelves: left"))
+    }
+
     @Test("A handle lies inside the safe area on every bake trait")
     func handleOutsideSafeAreaOnABakeTraitIsAnError() {
         let r = Self.report(Self.panel(origin: "20, 100"))

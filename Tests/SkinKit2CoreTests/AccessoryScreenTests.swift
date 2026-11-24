@@ -62,6 +62,18 @@ struct AccessoryScreenTests {
         #expect(Self.report([Self.main, Self.lcd()].joined(separator: ",")).issues == [])
     }
 
+    @Test("An accessory screen cannot repeat directly or through an ancestor")
+    func accessoryScreenRejectsRepeat() {
+        let features = #""optional":["screens.accessory","layout.repeat"]"#
+        let direct = Self.report(Self.main + "," + Self.lcd(extra: #","repeat":{"count":2}"#), extra: features)
+        #expect(Self.has(direct.errors, at: "/root/children/1/repeat", "accessory screen"))
+        let nested = #"""
+        {"type":"group","repeat":{"count":2},"children":[{"type":"group","children":[\#(Self.lcd())]}]}
+        """#
+        let indirect = Self.report(Self.main + "," + nested, extra: features)
+        #expect(Self.has(indirect.errors, at: "/root/children/1/children/0/children/0", "repeating ancestor"))
+    }
+
     @Test("At most four accessory screens")
     func fiveAccessoryScreensIsAnError() {
         let four = (1...4).map { Self.lcd("lcd\($0)", source: "vmu.p\($0)") }
