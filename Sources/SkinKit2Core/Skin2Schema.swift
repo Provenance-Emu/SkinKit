@@ -89,6 +89,8 @@ public enum Skin2Schema {
             "displayType": tok(enumOf(Skin2DisplayType.allCases.map(\.rawValue))),
             "flag": tok(["type": "string"]), "minWidth": tok(num()), "minHeight": tok(num()),
             "theme": tok(["type": "string"]), "variant": tok(["type": "string"]),
+            "has": any([["type": "string"], ["type": "array", "items": ["type": "string"], "minItems": 1]],
+                       description: "Capabilities the app must supply now (picture.vmu.p1, input.<name>): one name or a list, all needed."),
         ]
         defs["condition"] = obj(conditionProps)
         defs["visibility"] = any([tok(["type": "boolean"]), ref("condition")])
@@ -97,7 +99,15 @@ public enum Skin2Schema {
             "fills": ["type": "array", "items": ref("paint")], "strokes": ["type": "array", "items": ref("stroke")],
             "text": tok(["type": "string"]),
         ]
-        defs["when"] = obj(conditionProps.merging(patchProps) { a, _ in a })
+        let presentation = enumOf(Skin2PanelPresentation.allCases.map(\.rawValue))
+        defs["panel"] = obj([
+            "name": ["type": "string", "pattern": .string(Skin2Panel.namePattern), "maxLength": .number(Double(Skin2Panel.maxNameLength))],
+            "label": ["type": "string"], "needs": strings, "presentation": presentation,
+            "handle": ["type": "string", "pattern": .string(Skin2Panel.handlePattern)], "open": ["type": "boolean"],
+        ], required: ["name"], extra: [
+            "description": "An accessory area shown only while the app supplies every capability in needs. A shelf opens and closes by its handle, a control of kind action whose input is togglePanel; the skin reads the state as the flag panel.<name>.open.",
+        ])
+        defs["when"] = obj(conditionProps.merging(patchProps) { a, _ in a }.merging(["panel": obj(["presentation": presentation])]) { a, _ in a })
         defs["statePatch"] = obj(patchProps.merging(["target": tok(["type": "string", "pattern": .string(Skin2Patch.targetPattern)])]) { a, _ in a },
                                  required: ["target"])
         defs["state"] = obj(["scale": tok(num(exclusiveMin: 0)), "opacity": ref("unit"),
@@ -175,7 +185,8 @@ public enum Skin2Schema {
 
         // Controls
         defs["input"] = any([
-            ["type": "string"],
+            ["type": "string",
+             "description": "A classic input name (a, start), or a dotted semantic input from the registry (arcade.coin1), present only while the app has input.<name>."],
             obj(["up": tok(["type": "string"]), "down": tok(["type": "string"]), "left": tok(["type": "string"]), "right": tok(["type": "string"])],
                 required: ["up", "down", "left", "right"]),
         ])
@@ -203,7 +214,7 @@ public enum Skin2Schema {
             obj(common.merging(props) { _, b in b }.merging(["type": ["const": .string(type.rawValue)]]) { _, b in b },
                 required: ["type"] + required, extra: extra)
         }
-        defs["group"] = node(.group, ["children": children, "stack": ref("stack"), "grid": ref("grid")],
+        defs["group"] = node(.group, ["children": children, "stack": ref("stack"), "grid": ref("grid"), "panel": ref("panel")],
                              extra: ["not": ["required": ["stack", "grid"]]])
         defs["shapeNode"] = node(.shape, ["shape": ref("shape"), "fills": ["type": "array", "items": ref("paint")],
                                           "strokes": ["type": "array", "items": ref("stroke")], "material": ref("material")],
@@ -220,11 +231,16 @@ public enum Skin2Schema {
             "hit": obj(["extend": ref("edgeLengths")]), "travel": ref("length"),
             "states": ["type": "object", "propertyNames": enumOf(Skin2State.names.sorted()), "additionalProperties": ref("state")],
             "haptic": obj(["style": tok(["type": "string"]), "intensity": ref("unit")]), "children": children,
+            "duplicate": ["type": "boolean"],
         ], required: ["kind"])
         defs["screenNode"] = node(.screen, [
             "aspect": tok(num(exclusiveMin: 0)), "role": tok(enumOf(Skin2ScreenRole.allCases.map(\.rawValue))),
             "filters": ["type": "array", "items": obj(["name": tok(["type": "string"]), "params": ["type": "object"]], required: ["name"])],
             "placement": tok(enumOf(Skin2ScreenPlacement.allCases.map(\.rawValue))),
+            "source": tok(["type": "string",
+                           "description": .string("What the screen shows: game (default), or a picture the app supplies (\(Skin2Capabilities.pictureSources.joined(separator: ", "))).")]),
+            "sampling": tok(enumOf(Skin2Sampling.allCases.map(\.rawValue))),
+            "duplicate": ["type": "boolean", "description": "An intentional second copy: it does not claim its picture or input, so the app keeps its own."],
         ])
         defs["partInstance"] = obj([
             "use": ["type": "string", "pattern": .string(Skin2Preprocessor.partNamePattern)], "with": ["type": "object"],
@@ -266,6 +282,7 @@ public enum Skin2Schema {
             "properties": [
                 "formatVersion": ["type": "string", "pattern": .string(Skin2Document.formatVersionPattern)],
                 "requires": strings,
+                "optional": strings,
                 "identifier": ["type": "string"],
                 "name": ["type": "string"],
                 "author": ["type": "string"],

@@ -125,6 +125,8 @@ public struct Skin2Document: Equatable, Sendable, Decodable {
 
     public var formatVersion: String
     public var requires: [String]
+    /// Features the skin uses but a reader may lack: such a reader draws the skin without them.
+    public var optional: [String]
     public var identifier: String
     public var name: String
     public var author: String?
@@ -141,7 +143,7 @@ public struct Skin2Document: Equatable, Sendable, Decodable {
     public var theme: String?
     public var variant: String?
 
-    enum K: String, CodingKey { case formatVersion, requires, identifier, name, author, gameTypes, reference, screens, bake, root, variants, themes }
+    enum K: String, CodingKey { case formatVersion, requires, optional, identifier, name, author, gameTypes, reference, screens, bake, root, variants, themes }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: K.self)
@@ -149,6 +151,7 @@ public struct Skin2Document: Equatable, Sendable, Decodable {
         try c.ensure(formatVersion.range(of: Self.formatVersionPattern, options: .regularExpression) != nil, .formatVersion,
                      "this reader reads format 2.x, found \"\(formatVersion)\"")
         requires = try c.decodeIfPresent([String].self, forKey: .requires) ?? []
+        optional = try c.decodeIfPresent([String].self, forKey: .optional) ?? []
         identifier = try c.decode(String.self, forKey: .identifier)
         name = try c.decode(String.self, forKey: .name)
         author = try c.decodeIfPresent(String.self, forKey: .author)

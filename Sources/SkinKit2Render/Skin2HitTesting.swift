@@ -17,6 +17,9 @@ public struct Skin2HitTester: Equatable, Sendable {
         public var input: Skin2Input?
         /// The control's `haptic`, or nil for the default.
         public var haptic: Skin2Haptic?
+        /// The panel this control opens and closes, when it is that shelf's handle. Its touch belongs to the skin
+        /// view and is never sent to the app.
+        public var togglesPanel: String?
     }
 
     /// Controls in hit order: the first that contains a point wins.
@@ -26,7 +29,8 @@ public struct Skin2HitTester: Equatable, Sendable {
         let all = resolution.controls.compactMap { r -> Control? in
             guard let id = r.node.id, let kind = r.node.kind, let hit = r.hitFrame else { return nil }
             return Control(id: id, kind: kind, frame: r.frame, hitFrame: hit, travel: r.travel, inputs: r.node.inputNames, input: r.node.input,
-                               haptic: r.node.haptic)
+                               haptic: r.node.haptic,
+                               togglesPanel: resolution.panels.first { $0.panel.name == r.panelName && $0.panel.handleID == id }?.panel.name)
         }
         let buttons: [Control] = all.filter { $0.kind != .touchSurface }.reversed()
         let surfaces: [Control] = all.filter { $0.kind == .touchSurface }.reversed()

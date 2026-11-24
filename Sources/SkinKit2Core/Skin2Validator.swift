@@ -129,12 +129,21 @@ public enum Skin2Validator {
 
         mutating func checkDocumentKeys(_ doc: Skin2Document, json: Skin2JSON, documents: [Skin2Document]) {
             let used = Skin2Features.used(source: json, documents: documents)
-            let listed = Set(doc.requires)
+            let listed = Set(doc.requires).union(doc.optional)
             for (i, name) in doc.requires.enumerated() where !Skin2Features.all.contains(name) {
                 warn("/requires/\(i)", "\"\(name)\" is not a 2.0 feature name; readers that don't know it fall back to the classic skin")
             }
             for name in used.subtracting(listed).sorted() {
-                error("/requires", "the skin uses \(name) but does not list it in requires")
+                error("/requires", "the skin uses \(name) but does not list it in requires or optional")
+            }
+            for (i, name) in doc.optional.enumerated() {
+                if !Skin2Features.all.contains(name) {
+                    error("/optional/\(i)", "\"\(name)\" is not a 2.0 feature name")
+                } else if doc.requires.contains(name) {
+                    error("/optional/\(i)", "\(name) is in both requires and optional; list it once")
+                } else if !used.contains(name) {
+                    warn("/optional/\(i)", "optional lists \(name), which the skin does not use")
+                }
             }
             for (i, name) in doc.requires.enumerated() where Skin2Features.all.contains(name) && !used.contains(name) {
                 warn("/requires/\(i)", "requires lists \(name), which the skin does not use")
@@ -148,8 +157,13 @@ public enum Skin2Validator {
                 warn("/gameTypes/\(i)", "no input table for game type \"\(gt)\"; its inputs are not checked")
             }
             if let screens = doc.screens {
-                for (i, id) in screens.enumerated() where doc.node(id: id)?.type != .screen {
-                    error("/screens/\(i)", "\"\(id)\" is not the id of a screen node")
+                for (i, id) in screens.enumerated() {
+                    let node = doc.node(id: id)
+                    if node?.type != .screen {
+                        error("/screens/\(i)", "\"\(id)\" is not the id of a screen node")
+                    } else if node?.isAccessoryScreen == true {
+                        error("/screens/\(i)", "\"\(id)\" is an accessory screen; screens lists game screens")
+                    }
                 }
             }
         }
@@ -159,14 +173,33 @@ public enum Skin2Validator {
         struct Context {
             var control: Skin2Node?
             var controlPointer: String?
+            var hasRepeatingAncestor = false
+            /// The enclosing panel, and the id of the control that is its handle.
+            var panel: Skin2Panel?
         }
+
+        /// Panel names seen so far in the tree being checked, with where.
+        var panelSeen: [String: String] = [:]
+        /// The open flags of the tree's panels: the only `panel.*` flags a condition may read.
+        var panelFlags: Set<String> = []
 
         mutating func checkTree(_ doc: Skin2Document, label: String) {
             let suffix = label.isEmpty ? "" : " (\(label))"
             let count = doc.root.nodeCount
+            var accessory = 0
+            doc.root.preorder { if $0.isAccessoryScreen { accessory += 1 } }
+            if accessory > Skin2Capabilities.maxAccessoryScreens {
+                error("/root", "the skin has \(accessory) accessory screens; the limit is \(Skin2Capabilities.maxAccessoryScreens) accessory screens\(suffix)")
+            }
             if count > Skin2Document.maxNodes {
                 error("/root", "the skin has \(count) nodes after expanding parts; the limit is \(Skin2Document.maxNodes)\(suffix)")
             }
+            let panels = doc.panels
+            if panels.count > Skin2Panel.maxPanels {
+                error("/root", "the skin has \(panels.count) panels; the limit is \(Skin2Panel.maxPanels) panels\(suffix)")
+            }
+            panelSeen = [:]
+            panelFlags = Set(panels.map(\.openFlag))
             var ids: [String: String] = [:]
             var seenScreen = false
             visit(doc.root, pointer: "/root", context: Context(), doc: doc, ids: &ids, seenScreen: &seenScreen, suffix: suffix)
@@ -190,6 +223,21 @@ public enum Skin2Validator {
                 }
             }
 
+            var conditions: [(Skin2Condition, String)] = []
+            if case .when(let c)? = n.visible { conditions.append((c, p + "/visible")) }
+            for (i, w) in n.when.enumerated() {
+                conditions.append((w.condition, "\(p)/when/\(i)"))
+                if case .when(let c)? = w.patch.visible { conditions.append((c, "\(p)/when/\(i)/visible")) }
+            }
+            for (c, cp) in conditions {
+                if let flag = c.flag, flag.hasPrefix(Skin2Panel.flagPrefix), !panelFlags.contains(flag) {
+                    error(cp + "/flag", "\"\(flag)\" is not the open flag of a panel in this skin; flags starting with \(Skin2Panel.flagPrefix) are reserved\(suffix)")
+                }
+                for name in c.has ?? [] where !Skin2Capabilities.isKnown(name) {
+                    error(cp + "/has", "\"\(name)\" is not a capability (\(Skin2Capabilities.pictureSources.map(Skin2Capabilities.picture).joined(separator: ", ")), input.<name>)\(suffix)")
+                }
+            }
+
             if let id = n.id {
                 if let first = ids[id] {
                     error(p + "/id", "id \"\(id)\" is already used at \(first)\(suffix)")
@@ -197,13 +245,26 @@ public enum Skin2Validator {
                     ids[id] = p
                 }
             }
-            if n.type == .screen { seenScreen = true }
+            if n.type == .screen, !n.isAccessoryScreen { seenScreen = true }
 
             switch n.type {
             case .control: checkControl(n, at: p, doc: doc, suffix: suffix)
             case .screen:
                 if n.id == nil { error(p, "a screen needs an id\(suffix)") }
+                if n.isAccessoryScreen, let source = n.source {
+                    if !Skin2Capabilities.pictureSources.contains(source) {
+                        error(p + "/source", "\"\(source)\" is not a picture source: use game or \(Skin2Capabilities.pictureSources.joined(separator: ", "))\(suffix)")
+                    }
+                    if n.screenRole != nil { error(p + "/role", "an accessory screen takes no role: it is never the game picture\(suffix)") }
+                    if n.placement != nil { error(p + "/placement", "an accessory screen takes no placement\(suffix)") }
+                    if (n.repeat?.count ?? 1) > 1 {
+                        error(p + "/repeat", "an accessory screen cannot repeat\(suffix)")
+                    } else if context.hasRepeatingAncestor {
+                        error(p, "an accessory screen cannot have a repeating ancestor\(suffix)")
+                    }
+                }
             case .group:
+                if let panel = n.panel { checkPanel(panel, node: n, at: p, context: context, suffix: suffix) }
                 if (n.stack != nil || n.grid != nil), n.layout?.size != nil, n.layout?.frame == nil, n.layout?.inset == nil {
                     warn(p + "/layout/size", "a stack or grid group takes its size from its children; size is ignored (use frame or inset for a fixed size)\(suffix)")
                 }
@@ -243,6 +304,9 @@ public enum Skin2Validator {
             }
             checkPaintLengths(n, at: p, suffix: suffix)
 
+            if n.duplicate, n.type != .screen, n.type != .control {
+                error(p + "/duplicate", "duplicate belongs on a screen or a control: it says the node does not claim its picture or input\(suffix)")
+            }
             if n.role == .knob, context.control?.kind != .thumbstick {
                 error(p + "/role", "role knob belongs inside a thumbstick control\(suffix)")
             }
@@ -254,12 +318,45 @@ public enum Skin2Validator {
             }
 
             var inner = context
+            if let panel = n.panel { inner.panel = panel }
+            if n.type == .control, n.inputNames.contains(Skin2Panel.toggleInput), n.id == nil || n.id != context.panel?.handleID {
+                error(p, "\(Skin2Panel.toggleInput) belongs to a shelf's handle: the control its panel names in handle\(suffix)")
+            }
             if n.type == .control {
                 if context.control != nil { error(p, "a control inside a control is art, not a control\(suffix)") }
-                inner = Context(control: n, controlPointer: p)
+                inner.control = n
+                inner.controlPointer = p
+                inner.panel = nil
             }
+            inner.hasRepeatingAncestor = context.hasRepeatingAncestor || (n.repeat?.count ?? 1) > 1
             for (i, child) in n.children.enumerated() {
                 visit(child, pointer: "\(p)/children/\(i)", context: inner, doc: doc, ids: &ids, seenScreen: &seenScreen, suffix: suffix)
+            }
+        }
+
+        mutating func checkPanel(_ panel: Skin2Panel, node n: Skin2Node, at p: String, context: Context, suffix: String) {
+            if context.panel != nil { error(p + "/panel", "a panel can't be inside a panel\(suffix)") }
+            if let first = panelSeen[panel.name] {
+                error(p + "/panel/name", "panel name \"\(panel.name)\" is already used at \(first)\(suffix)")
+            } else {
+                panelSeen[panel.name] = p
+            }
+            for (i, name) in panel.needs.enumerated() where !Skin2Capabilities.isKnown(name) {
+                error("\(p)/panel/needs/\(i)", "\"\(name)\" is not a capability\(suffix)")
+            }
+            guard n.panelCanBeShelf else { return }
+            guard let id = panel.handleID else {
+                error(p + "/panel/handle", "a shelf needs a handle: the #id of an action control in the group whose input is \(Skin2Panel.toggleInput)\(suffix)")
+                return
+            }
+            var handle: Skin2Node?
+            for child in n.children { child.preorder { if handle == nil, $0.id == id { handle = $0 } } }
+            guard let handle, handle.type == .control else {
+                error(p + "/panel/handle", "#\(id) is not a control inside this group\(suffix)")
+                return
+            }
+            if handle.kind != .action || handle.inputNames != [Skin2Panel.toggleInput] {
+                error(p + "/panel/handle", "#\(id) must be an action control whose input is \(Skin2Panel.toggleInput)\(suffix)")
             }
         }
 
@@ -316,6 +413,21 @@ public enum Skin2Validator {
             }
             if names.isEmpty { error(p, "a control needs input or inputs\(suffix)") }
 
+            // Semantic inputs (dotted names): from the registry, momentary, on a button or a trigger.
+            let semantic = n.semanticInputs
+            for name in semantic {
+                guard let entry = Skin2SemanticInputs.entry(name) else {
+                    error(p, "\"\(name)\" is not a semantic input (\(Skin2SemanticInputs.all.map(\.name).joined(separator: ", ")))\(suffix)")
+                    continue
+                }
+                if entry.kind == .twoPosition {
+                    error(p, "\"\(name)\" is a two-position switch; the switch control is not built yet\(suffix)")
+                } else if kind != .button, kind != .trigger {
+                    error(p, "\"\(name)\" is a semantic input: put it on a button or a trigger, not a \(kind.rawValue)\(suffix)")
+                }
+            }
+            if !semantic.isEmpty, kind != .button, kind != .trigger { return }
+
             switch kind {
             case .touchSurface:
                 for name in names where !Skin2Inputs.touchSurface.contains(name) {
@@ -329,7 +441,8 @@ public enum Skin2Validator {
             case .button, .trigger, .dpad, .thumbstick:
                 for gt in doc.gameTypes {
                     guard let system = Skin2Inputs.inputs(forGameType: gt) else { continue }
-                    for name in names where !system.contains(name) && !Skin2Inputs.common.contains(name) && !Skin2Inputs.actions.contains(name) {
+                    for name in names where !system.contains(name) && !Skin2Inputs.common.contains(name) && !Skin2Inputs.actions.contains(name)
+                        && !Skin2SemanticInputs.isSemantic(name) {
                         error(p, "\"\(name)\" is not an input of game type \(gt)\(suffix)")
                     }
                 }
@@ -421,9 +534,39 @@ public enum Skin2Validator {
             let suffix = label.isEmpty ? "" : ", \(label)"
             var reportedPairs: Set<[String]> = []
             var reportedSmall: Set<String> = []
-            for trait in Skin2TraitSet.sets(for: doc) {
+            var reportedHandles: Set<String> = []
+            // Shelves open independently. The panel limit bounds the number of flag sets to 64.
+            guard doc.panels.count <= Skin2Panel.maxPanels else { return }
+            var shelfNames: [String] = []
+            doc.root.preorder { if let panel = $0.panel, $0.panelCanBeShelf { shelfNames.append(panel.name) } }
+            let names = Array(Set(shelfNames)).sorted()
+            let capabilities = doc.mentionedCapabilities
+            var situations: [(capabilities: Set<String>, flags: Set<String>, label: String)] = []
+            for mask in 0..<(1 << names.count) {
+                let open = names.enumerated().compactMap { mask & (1 << $0.offset) == 0 ? nil : $0.element }
+                let flags = Set(open.map { "\(Skin2Panel.flagPrefix)\($0).open" })
+                let label = open.isEmpty ? "" : ", open shelves: " + open.joined(separator: ", ")
+                situations.append(([], flags, label))
+                if !capabilities.isEmpty { situations.append((capabilities, flags, ", capabilities on" + label)) }
+            }
+            for base in Skin2TraitSet.sets(for: doc) { for situation in situations {
+                var environment = base.environment
+                environment.capabilities = situation.capabilities
+                environment.flags = situation.flags
+                let trait = (name: base.name + situation.label, environment: environment)
                 let r = Skin2Resolver.resolve(doc, in: trait.environment)
                 for w in r.warnings { error(w.pointer, "\(w.message) (\(trait.name)\(suffix))") }
+                for panel in r.panels where panel.presentation == .shelf {
+                    guard let handle = r.controls.first(where: { $0.panelName == panel.panel.name && $0.id == panel.panel.handleID }),
+                          let hit = handle.hitFrame else { continue }
+                    let side = Skin2Provided.minimumControl
+                    if hit.width < side.width - 0.0001 || hit.height < side.height - 0.0001, reportedHandles.insert(handle.pointer + "size").inserted {
+                        error(handle.pointer, "the handle #\(handle.id ?? "?") takes touches in \(Self.points(hit.width)) × \(Self.points(hit.height)) pt; a shelf's handle needs at least \(Int(side.width)) × \(Int(side.height)) pt (\(trait.name)\(suffix))")
+                    }
+                    if !panel.handleReachable, reportedHandles.insert(handle.pointer + "safe").inserted {
+                        error(handle.pointer, "the handle #\(handle.id ?? "?") is outside the safe area on \(trait.name)\(suffix): the player could not reach it")
+                    }
+                }
                 let controls = r.controls.filter { $0.node.kind != .touchSurface }
                 for (i, a) in controls.enumerated() {
                     guard let ha = a.hitFrame else { continue }
@@ -440,7 +583,9 @@ public enum Skin2Validator {
                         warn(c.pointer, "#\(c.id ?? "?") is \(String(format: "%.1f", side)) pt on its short side at unit 1; controls should be at least \(Int(minimumControlSide)) pt (\(trait.name)\(suffix))")
                     }
                 }
-            }
+            } }
         }
+
+        static func points(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v) }
     }
 }

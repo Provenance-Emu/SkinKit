@@ -4,6 +4,36 @@ import Foundation
 import ImageIO
 import SkinKit2Core
 
+/// Which nodes of a resolved skin one draw call paints, in document order. A live host draws an accessory screen's
+/// picture in a layer of its own, so it draws the skin in parts: what comes before the screen under the layer,
+/// what comes after it over the layer. A screen named as a boundary is in no part.
+///
+/// A group that holds a boundary screen is drawn in both parts with its own opacity, blend and effects applied to
+/// each, which matches one draw exactly unless that group has such an effect over overlapping halves.
+public enum Skin2DrawPart: Equatable, Sendable {
+    case all
+    /// Everything before the screen at this pointer.
+    case upTo(screen: String)
+    /// Everything after the first screen and before the second.
+    case between(after: String, upTo: String)
+    /// Everything after the screen at this pointer.
+    case after(screen: String)
+
+    var lower: String? {
+        switch self {
+        case .after(let p), .between(let p, _): return p
+        case .all, .upTo: return nil
+        }
+    }
+
+    var upper: String? {
+        switch self {
+        case .upTo(let p), .between(_, let p): return p
+        case .all, .after: return nil
+        }
+    }
+}
+
 /// How to draw a resolved skin.
 public struct Skin2RenderOptions {
     /// Control states by control id (6.4). Controls not listed draw at rest.
@@ -18,6 +48,11 @@ public struct Skin2RenderOptions {
     /// The bytes of a file the skin references: an image `src` (a path under `assets/`) or a font as
     /// `fonts/<family>`. Nil or a missing file draws nothing for that image and the default face for that font.
     public var asset: ((String) -> Data?)?
+    /// Stills for accessory screens, by source name (`vmu.p1`). A screen whose source is missing draws nothing
+    /// (or its placeholder). Live hosts draw the pictures in their own layers and leave this empty.
+    public var pictures: [String: CGImage] = [:]
+    /// The part of the tree to draw (default: all of it).
+    public var part: Skin2DrawPart = .all
 
     public init(states: [String: Skin2ControlState] = [:], screenPlaceholders: Bool = false, showHitFrames: Bool = false,
                 asset: ((String) -> Data?)? = nil) {
@@ -40,7 +75,7 @@ public enum Skin2Renderer {
         ctx.saveGState()
         Skin2Bitmap.configure(ctx)
         painter.draw(resolution.root, in: ctx, control: nil)
-        if options.showHitFrames {
+        if options.showHitFrames, options.part.upper == nil {
             ctx.setStrokeColor(Skin2Color2CG.cg(Skin2Color(red: 1, green: 0.2, blue: 0.2)))
             ctx.setLineWidth(1)
             ctx.setLineDash(phase: 0, lengths: [3, 3])
@@ -88,18 +123,36 @@ private struct Painter {
     let vectorContext: CGContext?
     var images: [String: CGImage?] = [:]
     var fonts: [String: CGFont?] = [:]
+    /// Drawing a part: each node's place in document order, and the places of the part's boundary screens.
+    var order: [String: Int] = [:]
+    var lower = Int.min, upper = Int.max
+    var boundaries: [String] = []
 
     init(resolution: Skin2Resolution, options: Skin2RenderOptions, vectorContext: CGContext?) {
         self.resolution = resolution
         self.options = options
         self.vectorContext = vectorContext
         unit = resolution.unit
+        guard options.part != .all else { return }
+        for (i, node) in resolution.nodes.enumerated() { order[node.pointer] = i }
+        // A boundary that is not in this layout leaves that side open.
+        if let p = options.part.lower, let i = order[p] { lower = i; boundaries.append(p) }
+        if let p = options.part.upper, let i = order[p] { upper = i; boundaries.append(p) }
+    }
+
+    /// Whether a node is outside the part being drawn. A group that holds a boundary screen is always entered.
+    func isOutsidePart(_ r: Skin2ResolvedNode) -> Bool {
+        guard !boundaries.isEmpty else { return false }
+        if boundaries.contains(where: { $0.hasPrefix(r.pointer + "/") }) { return false }
+        guard let i = order[r.pointer] else { return false }
+        return i <= lower || i >= upper
     }
 
     // MARK: Tree
 
     mutating func draw(_ r: Skin2ResolvedNode, in ctx: CGContext, control: ControlContext?) {
         if r.node.role == .highlight, !(control?.state.isPressed ?? false) { return }
+        if isOutsidePart(r) { return }
         let transforms = r.copies.isEmpty ? [CGAffineTransform.identity] : r.copies.map(\.cg)
         for (i, t) in transforms.enumerated() {
             var n = r.node
@@ -133,6 +186,7 @@ private struct Painter {
         if let v = c.minHeight, e.size.height < v { return false }
         if let v = c.theme, v != resolution.theme { return false }
         if let v = c.variant, v != resolution.variant { return false }
+        if let v = c.has, !v.allSatisfy(e.capabilities.contains) { return false }
         return true
     }
 
@@ -262,7 +316,19 @@ private struct Painter {
                 ctx.restoreGState()
             }
         case .screen:
-            if options.screenPlaceholders { drawScreen(frame, in: ctx) }
+            if n.isAccessoryScreen, let source = n.source {
+                if let picture = options.pictures[source] {
+                    ctx.saveGState()
+                    ctx.interpolationQuality = (n.sampling ?? .nearest) == .nearest ? .none : .high
+                    ctx.drawTopDown(picture, in: frame)
+                    ctx.restoreGState()
+                } else if options.screenPlaceholders {
+                    drawScreen(frame, in: ctx)
+                    drawSourceLabel(source, in: frame, ctx: ctx)
+                }
+            } else if options.screenPlaceholders {
+                drawScreen(frame, in: ctx)
+            }
         case .group, .control:
             break
         }
@@ -623,6 +689,15 @@ private struct Painter {
                 ctx.drawTopDown(image, in: rect)
             }
         }
+    }
+
+    /// The source's name centred in an accessory screen's placeholder, so a preview says what goes there.
+    func drawSourceLabel(_ source: String, in frame: CGRect, ctx: CGContext) {
+        guard let font = Skin2Text.defaultFont(.regular) else { return }
+        let size = max(6, min(frame.height * 0.3, frame.width / CGFloat(max(1, source.count)) * 1.4))
+        ctx.addPath(Skin2Text.path(source, font: font, size: size, align: .center, fit: true, in: frame.insetBy(dx: 2, dy: 2)))
+        ctx.setFillColor(Skin2Color2CG.cg(Skin2Color(hex: "#8080A0")!))
+        ctx.fillPath()
     }
 
     func drawScreen(_ frame: CGRect, in ctx: CGContext) {

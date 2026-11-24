@@ -11,15 +11,19 @@ public struct Skin2Environment: Equatable, Hashable, Sendable {
     public var displayType: Skin2DisplayType
     /// App flags that are on (`microphone`, `keypadShown`, `altToggled`).
     public var flags: Set<String>
+    /// What the app and the running game can supply right now (`picture.vmu.p1`); see `Skin2Capabilities`.
+    public var capabilities: Set<String>
 
     public init(size: Skin2Size, safeArea: Skin2Insets = .zero, orientation: Skin2Orientation? = nil,
-                device: Skin2Device = .iphone, displayType: Skin2DisplayType = .edgeToEdge, flags: Set<String> = []) {
+                device: Skin2Device = .iphone, displayType: Skin2DisplayType = .edgeToEdge, flags: Set<String> = [],
+                capabilities: Set<String> = []) {
         self.size = size
         self.safeArea = safeArea
         self.orientation = orientation ?? (size.height >= size.width ? .portrait : .landscape)
         self.device = device
         self.displayType = displayType
         self.flags = flags
+        self.capabilities = capabilities
     }
 
     public var canvasRect: Skin2Rect { Skin2Rect(size: size) }

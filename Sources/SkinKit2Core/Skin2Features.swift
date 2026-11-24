@@ -12,6 +12,7 @@ public enum Skin2Features {
         "parts", "tokens", "themes", "variants", "states",
         "controls.dpad", "controls.thumbstick", "controls.touchSurface",
         "parts.std@2.0",
+        "capabilities", "screens.accessory", "panels", "inputs.semantic", "parts.std@2.1",
     ]
 
     /// The features `source` uses. `documents` are its decoded forms (the base and each variant), whose content
@@ -31,7 +32,11 @@ public enum Skin2Features {
         case .object(let o):
             if let name = o["use"]?.stringValue {
                 used.insert("parts")
-                if name.hasPrefix("std.") { used.insert("parts.std@2.0") }
+                if Skin2StdParts.parts21.contains(name) {
+                    used.insert(Skin2StdParts.featureName21)
+                } else if name.hasPrefix(Skin2StdParts.prefix) {
+                    used.insert(Skin2StdParts.featureName)
+                }
             }
             for value in o.values { scanUses(value, into: &used) }
         case .array(let a):
@@ -55,14 +60,24 @@ public enum Skin2Features {
         }
     }
 
+    private static func scanCondition(_ c: Skin2Condition?, into used: inout Set<String>) {
+        if c?.has != nil { used.insert("capabilities") }
+    }
+
+    private static func scanVisibility(_ v: Skin2Visibility?, into used: inout Set<String>) {
+        if case .when(let c)? = v { scanCondition(c, into: &used) }
+    }
+
     private static func scanPatch(_ p: Skin2Patch, into used: inout Set<String>) {
+        scanVisibility(p.visible, into: &used)
         scanLayout(p.layout, into: &used)
         scanPaints(p.fills ?? [], into: &used)
     }
 
     static func scan(_ n: Skin2Node, into used: inout Set<String>) {
         scanLayout(n.layout, into: &used)
-        for w in n.when { scanPatch(w.patch, into: &used) }
+        scanVisibility(n.visible, into: &used)
+        for w in n.when { scanCondition(w.condition, into: &used); scanPatch(w.patch, into: &used) }
         if n.stack != nil { used.insert("layout.stack") }
         if n.grid != nil { used.insert("layout.grid") }
         if n.repeat != nil { used.insert("layout.repeat") }
@@ -78,6 +93,12 @@ public enum Skin2Features {
         }
         if n.material != nil { used.insert("materials") }
         if n.type == .text { used.insert("text") }
+        if n.isAccessoryScreen { used.insert("screens.accessory") }
+        if !n.semanticInputs.isEmpty { used.insert("inputs.semantic") }
+        if let panel = n.panel {
+            used.insert("panels")
+            if !panel.needs.isEmpty { used.insert("capabilities") }
+        }
         if !n.states.isEmpty {
             used.insert("states")
             for s in n.states.values { for p in s.patch { scanPatch(p, into: &used) } }
@@ -105,6 +126,7 @@ public enum Skin2Inputs {
     public static let actions: Set<String> = [
         "menu", "quickSave", "quickLoad", "fastForward", "toggleFastForward", "toggleAltRepresentations",
         "toggleKeyboard", "screenshot", "rewind", "pause", "reset", "restart", "keypad", "service",
+        Skin2Panel.toggleInput,
     ]
 
     /// `touchSurface` inputs.

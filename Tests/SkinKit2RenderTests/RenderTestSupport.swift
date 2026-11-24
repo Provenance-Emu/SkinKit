@@ -35,6 +35,43 @@ enum RenderPaths {
     }()
 }
 
+/// Stills a fixture supplies for its accessory screens: `pictures/<source>.png`.
+enum Skin2Fixtures {
+    static func pictures(_ fixture: String) -> [String: CGImage] {
+        var out: [String: CGImage] = [:]
+        for source in Skin2Capabilities.pictureSources {
+            let url = RenderPaths.fixtures.appendingPathComponent("\(fixture)/pictures/\(source).png")
+            if let image = PNG.read(url) { out[source] = image }
+        }
+        return out
+    }
+}
+
+/// `scenes.json` beside a fixture's `skin.json`: named app situations the references render with, so the
+/// TypeScript port renders the same input.
+///
+/// ```json
+/// { "with-pictures": { "capabilities": ["picture.vmu.p1"], "flags": [], "pictures": ["vmu.p1"] } }
+/// ```
+struct FixtureScene {
+    var name: String
+    var capabilities: Set<String>
+    var flags: Set<String>
+    var pictures: [String]
+
+    static func load(_ fixture: String) throws -> [FixtureScene] {
+        let url = RenderPaths.fixtures.appendingPathComponent("\(fixture)/scenes.json")
+        guard FileManager.default.fileExists(atPath: url.path) else { return [] }
+        guard let root = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: [String: [String]]] else {
+            throw RenderTestError("\(fixture)/scenes.json is {scene: {capabilities, flags, pictures}}")
+        }
+        return root.keys.sorted().map {
+            FixtureScene(name: $0, capabilities: Set(root[$0]?["capabilities"] ?? []), flags: Set(root[$0]?["flags"] ?? []),
+                         pictures: root[$0]?["pictures"] ?? [])
+        }
+    }
+}
+
 /// One reference image: a fixture rendered on one trait set with one theme, variant or state set.
 struct ReferenceImage {
     var file: String
@@ -42,17 +79,21 @@ struct ReferenceImage {
     var theme: String?
     var variant: String?
     var states: [String: Skin2ControlState] = [:]
+    var scene: FixtureScene?
 
     /// Reference images are rendered at 2× (section 9.2).
     static let scale: CGFloat = 2
 
     func render(_ fixture: String) throws -> CGImage {
         let doc = try Skin2Document.load(data: RenderPaths.skinData(fixture), theme: theme, variant: variant)
-        let resolution = Skin2Resolver.resolve(doc, in: trait.environment)
+        var environment = trait.environment
+        if let scene { environment.capabilities = scene.capabilities; environment.flags = scene.flags }
+        let resolution = Skin2Resolver.resolve(doc, in: environment)
         let assets = RenderPaths.fixtures.appendingPathComponent("\(fixture)/assets", isDirectory: true)
-        let options = Skin2RenderOptions(states: states, screenPlaceholders: true) { path in
+        var options = Skin2RenderOptions(states: states, screenPlaceholders: true) { path in
             try? Data(contentsOf: assets.appendingPathComponent(path))
         }
+        if let scene { options.pictures = Skin2Fixtures.pictures(fixture).filter { scene.pictures.contains($0.key) } }
         guard let image = Skin2Renderer.image(resolution, scale: Self.scale, options: options) else {
             throw RenderTestError("could not render \(fixture)/\(file)")
         }
@@ -62,10 +103,11 @@ struct ReferenceImage {
     /// Every reference image of a fixture, named after its layout files (9.2):
     /// `<trait>@2x.png`, `<trait>.variant-<name>@2x.png`, `<trait>.theme-<name>@2x.png` for every theme (colour-only
     /// themes have no layout file but change pixels), and `<trait>.state-<name>@2x.png` for each state set in the
-    /// fixture's `states.json`.
+    /// fixture's `states.json`, and `<trait>.scene-<name>@2x.png` for each scene in its `scenes.json`.
     static func all(_ fixture: String) throws -> [ReferenceImage] {
         let base = try Skin2Document.load(data: RenderPaths.skinData(fixture))
         let stateSets = try StateSets.load(fixture)
+        let scenes = try FixtureScene.load(fixture)
         var out: [ReferenceImage] = []
         for trait in Skin2TraitSet.sets(for: base) {
             out.append(ReferenceImage(file: "\(trait.name)@2x.png", trait: trait))
@@ -77,6 +119,9 @@ struct ReferenceImage {
             }
             for (name, states) in stateSets {
                 out.append(ReferenceImage(file: "\(trait.name).state-\(name)@2x.png", trait: trait, states: states))
+            }
+            for scene in scenes {
+                out.append(ReferenceImage(file: "\(trait.name).scene-\(scene.name)@2x.png", trait: trait, scene: scene))
             }
         }
         return out

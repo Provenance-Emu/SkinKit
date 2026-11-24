@@ -84,8 +84,16 @@ final class DeltaSkinFormat2Sink: Skin2InputSink {
     private let handler: any DeltaSkinInputHandling
     init(_ handler: any DeltaSkinInputHandling) { self.handler = handler }
 
-    func press(_ input: String) { handler.buttonPressed(input) }
-    func release(_ input: String) { handler.buttonReleased(input) }
+    func press(_ input: String) {
+        if Skin2SemanticInputs.isSemantic(input) { semantic?.semanticInput(input, pressed: true) } else { handler.buttonPressed(input) }
+    }
+
+    func release(_ input: String) {
+        if Skin2SemanticInputs.isSemantic(input) { semantic?.semanticInput(input, pressed: false) } else { handler.buttonReleased(input) }
+    }
+
+    /// Dotted names never reach `buttonPressed`: a handler that has not adopted the protocol drops them.
+    private var semantic: (any DeltaSkinSemanticInputHandling)? { handler as? any DeltaSkinSemanticInputHandling }
 
     /// The handler's sticks are y-up; the skin's are y-down.
     func stick(_ input: String, x: Double, y: Double) {
@@ -116,6 +124,9 @@ struct DeltaSkinFormat2View: View {
     let isInEmulator: Bool
     let inputHandler: any DeltaSkinInputHandling
     let onViewportFrameChange: ((CGRect) -> Void)?
+    var capabilities: Set<String> = []
+    var pictures: Skin2PictureStore?
+    var onProvidedChange: ((Skin2Provided) -> Void)?
 
     @State private var bridge = Skin2InputBridge()
     @State private var lastViewport: CGRect?
@@ -135,7 +146,11 @@ struct DeltaSkinFormat2View: View {
                 lastViewport = frame
                 onViewportFrameChange?(frame)
             },
-            onReleaseAll: { bridge.releaseAll(sink: sink) }
+            onReleaseAll: { bridge.releaseAll(sink: sink) },
+            capabilities: capabilities,
+            pictures: pictures,
+            skinIdentifier: skin.identifier,
+            onProvidedChange: onProvidedChange
         )
         .onDisappear { bridge.releaseAll(sink: sink) }
     }

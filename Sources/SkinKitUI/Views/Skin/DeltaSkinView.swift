@@ -1,4 +1,6 @@
 #if canImport(UIKit)
+import SkinKit2Core
+import SkinKit2Render
 import SkinKitCore
 import SkinKitManager
 import SkinCatalogKit
@@ -328,6 +330,14 @@ public struct DeltaSkinView: View {
         return buffer
     }
 
+    /// Format 2 skins: what the app and the running game can supply now (`picture.vmu.p1`); see `Skin2Capabilities`.
+    private let capabilities: Set<String>
+    /// Format 2 skins: the app's pictures for accessory screens (a memory unit's LCD).
+    private let pictures: Skin2PictureStore?
+    /// Format 2 skins: what the skin itself gives the player, so the app can hide its own copy. A classic skin, or
+    /// a format 2 skin drawn as its bake, never reports anything, so the app keeps its own controls.
+    private let onProvidedChange: ((Skin2Provided) -> Void)?
+
     public init(
         skin: any DeltaSkinRenderable,
         traits: DeltaSkinTraits,
@@ -341,8 +351,14 @@ public struct DeltaSkinView: View {
         isEditMode: Binding<Bool> = .constant(false),
         buttonOffsets: DeltaSkinButtonOffsets = .shared,
         layoutEdits: DeltaSkinLayoutEdits? = nil,
-        allowsEmptyAreaHold: Bool = false
+        allowsEmptyAreaHold: Bool = false,
+        capabilities: Set<String> = [],
+        pictures: Skin2PictureStore? = nil,
+        onProvidedChange: ((Skin2Provided) -> Void)? = nil
     ) {
+        self.capabilities = capabilities
+        self.pictures = pictures
+        self.onProvidedChange = onProvidedChange
         self.layoutEdits = layoutEdits
         self.allowsEmptyAreaHold = allowsEmptyAreaHold
         self.skin = skin
@@ -569,7 +585,8 @@ public struct DeltaSkinView: View {
         // the classic per-button options don't apply to it yet. Everything else draws the classic part below.
         if !isEditMode, let document = DeltaSkinFormat2.document(for: skin) {
             DeltaSkinFormat2View(skin: skin, document: document, traits: traits, isInEmulator: isInEmulator,
-                                 inputHandler: inputHandler, onViewportFrameChange: onViewportFrameChange)
+                                 inputHandler: inputHandler, onViewportFrameChange: onViewportFrameChange,
+                                 capabilities: capabilities, pictures: pictures, onProvidedChange: onProvidedChange)
         } else {
             classicBody
         }

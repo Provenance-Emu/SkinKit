@@ -231,14 +231,36 @@ public struct Skin2Condition: Equatable, Hashable, Sendable, Decodable {
     public var minHeight: Double?
     public var theme: String?
     public var variant: String?
+    /// Capabilities the app must supply (`picture.vmu.p1`): one name or a list, all needed.
+    public var has: [String]?
 
     public init(orientation: Skin2Orientation? = nil, device: Skin2Device? = nil, displayType: Skin2DisplayType? = nil,
-                flag: String? = nil, minWidth: Double? = nil, minHeight: Double? = nil, theme: String? = nil, variant: String? = nil) {
+                flag: String? = nil, minWidth: Double? = nil, minHeight: Double? = nil, theme: String? = nil, variant: String? = nil,
+                has: [String]? = nil) {
         self.orientation = orientation; self.device = device; self.displayType = displayType; self.flag = flag
-        self.minWidth = minWidth; self.minHeight = minHeight; self.theme = theme; self.variant = variant
+        self.minWidth = minWidth; self.minHeight = minHeight; self.theme = theme; self.variant = variant; self.has = has
     }
 
-    static let keys: Set<String> = ["orientation", "device", "displayType", "flag", "minWidth", "minHeight", "theme", "variant"]
+    static let keys: Set<String> = ["orientation", "device", "displayType", "flag", "minWidth", "minHeight", "theme", "variant", "has"]
+
+    enum K: String, CodingKey { case orientation, device, displayType, flag, minWidth, minHeight, theme, variant, has }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: K.self)
+        orientation = try c.decodeIfPresent(Skin2Orientation.self, forKey: .orientation)
+        device = try c.decodeIfPresent(Skin2Device.self, forKey: .device)
+        displayType = try c.decodeIfPresent(Skin2DisplayType.self, forKey: .displayType)
+        flag = try c.decodeIfPresent(String.self, forKey: .flag)
+        minWidth = try c.decodeIfPresent(Double.self, forKey: .minWidth)
+        minHeight = try c.decodeIfPresent(Double.self, forKey: .minHeight)
+        theme = try c.decodeIfPresent(String.self, forKey: .theme)
+        variant = try c.decodeIfPresent(String.self, forKey: .variant)
+        if let one = try? c.decodeIfPresent(String.self, forKey: .has) {
+            has = [one]
+        } else {
+            has = try c.decodeIfPresent([String].self, forKey: .has)
+        }
+    }
 }
 
 /// `visible`: a Boolean, or one condition.
@@ -263,12 +285,14 @@ public struct Skin2Patch: Equatable, Hashable, Sendable, Decodable {
     public var fills: [Skin2Paint]?
     public var strokes: [Skin2Stroke]?
     public var text: String?
+    /// `when` entries on a panel group: the panel's presentation.
+    public var panel: Skin2PanelPatch?
     /// Top-level keys set to `null` (`"visible": null` restores the default).
     public var cleared: Set<String> = []
 
     public static let targetPattern = "^#[A-Za-z_][A-Za-z0-9_.-]*(\\[[0-9]+\\])?$"
 
-    enum K: String, CodingKey { case target, layout, visible, opacity, fills, strokes, text }
+    enum K: String, CodingKey { case target, layout, visible, opacity, fills, strokes, text, panel }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: K.self)
@@ -279,6 +303,7 @@ public struct Skin2Patch: Equatable, Hashable, Sendable, Decodable {
         fills = try c.decodeIfPresent([Skin2Paint].self, forKey: .fills)
         strokes = try c.decodeIfPresent([Skin2Stroke].self, forKey: .strokes)
         text = try c.decodeIfPresent(String.self, forKey: .text)
+        panel = try c.decodeIfPresent(Skin2PanelPatch.self, forKey: .panel)
         cleared = skin2NullKeys(decoder)
         if let target {
             try c.ensure(target.range(of: Self.targetPattern, options: .regularExpression) != nil, .target,
@@ -305,6 +330,7 @@ public struct Skin2Patch: Equatable, Hashable, Sendable, Decodable {
         if let fills { n.fills = fills }
         if let strokes { n.strokes = strokes }
         if let text { n.text = text }
+        if let presentation = panel?.presentation, n.panel != nil { n.panel?.presentation = presentation }
         return n
     }
 }

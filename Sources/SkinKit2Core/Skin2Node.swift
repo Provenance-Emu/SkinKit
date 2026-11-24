@@ -9,6 +9,8 @@ public enum Skin2ControlKind: String, Codable, Sendable, CaseIterable { case but
 public enum Skin2ArtRole: String, Codable, Sendable, CaseIterable { case knob, base, highlight }
 public enum Skin2ScreenRole: String, Codable, Sendable, CaseIterable { case main, top, bottom, touch }
 public enum Skin2ScreenPlacement: String, Codable, Sendable, CaseIterable { case app, controller }
+/// How a supplied picture is scaled into an accessory screen's frame.
+public enum Skin2Sampling: String, Codable, Sendable, CaseIterable { case nearest, linear }
 public enum Skin2TextAlign: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
 
 /// A d-pad's four inputs.
@@ -84,23 +86,28 @@ public struct Skin2ScreenFilter: Equatable, Hashable, Sendable, Decodable {
 public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     public var type: Skin2NodeType
     public var id: String?
-    public var layout: Skin2Layout?
+    @Skin2Boxed public var layout: Skin2Layout?
     public var when: [Skin2Conditional]
-    public var visible: Skin2Visibility?
+    @Skin2Boxed public var visible: Skin2Visibility?
     public var opacity: Double?
     public var effects: [Skin2Effect]
-    public var `repeat`: Skin2Repeat?
+    @Skin2Boxed public var `repeat`: Skin2Repeat?
     /// `role` on anything but a screen.
     public var role: Skin2ArtRole?
+    /// On a screen or a control: an intentional second copy that does not claim its picture or input
+    /// (`Skin2Provided`).
+    public var duplicate: Bool = false
 
     // group and control
     public var children: [Skin2Node]
     // group
     public var stack: Skin2Stack?
     public var grid: Skin2Grid?
+    /// Makes the group a panel: an accessory area shown only while the app can supply what it needs.
+    @Skin2Boxed public var panel: Skin2Panel?
 
     // shape
-    public var shape: Skin2Shape?
+    @Skin2Boxed public var shape: Skin2Shape?
     public var fills: [Skin2Paint]
     public var strokes: [Skin2Stroke]
     public var material: Skin2Material?
@@ -119,7 +126,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
 
     // control
     public var kind: Skin2ControlKind?
-    public var input: Skin2Input?
+    @Skin2Boxed public var input: Skin2Input?
     public var inputs: [String]?
     /// Thumbsticks only: the classic input the stick's press sends (`l3`, `r3`; 6.1). Kept apart from `inputNames`:
     /// the stick's axes are `input`, the click is a separate press the control host decides when to fire.
@@ -135,6 +142,16 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     public var screenRole: Skin2ScreenRole?
     public var filters: [Skin2ScreenFilter]
     public var placement: Skin2ScreenPlacement?
+    /// What the screen shows: nil or `game` is the game picture; any other name is a picture the app supplies
+    /// (`vmu.p1`; see `Skin2Capabilities.pictureSources`), which makes this an accessory screen.
+    public var source: String?
+    /// Accessory screens: how the picture is scaled into the frame (default `nearest`).
+    public var sampling: Skin2Sampling?
+
+    public static let gameSource = "game"
+
+    /// A screen that shows an app-supplied picture, never the game: not the viewport, not a classic screen.
+    public var isAccessoryScreen: Bool { type == .screen && source != nil && source != Self.gameSource }
 
     public init(type: Skin2NodeType, id: String? = nil, layout: Skin2Layout? = nil, children: [Skin2Node] = []) {
         self.type = type; self.id = id; self.layout = layout; self.children = children
@@ -146,7 +163,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
     enum K: String, CodingKey {
         case type, id, layout, when, visible, opacity, effects, `repeat`, role, children, stack, grid
         case shape, fills, strokes, material, src, mode, tint, text, font, color, align, fit
-        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement
+        case kind, input, inputs, click, hit, travel, states, haptic, aspect, filters, placement, source, sampling, panel, duplicate
     }
 
     public init(from decoder: Decoder) throws {
@@ -163,6 +180,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
         opacity = try c.decodeUnit(.opacity)
         effects = try c.decodeIfPresent([Skin2Effect].self, forKey: .effects) ?? []
         self.repeat = try c.decodeIfPresent(Skin2Repeat.self, forKey: .repeat)
+        duplicate = try c.decodeIfPresent(Bool.self, forKey: .duplicate) ?? false
         children = []; fills = []; strokes = []; states = [:]; filters = []
         if type == .screen {
             screenRole = try c.decodeIfPresent(Skin2ScreenRole.self, forKey: .role)
@@ -175,6 +193,7 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
             children = try c.decodeIfPresent([Skin2Node].self, forKey: .children) ?? []
             stack = try c.decodeIfPresent(Skin2Stack.self, forKey: .stack)
             grid = try c.decodeIfPresent(Skin2Grid.self, forKey: .grid)
+            panel = try c.decodeIfPresent(Skin2Panel.self, forKey: .panel)
             try c.ensure(stack == nil || grid == nil, .grid, "a group has a stack or a grid, not both")
         case .shape:
             shape = try c.decode(Skin2Shape.self, forKey: .shape)
@@ -209,6 +228,8 @@ public struct Skin2Node: Equatable, Hashable, Sendable, Decodable {
             aspect = try c.decodeIfPresent(Double.self, forKey: .aspect)
             filters = try c.decodeIfPresent([Skin2ScreenFilter].self, forKey: .filters) ?? []
             placement = try c.decodeIfPresent(Skin2ScreenPlacement.self, forKey: .placement)
+            source = try c.decodeIfPresent(String.self, forKey: .source)
+            sampling = try c.decodeIfPresent(Skin2Sampling.self, forKey: .sampling)
             if let aspect { try c.ensure(aspect > 0, .aspect, "aspect must be above 0") }
         }
     }
