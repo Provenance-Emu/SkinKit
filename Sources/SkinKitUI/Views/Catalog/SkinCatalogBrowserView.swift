@@ -17,6 +17,9 @@ import SwiftUI
 /// App Store–style layout suitable for focus-based navigation.
 /// On iOS/iPadOS it displays a searchable, filterable grid of available skins
 /// from `SkinCatalogService`. Tapping a skin opens `SkinCatalogDetailView`.
+///
+/// `init(store:)` scopes the same screen to one app's store (iFly, iCube): see
+/// ``SkinCatalogStoreHost``.
 public struct SkinCatalogBrowserView: View {
 
     #if os(tvOS)
@@ -43,8 +46,17 @@ public struct SkinCatalogBrowserView: View {
 
     private let activationContextSystemIdentifier: DeltaSkinSystem?
     private let activationContextGameId: String?
+    /// The host's store, when the screen is scoped to one.
+    private let store: SkinCatalogStoreHost?
 
     // MARK: - State
+
+    /// What the store lists from the loaded catalog. `nil` without a store, and until it loads.
+    @State private var storeListing: SkinStoreListing?
+    /// The selected category chip (a shelf id); `nil` is "All".
+    @State private var selectedCategory: String?
+    /// Set while a cached catalog stands in for a failed download.
+    @State private var offlineMessage: String?
 
     @State private var entries: [SkinCatalogEntry] = []
     /// `entries` grouped into variant families (one card each), in `entries` order.
@@ -109,8 +121,20 @@ public struct SkinCatalogBrowserView: View {
     ) {
         self.activationContextSystemIdentifier = activationContextSystemIdentifier
         self.activationContextGameId = activationContextGameId
+        store = nil
         _selectedSystem = State(initialValue: preselectedSystem)
         _showingFilters = State(initialValue: preselectedSystem != nil)
+    }
+
+    /// The browser as one app's store: the categories are the policy's shelves, the list is what
+    /// the app can install on this device, and installs go through the host's installer.
+    ///
+    /// - Parameter preselectedCategory: a shelf id (`SkinStoreSection.id`) to open on.
+    public init(store: SkinCatalogStoreHost, preselectedCategory: String? = nil) {
+        activationContextSystemIdentifier = nil
+        activationContextGameId = nil
+        self.store = store
+        _selectedCategory = State(initialValue: preselectedCategory)
     }
 
     @ViewBuilder
@@ -119,6 +143,7 @@ public struct SkinCatalogBrowserView: View {
             entry: entry,
             family: family,
             familyIndex: familyIndex,
+            store: store,
             activationContextSystemIdentifier: activationContextSystemIdentifier,
             activationContextGameId: activationContextGameId
         )
@@ -134,7 +159,13 @@ public struct SkinCatalogBrowserView: View {
             VStack(spacing: 0) {
                 headerView
                 searchBarView
+                if store != nil {
+                    storeCategoryBarView
+                }
                 filterBarView
+                if let offlineMessage {
+                    SkinStoreOfflineBanner(message: offlineMessage)
+                }
 
                 if isLoading {
                     loadingView
@@ -188,7 +219,8 @@ public struct SkinCatalogBrowserView: View {
             Task { await loadCatalog() }
             // Ensure local skins are scanned so we can show installed badges.
             // The scan is deferred by default, so loadedSkins may be empty.
-            if !skinManager.skinsAreLoaded {
+            // A store reads its installer instead and never scans Provenance's library.
+            if store == nil, !skinManager.skinsAreLoaded {
                 Task {
                     _ = try? await skinManager.availableSkins(forceRescan: false)
                 }
@@ -200,10 +232,16 @@ public struct SkinCatalogBrowserView: View {
             activationContextGameId: activationContextGameId
         )
         .task {
+            // Creator profiles and follows install into Provenance's library: not in a store.
+            guard store == nil else { return }
             creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
         .task(id: followShelfKey) {
+            guard store == nil else { return }
             await refreshFollowShelf()
+        }
+        .onChange(of: selectedCategory) { _, _ in
+            scheduleFilterUpdate()
         }
         .onChange(of: followingOnly) { _, _ in
             scheduleFilterUpdate()
@@ -301,6 +339,7 @@ public struct SkinCatalogBrowserView: View {
     private var filterBarView: some View {
         if showingFilters {
             VStack(spacing: 8) {
+                if store == nil {
                 // System filter
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -351,6 +390,7 @@ public struct SkinCatalogBrowserView: View {
                         .padding(.horizontal)
                     }
                 }
+                } // store == nil
 
                 // Sort picker
                 HStack {
@@ -372,6 +412,73 @@ public struct SkinCatalogBrowserView: View {
             .background(Color.black.opacity(0.3))
             .transition(.move(edge: .top).combined(with: .opacity))
         }
+    }
+
+    // MARK: - Store categories
+
+    /// The store's shelves as chips, always on screen: "All", then each shelf that has skins. The
+    /// selected shelf's note (what installing from it does) sits under the row.
+    private var storeCategoryBarView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    storeCategoryChip(Text("All"), count: storeListing?.entries.count, id: nil)
+                    ForEach(storeListing?.categories ?? []) { category in
+                        storeCategoryChip(
+                            Text(verbatim: store?.categoryTitle(category.section) ?? category.section.title),
+                            count: category.entryCount,
+                            id: category.id
+                        )
+                    }
+                }
+                .padding(.horizontal)
+            }
+            if let note = selectedCategoryNote {
+                SkinStoreCategoryNote(text: note)
+                    .padding(.horizontal)
+            }
+        }
+        .padding(.bottom, 8)
+    }
+
+    private var selectedCategoryNote: String? {
+        guard let store, let selectedCategory,
+              let category = storeListing?.categories.first(where: { $0.id == selectedCategory })
+        else { return nil }
+        return store.categoryNote(category.section)
+    }
+
+    private func storeCategoryChip(_ title: Text, count: Int?, id: String?) -> some View {
+        let isSelected = selectedCategory == id
+        return Button {
+            selectedCategory = id
+        } label: {
+            HStack(spacing: 6) {
+                title
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                if let count {
+                    Text(verbatim: "\(count)")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white.opacity(isSelected ? 0.8 : 0.45))
+                }
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 36)
+            .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+            .background(
+                Capsule()
+                    .fill(isSelected ? Color.black.opacity(0.7) : Color.black.opacity(0.3))
+                    .overlay(
+                        Capsule()
+                            .strokeBorder(
+                                isSelected ? AnyShapeStyle(SkinKitTheme.current.gradient) : AnyShapeStyle(Color.white.opacity(0.2)),
+                                lineWidth: isSelected ? SkinKitTheme.current.selectionStrokeWidth : 0.5
+                            )
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     private func filterChip(_ title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -408,25 +515,44 @@ public struct SkinCatalogBrowserView: View {
             ) {
                 ForEach(families) { family in
                     let entry = family.primary
-                    let isInstalled = family.members.contains(where: isSkinInstalled)
-                    CatalogSkinCard(
-                        entry: entry,
-                        family: family,
-                        glowIntensity: glowIntensity,
-                        isInstalled: isInstalled,
-                        creators: (creatorIndex ?? .empty).credits(in: family),
-                        onOpenCreator: { profileCreator = $0 },
-                        destination: { catalogDetailDestination(for: entry, family: family) }
-                    )
+                    if let store {
+                        // Installed marks are the installer's; credits stay plain text.
+                        SkinStoreInstallerReader(installer: store.installer) { _ in
+                            CatalogSkinCard(
+                                entry: entry,
+                                family: family,
+                                glowIntensity: glowIntensity,
+                                isInstalled: store.isInstalled(family),
+                                onOpenCreator: { _ in },
+                                destination: { catalogDetailDestination(for: entry, family: family) }
+                            )
+                        }
+                    } else {
+                        let isInstalled = family.members.contains(where: isSkinInstalled)
+                        CatalogSkinCard(
+                            entry: entry,
+                            family: family,
+                            glowIntensity: glowIntensity,
+                            isInstalled: isInstalled,
+                            creators: (creatorIndex ?? .empty).credits(in: family),
+                            onOpenCreator: { profileCreator = $0 },
+                            destination: { catalogDetailDestination(for: entry, family: family) }
+                        )
+                    }
                 }
             }
             .padding()
 
-            SkinAchievementsCard()
-                .padding(.horizontal)
-                .padding(.bottom, 24)
+            if store == nil {
+                SkinAchievementsCard()
+                    .padding(.horizontal)
+                    .padding(.bottom, 24)
+            }
         }
         .scrollIndicators(.hidden)
+        .refreshable {
+            await refreshCatalog()
+        }
     }
 
     // MARK: - Follow shelf
@@ -644,9 +770,10 @@ public struct SkinCatalogBrowserView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 30)
 
-            if !searchText.isEmpty || selectedSystem != nil || selectedDevice != nil || followingOnly {
+            if !searchText.isEmpty || selectedSystem != nil || selectedDevice != nil || followingOnly || selectedCategory != nil {
                 Button {
                     searchText = ""
+                    selectedCategory = nil
                     selectedSystem = nil
                     selectedDevice = nil
                     selectedOrientation = nil
@@ -686,6 +813,10 @@ public struct SkinCatalogBrowserView: View {
     // MARK: - Data Loading
 
     private func loadCatalog() async {
+        if let store {
+            await loadStoreCatalog(store, forceRefresh: false)
+            return
+        }
         await MainActor.run {
             isLoading = true
             errorMessage = nil
@@ -710,7 +841,57 @@ public struct SkinCatalogBrowserView: View {
         }
     }
 
+    // MARK: - Store loading
+
+    /// A store paints whatever is cached first, then asks the network. When the download fails but
+    /// a catalog is on screen, it stays there and the banner says it is an old copy.
+    @MainActor
+    private func loadStoreCatalog(_ store: SkinCatalogStoreHost, forceRefresh: Bool) async {
+        errorMessage = nil
+        if storeListing == nil {
+            if let cached = await store.service.cachedCatalog() {
+                await applyStoreCatalog(cached, store: store)
+            } else {
+                isLoading = true
+            }
+        }
+        do {
+            let result = try await store.service.load(forceRefresh: forceRefresh)
+            await applyStoreCatalog(result.catalog, store: store)
+            offlineMessage = result.error.map(store.describeError) ?? result.networkError
+        } catch {
+            if storeListing != nil {
+                offlineMessage = store.describeError(error)
+            } else {
+                errorMessage = store.describeError(error)
+            }
+        }
+        isLoading = false
+    }
+
+    @MainActor
+    private func applyStoreCatalog(_ catalog: SkinCatalog, store: SkinCatalogStoreHost) async {
+        // Labels come from the whole catalog, so hiding entries never renames a variant; the
+        // installer records each install's family with the same labels.
+        let index = catalog.familyIndex
+        store.installer.familyIndex = index
+        familyIndex = index
+        let listing = SkinStoreListing(entries: catalog.skins, policy: store.policy, device: store.device)
+        storeListing = listing
+        if let selectedCategory, !listing.categories.contains(where: { $0.id == selectedCategory }) {
+            self.selectedCategory = nil
+        }
+        isLoading = false
+        await applyFilters()
+    }
+
     private func refreshCatalog() async {
+        if let store {
+            await MainActor.run { isRefreshing = true }
+            await loadStoreCatalog(store, forceRefresh: true)
+            await MainActor.run { isRefreshing = false }
+            return
+        }
         await MainActor.run { isRefreshing = true }
         do {
             _ = try await SkinCatalogService.shared.catalog(forceRefresh: true)
@@ -740,7 +921,26 @@ public struct SkinCatalogBrowserView: View {
         }
     }
 
+    /// The store's version of `applyFilters`: category, search and sort over the listing, grouped
+    /// into families whose members are all entries the store lists.
+    @MainActor
+    private func applyStoreFilters() {
+        guard let listing = storeListing, let index = familyIndex else { return }
+        let found = listing.entries(inSection: selectedCategory, matching: searchText)
+        let results = SkinCatalogService.sortEntries(found, by: sortOption)
+        // A family's other variants come along when they are on the same shelf.
+        let grouped = index.families(containing: results, in: listing.entries(inSection: selectedCategory))
+        withAnimation(.easeOut(duration: 0.2)) {
+            entries = results
+            families = grouped
+        }
+    }
+
     private func applyFilters() async {
+        if store != nil {
+            await applyStoreFilters()
+            return
+        }
         do {
             let device = selectedDevice
             let orientation = selectedOrientation

@@ -35,6 +35,10 @@ public struct SkinCatalogDetailView: View {
     private let family: SkinFamily?
     /// The whole catalog's family index, so installs store the label the store showed.
     private let familyIndex: SkinFamilyIndex?
+    /// The host's store, when the browser is scoped to one: installs go through its installer, and
+    /// the parts that read Provenance's skin library (activation, Send to RetroArch, creator
+    /// profiles) are not shown.
+    private let store: SkinCatalogStoreHost?
 
     // MARK: - State
 
@@ -86,12 +90,14 @@ public struct SkinCatalogDetailView: View {
         entry: SkinCatalogEntry,
         family: SkinFamily? = nil,
         familyIndex: SkinFamilyIndex? = nil,
+        store: SkinCatalogStoreHost? = nil,
         activationContextSystemIdentifier: DeltaSkinSystem? = nil,
         activationContextGameId: String? = nil
     ) {
         self.entry = entry
         self.family = family
         self.familyIndex = familyIndex
+        self.store = store
         let modelFamily = family ?? SkinFamily(id: "entry:\(entry.id)", groupId: nil, name: entry.name, members: [entry], labels: [:])
         _familyModel = StateObject(wrappedValue: SkinFamilyInstallModel(family: modelFamily, familyIndex: familyIndex))
         self.activationContextSystemIdentifier = activationContextSystemIdentifier
@@ -111,8 +117,8 @@ public struct SkinCatalogDetailView: View {
                     metadataSection
                     descriptionSection
                     statsSection
-                    actionSection
-                    familySection
+                    installSection
+                    variantsSection
                     systemTagsSection
                     if !entry.tags.isEmpty {
                         tagsSection(entry.tags)
@@ -134,18 +140,19 @@ public struct SkinCatalogDetailView: View {
             }
             // Check if this skin is already installed locally so the
             // action section shows "INSTALLED" instead of "DOWNLOAD".
-            Task { await checkIfAlreadyInstalled() }
+            // A store's installer already knows; it never scans Provenance's library.
+            if store == nil { Task { await checkIfAlreadyInstalled() } }
         }
         .onChange(of: skinManager.skinsAreLoaded) { _, loaded in
             // Re-check once skins finish loading (scan may complete after
             // onAppear if it was triggered lazily).
-            if loaded { Task { await checkIfAlreadyInstalled() } }
+            if loaded, store == nil { Task { await checkIfAlreadyInstalled() } }
         }
         .onChange(of: skinManager.loadedSkins.count) { _, _ in
             // Re-check after subsequent imports or rescans so the
             // installed state stays accurate even when skinsAreLoaded
             // was already true.
-            Task { await checkIfAlreadyInstalled() }
+            if store == nil { Task { await checkIfAlreadyInstalled() } }
         }
         .onDisappear {
             downloadTask?.cancel()
@@ -157,12 +164,14 @@ public struct SkinCatalogDetailView: View {
             activationContextGameId: activationContextGameId
         )
         .task {
+            // Creator profiles install into Provenance's library, so a store keeps plain credits.
+            guard store == nil else { return }
             creatorIndex = try? await SkinCreatorDirectory.shared.index()
         }
         #if !os(tvOS)
         // Offer Send to RetroArch once the skin is installed (also right after the download finishes).
         .task(id: downloadState) {
-            guard downloadState == .installed else { retroArchCandidate = nil; return }
+            guard store == nil, downloadState == .installed else { retroArchCandidate = nil; return }
             let skins = (try? await skinManager.availableSkins()) ?? []
             if let skin = matchingInstalledSkin(for: entry, in: skins), RetroArchSendAvailability.isSupported(skin: skin) {
                 retroArchCandidate = RetroArchSendItem(skin: skin)
@@ -172,6 +181,56 @@ public struct SkinCatalogDetailView: View {
         }
         .retroArchSendSheet(item: $retroArchPresented)
         #endif
+    }
+
+    // MARK: - Store or library
+
+    /// Download & Install: the store's installer when a host scopes the browser, else Provenance's
+    /// own download into `DeltaSkinManager`.
+    @ViewBuilder
+    private var installSection: some View {
+        #if os(tvOS)
+        actionSection
+        #else
+        if let store {
+            SkinStoreDetailActionSection(entry: entry, store: store, installer: store.installer)
+        } else {
+            actionSection
+        }
+        #endif
+    }
+
+    @ViewBuilder
+    private var variantsSection: some View {
+        #if os(tvOS)
+        familySection
+        #else
+        if let store {
+            let shown = family ?? familyModel.family
+            if shown.isMultiFile || entry.hasPackedVariants {
+                SkinStoreVariantsSection(
+                    family: shown,
+                    current: entry,
+                    store: store,
+                    installer: store.installer,
+                    destination: memberDestination
+                )
+            }
+        } else {
+            familySection
+        }
+        #endif
+    }
+
+    private func memberDestination(_ member: SkinCatalogEntry) -> AnyView {
+        AnyView(SkinCatalogDetailView(
+            entry: member,
+            family: family,
+            familyIndex: familyIndex,
+            store: store,
+            activationContextSystemIdentifier: activationContextSystemIdentifier,
+            activationContextGameId: activationContextGameId
+        ))
     }
 
     // MARK: - Family Section
@@ -185,15 +244,7 @@ public struct SkinCatalogDetailView: View {
                 family: shown,
                 current: entry,
                 model: familyModel,
-                destination: { member in
-                    AnyView(SkinCatalogDetailView(
-                        entry: member,
-                        family: family,
-                        familyIndex: familyIndex,
-                        activationContextSystemIdentifier: activationContextSystemIdentifier,
-                        activationContextGameId: activationContextGameId
-                    ))
-                }
+                destination: memberDestination
             )
         }
     }
@@ -311,7 +362,7 @@ public struct SkinCatalogDetailView: View {
     /// Follow / Following for the entry's creator (follow creators spec §3), on the credit row.
     @ViewBuilder
     private var followButton: some View {
-        if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
+        if store == nil, let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
             SkinCreatorFollowButton(slug: creator.slug, displayName: creator.displayName)
                 .padding(.leading, 6)
         }
@@ -325,7 +376,7 @@ public struct SkinCatalogDetailView: View {
         let label = Text("by \(entry.author ?? "Unknown")")
             .font(.system(size: 14))
             .foregroundColor(.white.opacity(0.7))
-        if let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
+        if store == nil, let creator = (creatorIndex ?? SkinCreatorIndex.empty).creator(for: entry) {
             Button {
                 profileCreator = SkinCreatorCredit(creator: creator, entry: entry)
             } label: {
