@@ -8,7 +8,7 @@
 import Foundation
 
 /// The two families of artwork The Bezel Project publishes. Both use the same file names.
-public enum BezelProjectStyle: String, Codable, Equatable, Hashable, CaseIterable, Sendable {
+@frozen public enum BezelProjectStyle: String, Codable, Equatable, Hashable, CaseIterable, Sendable {
     /// Artwork themed on the game.
     case gameArt
     /// Artwork themed on the system.
@@ -72,7 +72,7 @@ public struct BezelProjectRepository: Equatable, Hashable, Sendable {
 /// The artwork of one repository, from GitHub's tree listing.
 public struct BezelProjectListing: Codable, Equatable, Sendable {
 
-    public enum Kind: String, Codable, Sendable {
+    @frozen public enum Kind: String, Codable, Sendable {
         /// The system's own bezel, at the top of the artwork folder.
         case system
         /// A game's bezel, named after the ROM.
@@ -161,7 +161,7 @@ public struct BezelProjectListing: Codable, Equatable, Sendable {
 }
 
 /// GitHub's answer when requests without an account run out (60 an hour per address).
-public enum BezelProjectRateLimit {
+@frozen public enum BezelProjectRateLimit {
     static let remainingHeader = "x-ratelimit-remaining"
     static let resetHeader = "x-ratelimit-reset"
 

@@ -6,7 +6,7 @@ import SwiftUI
 import UIKit
 
 /// A touch phase for the MultiTouchView
-public enum MultiTouchPhase {
+@frozen public enum MultiTouchPhase {
     case began
     case moved
     case ended

@@ -17,7 +17,7 @@ import Foundation
 ///
 /// A preset is named by an id of the form `slang:<path in the libretro slang library, without
 /// extension>`. That is also the id a shader-only TV is stored under, so it never changes.
-public enum TVBezelShader {
+@frozen public enum TVBezelShader {
     /// What every preset id starts with.
     public static let slangPrefix = "slang:"
 

@@ -35,7 +35,7 @@ public final class SkinCatalogInstallTracker: ObservableObject {
 }
 
 /// Why a catalog install didn't run.
-public enum SkinCatalogInstallError: Error, Equatable, LocalizedError {
+@frozen public enum SkinCatalogInstallError: Error, Equatable, LocalizedError {
     /// Another install of the same entry was already in flight; this one was skipped.
     case alreadyInProgress(entryId: String)
 

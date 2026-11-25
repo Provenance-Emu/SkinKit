@@ -3,7 +3,7 @@ import Foundation
 /// Capability names: what the app and the running game can supply right now (a memory-unit picture, a wired
 /// semantic input). The registry is closed, so a skin cannot invent one; the validator rejects other names.
 /// Capabilities reach a skin through `Skin2Environment.capabilities` and the `has` condition.
-public enum Skin2Capabilities {
+@frozen public enum Skin2Capabilities {
     static let picturePrefix = "picture."
     static let inputPrefix = "input."
 

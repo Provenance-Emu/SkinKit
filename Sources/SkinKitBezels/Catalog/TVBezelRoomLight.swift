@@ -11,7 +11,7 @@ import Metal
 #endif
 
 /// The room-light setting, which goes by the device until the player sets it.
-public enum TVBezelRoomLight {
+@frozen public enum TVBezelRoomLight {
 
     /// Apple GPU family 7 and later (A14, M1). The room-light preset runs its ambient passes at
     /// the tube's size and costs several times the plain preset.

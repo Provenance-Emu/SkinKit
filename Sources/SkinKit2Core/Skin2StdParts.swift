@@ -22,7 +22,7 @@ import Foundation
 ///
 /// Inner nodes carry ids (`body`, `cross`, `arrow`), so each instance needs an `id`; they are scoped to it
 /// (`a.body`). A skin may not define parts named `std.*`.
-public enum Skin2StdParts {
+@frozen public enum Skin2StdParts {
     public static let featureName = "parts.std@2.0"
     public static let prefix = "std."
     /// The feature a skin lists when it uses a part added in 2.1. A reader that lacks it draws the baked skin.

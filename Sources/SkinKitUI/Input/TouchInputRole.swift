@@ -9,7 +9,7 @@ import Foundation
 /// Copied from Provenance's `PVTouchOverlay`, together with ``SkinTouchSelection``, which the skin view
 /// needs. The token classifier (`TouchInputClassifier`) stays in the app and reaches the view through
 /// ``DeltaSkinInputHandling/touchRole(forToken:)``.
-public enum TouchInputRole: Sendable, Hashable {
+@frozen public enum TouchInputRole: Sendable, Hashable {
     case gameplay
     case system
 

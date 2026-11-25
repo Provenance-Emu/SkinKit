@@ -15,7 +15,7 @@ extension Skin2Resolution {
 }
 
 /// The layout part-way between two resolved layouts of one skin, for a host animating a change (a shelf opening).
-public enum Skin2LayoutBlend {
+@frozen public enum Skin2LayoutBlend {
     /// `progress` 0 is `from`, 1 is `to`. A node in both layouts moves and fades in a straight line between its two
     /// frames and opacities. A node in only one of them keeps its place inside its parent, rides along with it,
     /// and fades in or out. Hit frames are not blended: touches follow the layout the host has resolved.

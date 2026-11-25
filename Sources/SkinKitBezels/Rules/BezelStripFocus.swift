@@ -15,7 +15,7 @@ import Foundation
 /// it is sent to the selected TV. A move from one TV to the next selects.
 public struct BezelStripFocus: Equatable, Sendable {
 
-    public enum Action: Equatable, Sendable {
+    @frozen public enum Action: Equatable, Sendable {
         case none
         /// Put focus on the item with this id, and select nothing.
         case moveFocus(to: String)

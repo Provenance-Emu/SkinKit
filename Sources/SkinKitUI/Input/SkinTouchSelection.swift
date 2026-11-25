@@ -53,7 +53,7 @@ public struct SkinTouchResolution: Equatable, Sendable {
 }
 
 /// What to do with a touch that is already down when it reports a new location.
-public enum SkinTouchContinuation: Equatable, Sendable {
+@frozen public enum SkinTouchContinuation: Equatable, Sendable {
     /// The touch still holds what it held; change nothing.
     case keep
     /// The touch began on a system control and has left it: release what it holds and press nothing,
@@ -71,7 +71,7 @@ public enum SkinTouchContinuation: Equatable, Sendable {
 /// - Lockout: system controls (menu, save / load, fast-forward, screenshot, switches...) are pressed only
 ///   by a touch that begins on them, are never added by multi-button touch, and a touch that began on one
 ///   is latched to it.
-public enum SkinTouchSelection {
+@frozen public enum SkinTouchSelection {
     /// Closest wins; a d-pad beats a regular button unless the button is less than half as far away.
     public static func sortedByPreference(_ candidates: [SkinTouchCandidate]) -> [SkinTouchCandidate] {
         candidates.sorted { first, second in

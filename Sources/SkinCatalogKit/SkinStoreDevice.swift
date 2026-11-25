@@ -4,7 +4,7 @@ import Foundation
 #endif
 
 /// Device classes the skin store filters by.
-public enum SkinStoreDevice: Sendable {
+@frozen public enum SkinStoreDevice: Sendable {
     case iPhone
     case iPad
 
@@ -59,7 +59,7 @@ public extension SkinStorePolicy {
 
 
 /// A layout orientation advertised by the catalog.
-public enum SkinCatalogOrientation: String, CaseIterable, Sendable {
+@frozen public enum SkinCatalogOrientation: String, CaseIterable, Sendable {
     case portrait
     case landscape
 }

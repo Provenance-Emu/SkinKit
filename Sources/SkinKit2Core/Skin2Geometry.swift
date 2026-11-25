@@ -72,7 +72,7 @@ public struct Skin2Rect: Equatable, Hashable, Sendable {
     public var array: [Double] { [x, y, width, height] }
 }
 
-public enum Skin2Rounding {
+@frozen public enum Skin2Rounding {
     /// Half-point rounding, ties toward +infinity: the same in Swift (`floor`) and JavaScript (`Math.floor`).
     /// Negative zero becomes zero so encoded JSON never says `-0`.
     public static func halfPoint(_ v: Double) -> Double {

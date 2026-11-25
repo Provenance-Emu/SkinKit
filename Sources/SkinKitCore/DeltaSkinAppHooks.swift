@@ -7,7 +7,7 @@ import Foundation
 ///
 /// Same storage key as Provenance's `DeltaSkinPreferences` used (`com.provenance.deltaskin.theme.<id>`),
 /// so a theme the user already picked keeps applying after Provenance moves to SkinKitCore.
-public enum DeltaSkinThemeSelection {
+@frozen public enum DeltaSkinThemeSelection {
     /// Key prefix; the skin identifier is appended.
     public static let keyPrefix = "com.provenance.deltaskin.theme."
 
@@ -51,7 +51,7 @@ public enum DeltaSkinThemeSelection {
 /// and depends on GameController and app settings. SkinKitCore has none of that, so the check is
 /// injected: the host app sets `matcher` once at launch. The default matches nothing, so
 /// `DeltaSkin.isCaseControllerSkin` then only reflects the `"caseController"` key in `info.json`.
-public enum DeltaSkinCompanionSkinDetection {
+@frozen public enum DeltaSkinCompanionSkinDetection {
     private static let lock = NSLock()
     private static var _matcher: @Sendable (String) -> Bool = { _ in false }
 

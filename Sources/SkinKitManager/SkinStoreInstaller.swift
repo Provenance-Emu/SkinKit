@@ -18,7 +18,7 @@ import SkinCatalogKit
 public final class SkinStoreInstaller: ObservableObject {
 
     /// What the install step did with a downloaded file.
-    public enum InstallResult: Sendable, Equatable {
+    @frozen public enum InstallResult: Sendable, Equatable {
         /// A new skin file was written; carries its identifier.
         case installed(identifier: String)
         /// A skin with the identifier this install would produce is already
@@ -40,7 +40,7 @@ public final class SkinStoreInstaller: ObservableObject {
     /// `InstalledSkin` (wrap it as `.installed(identifier: skin.id)`).
     public typealias InstallStep = @MainActor (_ file: URL, _ section: SkinStoreSection) async throws -> InstallResult
 
-    public enum InstallError: LocalizedError {
+    @frozen public enum InstallError: LocalizedError {
         /// The policy hides this entry (a `.zip`, an extensionless link).
         case notInstallable(String, app: String = "this app")
         /// The importer wrote the file but the skin loader rejected it, so it

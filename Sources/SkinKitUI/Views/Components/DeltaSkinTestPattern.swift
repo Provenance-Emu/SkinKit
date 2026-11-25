@@ -5,7 +5,7 @@ import SkinCatalogKit
 import SwiftUI
 
 /// Visual effects for test pattern display
-public enum TestPatternEffect: String, CaseIterable {
+@frozen public enum TestPatternEffect: String, CaseIterable {
     case lcd
     case scanlines
     case subpixel
@@ -17,7 +17,7 @@ extension SwiftUI.Color {
 }
 
 /// Test patterns for skin development and testing
-public enum DeltaSkinTestPattern: Int, CaseIterable {
+@frozen public enum DeltaSkinTestPattern: Int, CaseIterable {
     case smpte
     case ntsc75
     case ebu

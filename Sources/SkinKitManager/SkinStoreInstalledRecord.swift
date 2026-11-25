@@ -2,7 +2,7 @@ import Foundation
 import SkinCatalogKit
 
 /// UserDefaults keys owned by the skin store.
-public enum SkinStorePrefs {
+@frozen public enum SkinStorePrefs {
     /// `[catalog entry id: installed skin identifier]` for skins installed from
     /// the store, so the store can show "Installed" and notice a deleted skin.
     /// iFly's key; it is stored as a plist dictionary, not JSON.

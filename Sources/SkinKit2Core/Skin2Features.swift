@@ -2,7 +2,7 @@ import Foundation
 
 /// Feature names (section 1): the unit of detection. A skin lists what it uses in `requires`; a reader that lacks
 /// one renders the baked classic skin instead. The validator checks `requires` against the skin's content.
-public enum Skin2Features {
+@frozen public enum Skin2Features {
     public static let all: [String] = [
         "layout.anchors", "layout.stack", "layout.grid", "layout.repeat",
         "shapes.parametric", "shapes.path",
@@ -117,7 +117,7 @@ public enum Skin2Features {
 /// This is SkinKit's first such table: the catalog's health check had none. It is data, kept short, and lists
 /// the names the three apps' generated pads and classic Delta/Manic skins use. A game type the table doesn't know
 /// is reported as a warning and not checked.
-public enum Skin2Inputs {
+@frozen public enum Skin2Inputs {
     /// Inputs every game type accepts: directions, start/select, and app actions (which classic skins also put on
     /// buttons).
     public static let common: Set<String> = ["up", "down", "left", "right", "start", "select"]

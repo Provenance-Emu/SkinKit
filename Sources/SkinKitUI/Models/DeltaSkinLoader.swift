@@ -19,7 +19,7 @@ public final class DeltaSkinLoader: ObservableObject {
     @Published public var loadingError: Error?
 
     // Loading stages for better progress reporting
-    public enum LoadingStage: String, CaseIterable {
+    @frozen public enum LoadingStage: String, CaseIterable {
         case loading = "Loading skin..."
         case complete = "Complete"
 

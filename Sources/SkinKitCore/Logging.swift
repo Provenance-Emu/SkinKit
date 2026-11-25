@@ -2,7 +2,7 @@ import Foundation
 import os
 
 /// Severity of a message from SkinKitCore.
-public enum SkinKitCoreLogLevel: Sendable {
+@frozen public enum SkinKitCoreLogLevel: Sendable {
     case debug
     case info
     case warning
@@ -14,7 +14,7 @@ public enum SkinKitCoreLogLevel: Sendable {
 /// sets its own with `SkinKitCoreLog.logger`. The default writes to `os.Logger`.
 public typealias SkinKitCoreLogger = @Sendable (SkinKitCoreLogLevel, String) -> Void
 
-public enum SkinKitCoreLog {
+@frozen public enum SkinKitCoreLog {
     private static let osLogger = Logger(subsystem: "com.provenance-emu.SkinKit", category: "SkinKitCore")
     private static let lock = NSLock()
     private static var _logger: SkinKitCoreLogger = SkinKitCoreLog.osLog

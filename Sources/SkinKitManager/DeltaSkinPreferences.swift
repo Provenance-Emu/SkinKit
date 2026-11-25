@@ -3,7 +3,7 @@ import Foundation
 import SkinKitCore
 
 /// Orientation for skin selection
-public enum SkinOrientation: String, Codable, CaseIterable, Equatable, Hashable, Identifiable {
+@frozen public enum SkinOrientation: String, Codable, CaseIterable, Equatable, Hashable, Identifiable {
     case portrait
     case landscape
 

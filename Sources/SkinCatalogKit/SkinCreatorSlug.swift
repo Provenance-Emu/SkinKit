@@ -16,7 +16,7 @@ import Foundation
 ///     return slug[:50]
 ///
 /// Note the truncation happens after the strip, so a 50-character slug can end in `-`.
-public enum SkinCreatorSlug {
+@frozen public enum SkinCreatorSlug {
     /// Slugs are at most this many characters (creator profiles spec §1).
     public static let maxLength = 50
 

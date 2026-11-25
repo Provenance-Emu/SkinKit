@@ -13,7 +13,7 @@ import Foundation
 public struct RetroArchInputMap: Sendable {
 
     /// What the table says about one token.
-    public enum Lookup: Equatable, Sendable {
+    @frozen public enum Lookup: Equatable, Sendable {
         /// RetroArch bind id(s) are `bind`, e.g. `"a"`, `"menu_toggle"`, `"analog_left"`.
         case bind(String)
         /// A known token that RetroArch cannot bind (`null` in the file), e.g. DS `touchScreen`.
@@ -49,7 +49,7 @@ public struct RetroArchInputMap: Sendable {
     /// Last component of a `gameTypeIdentifier` to system key.
     public let gameTypeSuffixes: [String: String]
 
-    public enum LoadError: Error, Equatable {
+    @frozen public enum LoadError: Error, Equatable {
         case missingResource
         case invalidJSON
     }

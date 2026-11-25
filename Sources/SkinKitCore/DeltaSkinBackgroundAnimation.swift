@@ -1,7 +1,7 @@
 import Foundation
 
 /// Type of background animation embedded in a skin
-public enum DeltaSkinBackgroundAnimationType: String, Codable {
+@frozen public enum DeltaSkinBackgroundAnimationType: String, Codable {
     case frames
     case apng
     case gif

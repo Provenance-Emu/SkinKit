@@ -8,8 +8,8 @@ import Foundation
 /// (`Skin2Capabilities.input`). Momentary inputs arrive at the app's sink as a press and a release under the
 /// dotted name. Two-position switches are reserved here and not built yet: they need a control whose drawn
 /// position comes from the app.
-public enum Skin2SemanticInputs {
-    public enum Kind: Sendable { case momentary, twoPosition }
+@frozen public enum Skin2SemanticInputs {
+    @frozen public enum Kind: Sendable { case momentary, twoPosition }
 
     public struct Entry: Sendable {
         public let name: String

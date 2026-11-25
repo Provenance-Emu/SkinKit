@@ -1,7 +1,7 @@
 import Foundation
 
 /// A canvas edge, the one variable a length may read (`{"safe": "left"}`).
-public enum Skin2Edge: String, Codable, Sendable, CaseIterable {
+@frozen public enum Skin2Edge: String, Codable, Sendable, CaseIterable {
     case top, left, bottom, right
 }
 
@@ -14,7 +14,7 @@ public enum Skin2Edge: String, Codable, Sendable, CaseIterable {
 /// | `{"pt": 8}`, `{"frac": 0.5}` | the same, explicit; part parameters of type `length` must use these |
 /// | `{"max": [L, L]}`, `{"min": …}`, `{"sum": …}` | the only operators, nested at most 4 deep |
 /// | `{"safe": "left"}` | the safe-area inset on that edge, in canvas points (not scaled); `offset`/`inset` only |
-public indirect enum Skin2Length: Equatable, Hashable, Sendable {
+@frozen public indirect enum Skin2Length: Equatable, Hashable, Sendable {
     case pt(Double)
     case frac(Double)
     case max([Skin2Length])

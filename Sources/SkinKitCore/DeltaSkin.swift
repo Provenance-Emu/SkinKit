@@ -567,7 +567,7 @@ public struct DeltaSkin: DeltaSkinProtocol {
     }
 
     /// Display types for different device modes
-    public enum DisplayType: String, Codable {
+    @frozen public enum DisplayType: String, Codable {
         case standard
         case edgeToEdge
         case splitView
@@ -896,7 +896,7 @@ public struct DeltaSkin: DeltaSkinProtocol {
     }
 
     /// Represents different types of input configurations
-    public enum InputType: Codable {
+    @frozen public enum InputType: Codable {
         case single([String])          // ["a"]
         case directional([String: String])  // {"up": "up", "down": "down"}
 
@@ -1202,7 +1202,7 @@ private struct StringCodingKey: CodingKey {
 }
 
 // MARK: - Error Types
-public enum DeltaSkinError: Error {
+@frozen public enum DeltaSkinError: Error {
     case invalidArchive
     case missingInfoFile
     case invalidInfoFile
@@ -1319,7 +1319,7 @@ func sanitizeJSON(_ data: Data) throws -> Data {
 }
 
 /// Asset size options for Delta skins
-public enum DeltaSkinAssetSize: String {
+@frozen public enum DeltaSkinAssetSize: String {
     case small
     case medium
     case large

@@ -8,7 +8,7 @@
 import Foundation
 import SkinKit2Core
 
-public enum SkinKit2Render {
+@frozen public enum SkinKit2Render {
     /// Bumped when the module's public API changes.
     public static let version = "0.1.0"
 

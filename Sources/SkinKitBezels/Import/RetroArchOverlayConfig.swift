@@ -14,7 +14,7 @@ import Foundation
 /// layout, which is not a bezel.
 public struct RetroArchOverlayConfig: Equatable, Sendable {
 
-    public enum ParseError: Error, Equatable {
+    @frozen public enum ParseError: Error, Equatable {
         /// The overlay has buttons (`overlay0_descs`): it is a touch-control layout.
         case touchControls(buttons: Int)
         /// No `overlay0_overlay`: the file names no image.

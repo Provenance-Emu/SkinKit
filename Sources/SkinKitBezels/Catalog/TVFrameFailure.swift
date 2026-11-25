@@ -14,9 +14,9 @@ import Metal
 /// A TV runs a multi-pass shader over the whole scene, the heaviest thing the app draws. A
 /// GPU that cannot finish it in time hangs; after two GPU restarts iOS refuses every frame
 /// the app submits until it is relaunched, and a new command queue is refused too.
-public enum TVFrameFailure {
+@frozen public enum TVFrameFailure {
 
-    public enum Action: Equatable, Sendable {
+    @frozen public enum Action: Equatable, Sendable {
         /// The frame took too long or faulted: stop drawing the TV and show the picture alone.
         case dropTV
         /// iOS has cut the app off from the GPU. Nothing can be drawn until it is reopened.

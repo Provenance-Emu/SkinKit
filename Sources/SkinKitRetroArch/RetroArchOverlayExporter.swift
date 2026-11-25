@@ -29,7 +29,7 @@ public struct RetroArchImageRequest: Sendable {
     public let innerHeight: Double?
 }
 
-public enum RetroArchExportError: Error, Equatable {
+@frozen public enum RetroArchExportError: Error, Equatable {
     /// The skin has no layout the converter can use; `notes` says why.
     case nothingToConvert(notes: [String])
     /// The skin file or folder could not be read.
@@ -45,7 +45,7 @@ public enum RetroArchExportError: Error, Equatable {
 /// The module draws nothing itself. PDF, SVG and PNG rendering lives in the apps (SkinKitUI has it), so the caller
 /// passes a closure that turns a request (artwork bytes, a pixel size, areas to clear) into PNG data. That keeps this
 /// module free of UIKit and testable on the macOS host.
-public enum RetroArchOverlayExporter {
+@frozen public enum RetroArchOverlayExporter {
 
     public struct Export {
         /// The finished `<name>/` folder.

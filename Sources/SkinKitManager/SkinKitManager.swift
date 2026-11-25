@@ -20,7 +20,7 @@
 // Not here, for SkinKitUI (#5): `DeltaSkinLoader` (a SwiftUI view model), skin preview-image
 // caching, and anything that needs `UIImage`.
 
-public enum SkinKitManager {
+@frozen public enum SkinKitManager {
     /// Bumped when the module's public API changes.
     public static let version = "0.1.0"
 }

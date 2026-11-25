@@ -21,7 +21,7 @@ public struct BezelPreview: Equatable, Sendable {
 }
 
 /// Applies `ExternalDisplayBezelRules` to the catalogue and the stored choices.
-public enum BezelChoice {
+@frozen public enum BezelChoice {
 
     /// What the rules decide for a game, and the TV to show (`nil` for the picture alone): the
     /// switcher's preview first, then the game's pin, artwork found for the game, and the

@@ -200,7 +200,7 @@ struct SkinKitInsetPillBackground: View {
 }
 
 /// Debug flags for the skin touch view.
-public enum DeltaSkinInputDiagnostics {
+@frozen public enum DeltaSkinInputDiagnostics {
     /// Set once the first multi-touch after a resume has been logged. The app resets it on resume
     /// (Provenance: `InputDiagnostics.hasLoggedMultiTouch`).
     public static var hasLoggedMultiTouch = false

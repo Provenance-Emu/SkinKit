@@ -248,7 +248,7 @@ public extension SkinCatalog {
 /// Items sharing a `groupId` form one group; items without one are groups of one. Groups come out
 /// in the order of their first item; items within a group by `groupOrder` ascending, items without
 /// one after those, ties in input order.
-public enum SkinFamilyGrouping {
+@frozen public enum SkinFamilyGrouping {
     public static func group<Item>(
         _ items: [Item],
         groupId: (Item) -> String?,

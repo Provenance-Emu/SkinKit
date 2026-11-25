@@ -3,7 +3,7 @@ import Foundation
 import SkinCatalogKit
 
 /// Sorting options for skin catalog queries.
-public enum SkinSortOption: String, CaseIterable, Sendable {
+@frozen public enum SkinSortOption: String, CaseIterable, Sendable {
     /// Sort by download count (descending)
     case popular
     /// Sort by `effectiveDate`, last updated or else added to the catalog (most recent first)

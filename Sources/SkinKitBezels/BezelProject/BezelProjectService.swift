@@ -74,7 +74,7 @@ public actor BezelProjectService {
 
     public static let shared = BezelProjectService()
 
-    public enum ServiceError: Error, Equatable {
+    @frozen public enum ServiceError: Error, Equatable {
         /// GitHub's hourly limit is used up until this time.
         case rateLimited(until: Date)
         /// GitHub answered with this status.

@@ -192,7 +192,7 @@ public struct SkinCreatorLink: Decodable, Sendable, Hashable {
 /// fixed table and a creator cannot dress an arbitrary URL up as a Discord icon.
 public struct SkinCreatorSocial: Sendable, Hashable, Identifiable {
     /// The fixed key set from creator profiles spec §1. Raw values are the JSON keys.
-    public enum Platform: String, CaseIterable, Sendable, Hashable {
+    @frozen public enum Platform: String, CaseIterable, Sendable, Hashable {
         case github, discord, x, bluesky, mastodon, instagram, youtube, twitch, tiktok
         case kofi, patreon, buymeacoffee, deltastyles, reddit
 

@@ -2,7 +2,7 @@ import CoreGraphics
 import Foundation
 
 /// Represents a button input type
-public enum DeltaSkinInput: Codable, Equatable {
+@frozen public enum DeltaSkinInput: Codable, Equatable {
     case single(String)
     case directional([String: String])
 
@@ -40,7 +40,7 @@ public enum DeltaSkinInput: Codable, Equatable {
 /// Classifies the visual and interaction style of a skin button.
 /// Public so the renderer and input handling (outside this module) can read it; not
 /// serialized to JSON.
-public enum DeltaSkinButtonKind: String, Equatable {
+@frozen public enum DeltaSkinButtonKind: String, Equatable {
     /// Standard push/action button (default).
     case normal
     /// A physical two-position hardware toggle switch (e.g. Atari difficulty switch).
@@ -222,7 +222,7 @@ public struct DeltaSkinButtonAnimated: Codable, Equatable {
 }
 
 /// Animation curve for switch button transitions (Manic-style spring animations)
-public enum DeltaSkinSwitchAnimationCurve: String, Codable, Equatable {
+@frozen public enum DeltaSkinSwitchAnimationCurve: String, Codable, Equatable {
     case linear
     case easeIn
     case easeOut

@@ -82,7 +82,7 @@ public extension DeltaSkin {
 }
 
 /// Why an `info.json` was refused under `DeltaSkin.DecodingOptions` (the default decoding throws `DecodingError`).
-public enum DeltaSkinInfoError: Error, Equatable {
+@frozen public enum DeltaSkinInfoError: Error, Equatable {
     /// `dropsInvalidElements` left the skin with no representation.
     case noUsableRepresentation
     /// `canonicalGameTypes` refused the `gameTypeIdentifier` (carries it as written).

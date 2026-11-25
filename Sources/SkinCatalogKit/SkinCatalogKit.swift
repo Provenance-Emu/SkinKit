@@ -8,7 +8,7 @@
 // Not here: the installer, installed-record and install-state types. They need the skin library and
 // belong to SkinKitManager.
 
-public enum SkinCatalogKit {
+@frozen public enum SkinCatalogKit {
     /// Bumped when the module's public API changes.
     public static let version = "0.1.0"
 }

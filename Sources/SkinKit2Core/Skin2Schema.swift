@@ -8,7 +8,7 @@ import Foundation
 /// or `@param` reference, and a node may be a part instance (`use`). What it can't say (the referenced token
 /// exists, `maxScale ≥ minScale`, ids are unique, `requires` matches the content) the validator checks.
 /// Unknown keys are allowed everywhere, as readers ignore them.
-public enum Skin2Schema {
+@frozen public enum Skin2Schema {
     public static let id = "https://emuskins.com/schema/skin-2.0.schema.json"
 
     /// Every keyword the schema uses. The tests' validator implements exactly these.

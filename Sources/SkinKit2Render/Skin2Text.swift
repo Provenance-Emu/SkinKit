@@ -9,7 +9,7 @@ import SkinKit2Core
 ///
 /// The default face is Outfit (SIL OFL 1.1), bundled as `Resources/Fonts/Outfit-Regular.ttf` and `-Bold.ttf`; the
 /// skins repo ships the same files. `regular` and `medium` use Regular, `semibold` and `bold` use Bold.
-public enum Skin2Text {
+@frozen public enum Skin2Text {
     /// The outline of `text` laid out in `frame`: one line, vertically centred on the font's ascent and descent,
     /// aligned by `align`. `size` is in canvas points. With `fit`, the size shrinks (to 60 % at most) until the
     /// line fits the frame's width.

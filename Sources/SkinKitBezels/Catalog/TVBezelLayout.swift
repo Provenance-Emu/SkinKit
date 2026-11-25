@@ -16,7 +16,7 @@ import Foundation
 /// bezel goes above it (its screen is see-through).
 public struct TVBezelLayout: Equatable, Sendable {
 
-    public enum Placement: Equatable, Sendable {
+    @frozen public enum Placement: Equatable, Sendable {
         case behindPicture
         case abovePicture
     }
@@ -81,7 +81,7 @@ public struct TVBezelLayout: Equatable, Sendable {
 }
 
 /// A TV as one plain image, for apps that draw it without a shader.
-public enum TVBezelPlainArtwork {
+@frozen public enum TVBezelPlainArtwork {
 
     /// The tube's corner radius as a fraction of its width, when drawn plainly.
     static let tubeCornerFraction: CGFloat = 0.012

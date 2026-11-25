@@ -10,7 +10,7 @@ import SkinKit2Core
 ///
 /// A group that holds a boundary screen is drawn in both parts with its own opacity, blend and effects applied to
 /// each, which matches one draw exactly unless that group has such an effect over overlapping halves.
-public enum Skin2DrawPart: Equatable, Sendable {
+@frozen public enum Skin2DrawPart: Equatable, Sendable {
     case all
     /// Everything before the screen at this pointer.
     case upTo(screen: String)
@@ -68,7 +68,7 @@ public struct Skin2RenderOptions {
 /// Shadows, inner shadows and blur rasterise the node to a bitmap at the context's pixel scale and use a Gaussian
 /// with σ = radius / 2 (Accelerate), so the kernel is known to the TypeScript port. Group opacity and blend use a
 /// transparency layer.
-public enum Skin2Renderer {
+@frozen public enum Skin2Renderer {
     /// Draws `resolution` into `ctx`, whose user space is canvas points with a top-left origin and y down.
     public static func draw(_ resolution: Skin2Resolution, in ctx: CGContext, options: Skin2RenderOptions = .init()) {
         var painter = Painter(resolution: resolution, options: options, vectorContext: options.effectScale == nil ? nil : ctx)

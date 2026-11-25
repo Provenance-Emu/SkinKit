@@ -9,7 +9,7 @@ import CoreGraphics
 
 /// Where the player sits in front of a built-in TV. A closer seat draws less of the room, so
 /// everything in it is larger.
-public enum TVBezelSeat: String, CaseIterable, Sendable {
+@frozen public enum TVBezelSeat: String, CaseIterable, Sendable {
     case back
     case middle
     case front
@@ -27,7 +27,7 @@ public enum TVBezelSeat: String, CaseIterable, Sendable {
 
 /// The canvas for a display. A TV's document is resolved on it, so the room has the
 /// display's proportions and nothing is cropped or barred.
-public enum TVBezelCanvas {
+@frozen public enum TVBezelCanvas {
     /// The narrowest and widest canvas (width over height) the built-in TVs lay out for:
     /// 4:3 keeps the widest tube and cabinet on the canvas, 2.4:1 is as far as the wall
     /// details reach.

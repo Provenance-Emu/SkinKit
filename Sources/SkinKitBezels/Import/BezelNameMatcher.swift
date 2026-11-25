@@ -12,7 +12,7 @@ import Foundation
 /// Artwork packs name each image after the ROM (`ActRaiser (USA).png`). A match is the same
 /// name, or the same title with the closest set of tags. There is no fuzzy matching: wrong
 /// artwork is worse than none.
-public enum BezelNameMatcher {
+@frozen public enum BezelNameMatcher {
 
     /// A name split into its title and its tags, both folded for comparison.
     struct Parsed: Equatable {

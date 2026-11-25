@@ -86,8 +86,8 @@ public struct Skin2Stop: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2PaintType: String, Codable, Sendable, CaseIterable { case solid, linear, radial, angular, image }
-public enum Skin2ImageMode: String, Codable, Sendable, CaseIterable { case fit, fill, stretch, tile }
+@frozen public enum Skin2PaintType: String, Codable, Sendable, CaseIterable { case solid, linear, radial, angular, image }
+@frozen public enum Skin2ImageMode: String, Codable, Sendable, CaseIterable { case fit, fill, stretch, tile }
 
 /// A fill (5.1). Fields beyond `type` depend on it; the decoder requires the ones each type needs.
 public struct Skin2Paint: Equatable, Hashable, Sendable, Decodable {
@@ -146,9 +146,9 @@ public struct Skin2Paint: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2StrokeAlign: String, Codable, Sendable, CaseIterable { case center, inner, outer }
-public enum Skin2LineCap: String, Codable, Sendable, CaseIterable { case butt, round, square }
-public enum Skin2LineJoin: String, Codable, Sendable, CaseIterable { case miter, round, bevel }
+@frozen public enum Skin2StrokeAlign: String, Codable, Sendable, CaseIterable { case center, inner, outer }
+@frozen public enum Skin2LineCap: String, Codable, Sendable, CaseIterable { case butt, round, square }
+@frozen public enum Skin2LineJoin: String, Codable, Sendable, CaseIterable { case miter, round, bevel }
 
 /// A stroke (5.2). Inner and outer strokes are a double-width stroke clipped to, or out of, the path.
 public struct Skin2Stroke: Equatable, Hashable, Sendable, Decodable {
@@ -174,8 +174,8 @@ public struct Skin2Stroke: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2EffectType: String, Codable, Sendable, CaseIterable { case shadow, blur, blend, ci }
-public enum Skin2BlendMode: String, Codable, Sendable, CaseIterable { case normal, multiply, screen, overlay, softLight, plus }
+@frozen public enum Skin2EffectType: String, Codable, Sendable, CaseIterable { case shadow, blur, blend, ci }
+@frozen public enum Skin2BlendMode: String, Codable, Sendable, CaseIterable { case normal, multiply, screen, overlay, softLight, plus }
 
 /// An effect (5.3). Order: every shadow (listed order, under the content), the content, blur, then blend.
 public struct Skin2Effect: Equatable, Hashable, Sendable, Decodable {
@@ -217,7 +217,7 @@ public struct Skin2Effect: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2MaterialName: String, Codable, Sendable, CaseIterable { case gloss, brushedMetal, plasticGrain, crt }
+@frozen public enum Skin2MaterialName: String, Codable, Sendable, CaseIterable { case gloss, brushedMetal, plasticGrain, crt }
 
 /// A named material (5.4), applied after fills and before strokes.
 public struct Skin2Material: Equatable, Hashable, Sendable, Decodable {
@@ -235,7 +235,7 @@ public struct Skin2Material: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2FontWeight: String, Codable, Sendable, CaseIterable { case regular, medium, semibold, bold }
+@frozen public enum Skin2FontWeight: String, Codable, Sendable, CaseIterable { case regular, medium, semibold, bold }
 
 public struct Skin2Font: Equatable, Hashable, Sendable, Decodable {
     /// A font file name in `assets/fonts/`, or nil for the renderer's bundled default.
@@ -254,7 +254,7 @@ public struct Skin2Font: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2ShapeKind: String, Codable, Sendable, CaseIterable {
+@frozen public enum Skin2ShapeKind: String, Codable, Sendable, CaseIterable {
     case rect, squircle, ellipse, capsule, polygon, star, arc, line, cross, kidney, trapezoid, path
 }
 
