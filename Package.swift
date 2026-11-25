@@ -164,6 +164,8 @@ let package = Package(
         .iOS(.v17),
         .tvOS(.v17),
         .macOS(.v14),
+        // Its own slice in the released XCFrameworks: a Catalyst app cannot link the macOS one.
+        .macCatalyst(.v17),
     ],
     products: buildFromSource ? sourceProducts : binaryProducts,
     dependencies: [
