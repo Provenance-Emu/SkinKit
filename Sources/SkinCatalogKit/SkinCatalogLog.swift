@@ -1,7 +1,7 @@
 import Foundation
 import os
 
-public enum SkinCatalogLogLevel: Sendable {
+@frozen public enum SkinCatalogLogLevel: Sendable {
     case info
     case warning
 }
@@ -10,7 +10,7 @@ public enum SkinCatalogLogLevel: Sendable {
 /// `NSLog`; each app injects its own, and the default writes to `os.Logger`.
 public typealias SkinCatalogLogger = @Sendable (SkinCatalogLogLevel, String) -> Void
 
-public enum SkinCatalogLog {
+@frozen public enum SkinCatalogLog {
     private static let osLogger = Logger(subsystem: "com.provenance-emu.SkinKit", category: "SkinCatalog")
     private static let lock = NSLock()
     private static var _logger: SkinCatalogLogger = SkinCatalogLog.osLog

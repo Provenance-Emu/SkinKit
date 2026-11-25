@@ -15,7 +15,7 @@ import Foundation
 /// Used when `maintainAspectRatio` is `true` so the emulator viewport preserves
 /// the correct pixel-aspect ratio for each platform.  Systems that aren't listed
 /// here are assumed to run at a standard 4:3 ratio.
-public enum DeltaSkinNativeResolution {
+@frozen public enum DeltaSkinNativeResolution {
 
     // MARK: - Registry (data-driven)
 
@@ -282,7 +282,7 @@ extension DeltaSkinScreen {
     }
 }
 
-public enum DeltaSkinScreenPlacement: String, Codable {
+@frozen public enum DeltaSkinScreenPlacement: String, Codable {
     case controller // Screen is part of the controller layout
     case app       // Screen is positioned by the app
 }

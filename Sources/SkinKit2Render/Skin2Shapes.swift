@@ -8,7 +8,7 @@ import SkinKit2Core
 /// down). Polygons and stars start with a vertex along +x (0°) before `rotation`, as the spike did, so a triangle
 /// with `rotation: -90` points up. Lengths (`cornerRadius`) resolve with `%` against the frame's short side.
 /// Ellipses and arcs use Core Graphics' four-cubic circle.
-public enum Skin2Shapes {
+@frozen public enum Skin2Shapes {
     /// The outline of `shape` in `rect`. `unit` scales point lengths.
     public static func path(for shape: Skin2Shape, in rect: CGRect, unit: Double) -> CGPath {
         let short = Double(min(rect.width, rect.height))

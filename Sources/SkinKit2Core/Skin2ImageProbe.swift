@@ -3,7 +3,7 @@ import Foundation
 /// Reads an image's pixel size from its header, without decoding it or any image framework, so the validator's
 /// image limits (section 11) run the same on every platform. PNG, JPEG and GIF; PDF and SVG are vectors with no
 /// pixel size.
-public enum Skin2ImageProbe {
+@frozen public enum Skin2ImageProbe {
     public struct PixelSize: Equatable, Sendable {
         public var width: Int
         public var height: Int

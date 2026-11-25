@@ -1,7 +1,7 @@
 import Foundation
 
-public enum Skin2TokenType: String, Codable, Sendable, CaseIterable { case color, length, number, string }
-public enum Skin2ParamType: String, Codable, Sendable, CaseIterable { case string, number, length, color, shape, paint }
+@frozen public enum Skin2TokenType: String, Codable, Sendable, CaseIterable { case color, length, number, string }
+@frozen public enum Skin2ParamType: String, Codable, Sendable, CaseIterable { case string, number, length, color, shape, paint }
 
 /// A token's type and value. Length values are stored in their explicit form (`{"pt": 8}`), so a length token can
 /// fill a part parameter of type `length`.

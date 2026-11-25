@@ -1,6 +1,6 @@
 import Foundation
 
-public enum Skin2PanelPresentation: String, Codable, Sendable, CaseIterable { case fixed, shelf }
+@frozen public enum Skin2PanelPresentation: String, Codable, Sendable, CaseIterable { case fixed, shelf }
 
 /// `panel` on a group: a named accessory area the skin shows only while the app can supply what it needs.
 ///

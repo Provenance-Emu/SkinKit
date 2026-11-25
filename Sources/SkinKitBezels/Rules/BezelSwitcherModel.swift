@@ -13,7 +13,7 @@ import Foundation
 /// instead of saving it. Stepping only moves the selection; nothing is stored until Keep.
 public struct BezelSwitcherModel: Equatable, Sendable {
 
-    public enum Group: Int, Sendable, CaseIterable {
+    @frozen public enum Group: Int, Sendable, CaseIterable {
         /// Off and Automatic.
         case basics
         case builtIn
@@ -82,7 +82,7 @@ public struct BezelSwitcherModel: Equatable, Sendable {
     }
 
     /// What to do with the running game's pin.
-    public enum PinChange: Equatable, Sendable {
+    @frozen public enum PinChange: Equatable, Sendable {
         case unchanged
         /// Pin this value (`noBezelID` pins no TV).
         case set(String)

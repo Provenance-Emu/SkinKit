@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Used when an entry has no `variantLabel` (catalogs before schema 3, records installed before
 /// families existed). `nil` means "nothing derivable": show the full name.
-public enum SkinVariantLabel {
+@frozen public enum SkinVariantLabel {
     /// Tried in this order; the first one found at an index above 0 wins.
     public static let separators = [" — ", " - "]
 

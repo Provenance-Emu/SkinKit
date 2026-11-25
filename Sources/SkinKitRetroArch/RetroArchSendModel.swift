@@ -9,7 +9,7 @@ import ZIPFoundation
 // MARK: - Text
 
 /// The words the sheet shows (spec §4). One place so the sheet, the README promise and the tests agree.
-public enum RetroArchSendText {
+@frozen public enum RetroArchSendText {
     /// Where to save the folder in the Files picker.
     public static let destination = "On My iPhone › RetroArch › RetroArch › overlays"
 
@@ -88,7 +88,7 @@ public struct RetroArchSendReport: Equatable, Sendable {
 // MARK: - Availability
 
 /// Whether the sheet is offered for a skin: the input map has a row for its game type.
-public enum RetroArchSendAvailability {
+@frozen public enum RetroArchSendAvailability {
     private static let map = try? RetroArchInputMap.bundled()
 
     /// True when the input map has a row for the skin's `gameTypeIdentifier` (`jaguar` has none until the file gets one).
@@ -109,7 +109,7 @@ public enum RetroArchSendAvailability {
 ///
 /// The app's URL handler asks `parse(_:)`; a non-nil result means "open the Send to RetroArch sheet for this skin".
 /// A link without `skin` opens the sheet's "pick a skin" message.
-public enum RetroArchSendRoute {
+@frozen public enum RetroArchSendRoute {
     public static let scheme = "provenance"
     public static let host = "skins"
     public static let path = "/retroarch"
@@ -165,7 +165,7 @@ public struct RetroArchSendResult: Equatable, Sendable {
 @MainActor
 public final class RetroArchSendModel: ObservableObject {
 
-    public enum State: Equatable {
+    @frozen public enum State: Equatable {
         case idle
         case exporting
         case ready(RetroArchSendResult)
@@ -267,7 +267,7 @@ public final class RetroArchSendModel: ObservableObject {
 // MARK: - Archive
 
 /// Zips an overlay folder for the share sheet.
-public enum RetroArchSendArchive {
+@frozen public enum RetroArchSendArchive {
     /// Writes `<folder name>.zip` next to `folder`, with the folder itself as the archive's top entry so unzipping
     /// in Files gives `<name>/<name>.cfg` (the shape the Move recipe expects).
     public static func zip(folder: URL) throws -> URL {

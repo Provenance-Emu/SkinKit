@@ -5,7 +5,7 @@ import Foundation
 /// `errorDescription` is plain English. An app that localizes passes its lookup to
 /// `message(localizing:)`; the English strings are the lookup keys (they are the same keys iCube's
 /// `L()` already uses), or it can switch on the cases and write its own copy.
-public enum SkinCatalogError: LocalizedError {
+@frozen public enum SkinCatalogError: LocalizedError {
     case httpStatus(Int)
     case network(String)
     case decoding(String)

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Who a badge is for (gamification spec §1).
-public enum SkinBadgeAudience: String, Sendable, Hashable, CaseIterable {
+@frozen public enum SkinBadgeAudience: String, Sendable, Hashable, CaseIterable {
     case creator
     case user
 }

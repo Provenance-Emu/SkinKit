@@ -57,7 +57,7 @@ public final class DeltaSkinSelectionManager: ObservableObject {
 
     /// Which in-memory pick wins when both a system pick and a game pick exist for the same
     /// system. Persisted picks always rank game over system; this only orders the two session levels.
-    public enum SessionPickOrder: Sendable, Equatable {
+    @frozen public enum SessionPickOrder: Sendable, Equatable {
         /// Game session pick, then system session pick. Provenance's order, and the default.
         case gameFirst
         /// System session pick, then game session pick. iFly's `effectiveSkinIdentifier` order
@@ -522,7 +522,7 @@ public final class DeltaSkinSelectionManager: ObservableObject {
 }
 
 /// Scope for skin selection
-public enum SkinScope: String, CaseIterable, Identifiable {
+@frozen public enum SkinScope: String, CaseIterable, Identifiable {
     case session = "Session"
     case game = "Game"
     case system = "System"

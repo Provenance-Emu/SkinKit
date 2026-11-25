@@ -2,7 +2,7 @@ import Foundation
 
 /// A JSON value. The preprocessor works on these before typed decoding, so tokens, part parameters and variant
 /// patches never leak into the typed model. Unlike `JSONSerialization`'s `Any`, a Bool is never a number.
-public enum Skin2JSON: Equatable, Hashable, Sendable {
+@frozen public enum Skin2JSON: Equatable, Hashable, Sendable {
     case null
     case bool(Bool)
     case number(Double)
@@ -84,7 +84,7 @@ extension Skin2JSON: ExpressibleByStringLiteral, ExpressibleByFloatLiteral, Expr
 
 /// JSON Pointers (RFC 6901) name places in a skin: `/root/children/2/layout/size/width`. The validator, the
 /// preprocessor and decoding errors all report them, as the TypeScript port and JSON Schema validators do.
-public enum Skin2Pointer {
+@frozen public enum Skin2Pointer {
     public static func appending(_ pointer: String, _ token: String) -> String {
         pointer + "/" + token.replacingOccurrences(of: "~", with: "~0").replacingOccurrences(of: "/", with: "~1")
     }

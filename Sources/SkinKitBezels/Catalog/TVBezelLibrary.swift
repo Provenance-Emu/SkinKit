@@ -10,9 +10,9 @@ import Foundation
 import ImageIO
 
 /// Reads a bezel image: its size, where its screen is, and a copy sized for a display.
-public enum TVBezelImage {
+@frozen public enum TVBezelImage {
 
-    public enum ImageError: Error, Equatable {
+    @frozen public enum ImageError: Error, Equatable {
         /// Not an image ImageIO can read.
         case unreadable
         /// More pixels on a side than `maximumSide`.
@@ -86,7 +86,7 @@ public final class TVBezelLibrary: @unchecked Sendable {
     public static let idPrefix = "file:"
 
     /// Why a file was not imported.
-    public enum ImportProblem: Error, Hashable, Sendable {
+    @frozen public enum ImportProblem: Error, Hashable, Sendable {
         case notAnImage
         case tooLarge
         case noScreen

@@ -10,7 +10,7 @@ import Foundation
 ///
 /// Uses `Date.ISO8601FormatStyle` rather than a shared `DateFormatter` because
 /// the format styles are `Sendable` value types.
-public enum SkinCatalogDates {
+@frozen public enum SkinCatalogDates {
     public static func parse(_ string: String?) -> Date? {
         guard let raw = string?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
             return nil

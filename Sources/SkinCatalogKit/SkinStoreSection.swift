@@ -5,7 +5,7 @@ import Foundation
 /// The target is an opaque id the app understands (iFly: `"dreamcast"`, `"arcade"`; iCube:
 /// `"gamecube"`). SkinCatalogKit does not know what a game type is; the installer in the app (or in
 /// SkinKitManager) resolves the id. See `SkinStorePolicy.retarget(for:isSupportedGameType:)`.
-public enum SkinStoreRetarget: Hashable, Sendable {
+@frozen public enum SkinStoreRetarget: Hashable, Sendable {
     /// Install the skin as downloaded.
     case asIs
     /// Always rewrite to the target.

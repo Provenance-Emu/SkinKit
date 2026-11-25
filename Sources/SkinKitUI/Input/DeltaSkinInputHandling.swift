@@ -53,7 +53,7 @@ public extension DeltaSkinInputHandling {
 }
 
 /// The `toggleAltRepresentations` skin input.
-public enum DeltaSkinAltRepresentationsToggle {
+@frozen public enum DeltaSkinAltRepresentationsToggle {
     /// Posted by the default ``DeltaSkinInputHandling/toggleAltRepresentations()`` when the skin's toggle button
     /// is pressed. The object is the input handler.
     public static let requestedNotification = Notification.Name("DeltaSkinAltRepresentationsToggleRequested")

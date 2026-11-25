@@ -2,7 +2,7 @@ import Foundation
 import SkinKit2Core
 
 /// A d-pad direction (6.1).
-public enum Skin2Direction: String, Sendable, CaseIterable, Hashable {
+@frozen public enum Skin2Direction: String, Sendable, CaseIterable, Hashable {
     case up, down, left, right
 }
 

@@ -19,7 +19,7 @@ import UniformTypeIdentifiers
 /// picture goes and what shape it has. Everything else in the document is artwork.
 public struct TVBezelArtwork {
 
-    public enum ArtworkError: Error, Equatable {
+    @frozen public enum ArtworkError: Error, Equatable {
         /// The document must have exactly one screen node (it has this many).
         case screenCount(Int)
         case emptyTube

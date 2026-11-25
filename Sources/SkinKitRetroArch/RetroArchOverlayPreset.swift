@@ -22,7 +22,7 @@ import Foundation
 public struct RetroArchOverlayPreset: Equatable, Sendable {
 
     /// Hitbox shape of a descriptor. RetroArch has exactly these two.
-    public enum Shape: String, Equatable, Sendable {
+    @frozen public enum Shape: String, Equatable, Sendable {
         case rect
         case radial
     }

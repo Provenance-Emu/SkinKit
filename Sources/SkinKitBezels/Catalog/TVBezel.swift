@@ -32,7 +32,7 @@ public struct TVBezel: Decodable, Identifiable, Equatable, Sendable {
     }
 
     /// Where a TV came from.
-    public enum Source: String, Codable, Sendable {
+    @frozen public enum Source: String, Codable, Sendable {
         case builtIn
         /// A file the player brought in.
         case imported
@@ -131,7 +131,7 @@ public struct TVBezel: Decodable, Identifiable, Equatable, Sendable {
 }
 
 /// The TVs that ship with the app.
-public enum TVBezelCatalog {
+@frozen public enum TVBezelCatalog {
     /// Folder of the catalogue inside the package's bundle.
     static let folderName = "TVBezels"
     static let catalogFileName = "catalog.json"

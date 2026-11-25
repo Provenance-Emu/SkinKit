@@ -98,9 +98,9 @@ public struct BezelEnvironment: Sendable {
 }
 
 /// The package's log. Silent until the app sets `handler`.
-public enum BezelLog {
+@frozen public enum BezelLog {
 
-    public enum Level: Int, Sendable, Comparable {
+    @frozen public enum Level: Int, Sendable, Comparable {
         case info, warning, error
 
         public static func < (lhs: Level, rhs: Level) -> Bool { lhs.rawValue < rhs.rawValue }

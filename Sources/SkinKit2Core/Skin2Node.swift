@@ -1,17 +1,17 @@
 import Foundation
 
-public enum Skin2NodeType: String, Codable, Sendable, CaseIterable { case group, shape, image, text, control, screen }
+@frozen public enum Skin2NodeType: String, Codable, Sendable, CaseIterable { case group, shape, image, text, control, screen }
 
-public enum Skin2ControlKind: String, Codable, Sendable, CaseIterable { case button, dpad, thumbstick, trigger, touchSurface, action }
+@frozen public enum Skin2ControlKind: String, Codable, Sendable, CaseIterable { case button, dpad, thumbstick, trigger, touchSurface, action }
 
 /// What a child of a control is for (6.2): the thumbstick's knob, the part that stays, or art drawn only while
 /// pressed.
-public enum Skin2ArtRole: String, Codable, Sendable, CaseIterable { case knob, base, highlight }
-public enum Skin2ScreenRole: String, Codable, Sendable, CaseIterable { case main, top, bottom, touch }
-public enum Skin2ScreenPlacement: String, Codable, Sendable, CaseIterable { case app, controller }
+@frozen public enum Skin2ArtRole: String, Codable, Sendable, CaseIterable { case knob, base, highlight }
+@frozen public enum Skin2ScreenRole: String, Codable, Sendable, CaseIterable { case main, top, bottom, touch }
+@frozen public enum Skin2ScreenPlacement: String, Codable, Sendable, CaseIterable { case app, controller }
 /// How a supplied picture is scaled into an accessory screen's frame.
-public enum Skin2Sampling: String, Codable, Sendable, CaseIterable { case nearest, linear }
-public enum Skin2TextAlign: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
+@frozen public enum Skin2Sampling: String, Codable, Sendable, CaseIterable { case nearest, linear }
+@frozen public enum Skin2TextAlign: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
 
 /// A d-pad's four inputs.
 public struct Skin2Directions: Equatable, Hashable, Sendable, Decodable {
@@ -21,7 +21,7 @@ public struct Skin2Directions: Equatable, Hashable, Sendable, Decodable {
 }
 
 /// A control's `input`: one classic input name, or a d-pad's `{up, down, left, right}`.
-public enum Skin2Input: Equatable, Hashable, Sendable, Decodable {
+@frozen public enum Skin2Input: Equatable, Hashable, Sendable, Decodable {
     case name(String)
     case directions(Skin2Directions)
 

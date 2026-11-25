@@ -7,7 +7,7 @@ import SkinKit2Render
 import SkinKitCore
 import UniformTypeIdentifiers
 
-public enum Skin2BakeError: Error {
+@frozen public enum Skin2BakeError: Error {
     case invalidSource([String])
     case unknownGameType(String)
     case artwork(String)
@@ -21,7 +21,7 @@ public struct Skin2BakedBundle {
 }
 
 /// Builds classic representations while preserving the original format 2 source.
-public enum Skin2Baker {
+@frozen public enum Skin2Baker {
     public static func bake(
         source: Data, assets: [String: Data] = [:],
         hitOverlapPolicy: Skin2Validator.HitOverlapPolicy = .reject

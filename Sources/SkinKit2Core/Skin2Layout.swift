@@ -2,12 +2,12 @@ import Foundation
 
 // Layout (section 4), conditions (4.6) and the patches `when`, states and variants share.
 
-public enum Skin2HAnchor: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
-public enum Skin2VAnchor: String, Codable, Sendable, CaseIterable { case top, center, bottom }
+@frozen public enum Skin2HAnchor: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
+@frozen public enum Skin2VAnchor: String, Codable, Sendable, CaseIterable { case top, center, bottom }
 
 /// The area a node anchors to (section 2): its parent (default), the canvas, the safe area, the first screen
 /// node, or `#id`, any node resolved earlier in document order.
-public enum Skin2Area: Equatable, Hashable, Sendable, Decodable, CustomStringConvertible {
+@frozen public enum Skin2Area: Equatable, Hashable, Sendable, Decodable, CustomStringConvertible {
     case parent, canvas, safeArea, screen
     case node(String)
 
@@ -216,9 +216,9 @@ public struct Skin2Layout: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2Orientation: String, Codable, Sendable, CaseIterable { case portrait, landscape }
-public enum Skin2Device: String, Codable, Sendable, CaseIterable { case iphone, ipad, tv, mac, web }
-public enum Skin2DisplayType: String, Codable, Sendable, CaseIterable { case standard, edgeToEdge, splitView }
+@frozen public enum Skin2Orientation: String, Codable, Sendable, CaseIterable { case portrait, landscape }
+@frozen public enum Skin2Device: String, Codable, Sendable, CaseIterable { case iphone, ipad, tv, mac, web }
+@frozen public enum Skin2DisplayType: String, Codable, Sendable, CaseIterable { case standard, edgeToEdge, splitView }
 
 /// A condition (4.6): every key present must match. An empty condition always holds.
 public struct Skin2Condition: Equatable, Hashable, Sendable, Decodable {
@@ -264,7 +264,7 @@ public struct Skin2Condition: Equatable, Hashable, Sendable, Decodable {
 }
 
 /// `visible`: a Boolean, or one condition.
-public enum Skin2Visibility: Equatable, Hashable, Sendable, Decodable {
+@frozen public enum Skin2Visibility: Equatable, Hashable, Sendable, Decodable {
     case always(Bool)
     case when(Skin2Condition)
 
@@ -349,12 +349,12 @@ public struct Skin2Conditional: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2StackAxis: String, Codable, Sendable, CaseIterable { case vertical, horizontal }
-public enum Skin2Distribute: String, Codable, Sendable, CaseIterable { case packed, spaceBetween }
+@frozen public enum Skin2StackAxis: String, Codable, Sendable, CaseIterable { case vertical, horizontal }
+@frozen public enum Skin2Distribute: String, Codable, Sendable, CaseIterable { case packed, spaceBetween }
 
 /// Cross-axis alignment in a stack, horizontal alignment of a grid cell's content. For a horizontal stack,
 /// leading/center/trailing mean top/center/bottom.
-public enum Skin2Align: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
+@frozen public enum Skin2Align: String, Codable, Sendable, CaseIterable { case leading, center, trailing }
 
 public struct Skin2Stack: Equatable, Hashable, Sendable, Decodable {
     public var axis: Skin2StackAxis
@@ -395,7 +395,7 @@ public struct Skin2Grid: Equatable, Hashable, Sendable, Decodable {
     }
 }
 
-public enum Skin2RepeatPivot: String, Codable, Sendable, CaseIterable { case `self`, parent }
+@frozen public enum Skin2RepeatPivot: String, Codable, Sendable, CaseIterable { case `self`, parent }
 
 /// `repeat` (4.5): the node drawn `count` times; copy `i` gets the transform applied `i` times.
 public struct Skin2Repeat: Equatable, Hashable, Sendable, Decodable {

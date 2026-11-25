@@ -15,7 +15,7 @@
 import SwiftUI
 #endif
 
-public enum SkinKitUI {
+@frozen public enum SkinKitUI {
     /// Bumped when the module's public API changes.
     public static let version = "0.2.0"
 }

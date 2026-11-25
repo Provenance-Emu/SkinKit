@@ -5,7 +5,7 @@ import Foundation
 /// (`1.5.5`, `-1-2`, `1e-3`) and compact arc flags. The path is built in its own `box` and stretched,
 /// non-uniformly, onto the frame. Arcs become cubics (at most 90° each) so both renderers draw the same curve.
 /// Malformed data ends the path at the last complete command.
-public enum Skin2SVGPath {
+@frozen public enum Skin2SVGPath {
     public static func path(_ d: String, box: CGRect, in rect: CGRect) -> CGPath {
         let sx = box.width > 0 ? rect.width / box.width : 1
         let sy = box.height > 0 ? rect.height / box.height : 1

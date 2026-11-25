@@ -6,7 +6,7 @@ public struct RetroArchConversion {
 
     /// A picture the exporter must produce for the preset: an overlay background or a thumbstick cap.
     public struct ImagePlan: Equatable, Sendable {
-        public enum Kind: String, Equatable, Sendable {
+        @frozen public enum Kind: String, Equatable, Sendable {
             case overlay
             case thumbstick
         }
@@ -43,7 +43,7 @@ public struct RetroArchConversion {
 
     /// A skin control the converter turned into one or more descriptors.
     public struct DescSummary: Equatable, Sendable {
-        public enum Kind: String, Equatable, Sendable {
+        @frozen public enum Kind: String, Equatable, Sendable {
             case button, toggle, analog, dpad
         }
 

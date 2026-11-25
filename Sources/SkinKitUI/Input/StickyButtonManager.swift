@@ -14,7 +14,7 @@ public final class StickyButtonManager: ObservableObject {
     // MARK: - Types
 
     /// Instruction returned to the caller after processing a touch event.
-    public enum Action {
+    @frozen public enum Action {
         /// Forward a press event to the emulator core.
         case press
         /// Forward a release event to the emulator core.

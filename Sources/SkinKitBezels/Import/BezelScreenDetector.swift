@@ -13,10 +13,10 @@ import Foundation
 /// behind the image. The screen is the largest connected see-through region. Its rect is the
 /// span of rows and columns that region covers widely, so rounded corners, the soft shadow
 /// ring inside a frame and stray see-through pixels do not move it.
-public enum BezelScreenDetector {
+@frozen public enum BezelScreenDetector {
 
     /// Why an image cannot be used as a bezel.
-    public enum Refusal: Error, Equatable, Sendable {
+    @frozen public enum Refusal: Error, Equatable, Sendable {
         /// Nothing in the image is see-through.
         case noScreen
         /// The see-through area is too small to be a screen.
@@ -151,7 +151,7 @@ public enum BezelScreenDetector {
 }
 
 /// Where the game picture goes inside a bezel's screen.
-public enum BezelPictureFit {
+@frozen public enum BezelPictureFit {
     /// A picture whose shape is within this fraction of the screen's is stretched to fill it,
     /// so no sliver of black shows beside the artwork.
     public static let fillTolerance = 0.04

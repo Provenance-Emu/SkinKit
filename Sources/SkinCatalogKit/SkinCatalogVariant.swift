@@ -6,7 +6,7 @@ import Foundation
 /// skin has `altRepresentations`, one `theme` per `themes[]` item, one `game` per `gameOverrides`
 /// key. A split-file family member is a separate `SkinCatalogEntry`, never one of these.
 public struct SkinCatalogVariant: Codable, Sendable, Hashable, Identifiable {
-    public enum Kind: Sendable, Hashable, Codable {
+    @frozen public enum Kind: Sendable, Hashable, Codable {
         /// `altRepresentations`: a second full layout toggled during play.
         case alt
         /// One of the skin's `themes` (artwork swap).

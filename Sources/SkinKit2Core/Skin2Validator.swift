@@ -1,6 +1,6 @@
 import Foundation
 
-public enum Skin2Severity: String, Codable, Sendable { case error, warning }
+@frozen public enum Skin2Severity: String, Codable, Sendable { case error, warning }
 
 /// One validation finding. `pointer` is a JSON Pointer into `skin.json` (for nodes inside parts or variants, into
 /// the expanded document, which mirrors the source except that `use` is replaced by the part's node).
@@ -29,7 +29,7 @@ public struct Skin2ValidationReport: Sendable {
 /// Validates a `skin.json` (sections 1, 3, 6, 8.1, 11): it loads (schema shape, tokens, parts, every theme and
 /// variant), `requires` matches the content, the limits hold, ids and references are sound, inputs fit the
 /// control kinds and game types, and on every trait set the skin bakes to, no two hit frames overlap.
-public enum Skin2Validator {
+@frozen public enum Skin2Validator {
     /// The size controls should reach on their short side at unit 1 (a warning).
     public static let minimumControlSide = 44.0
 
@@ -53,7 +53,7 @@ public enum Skin2Validator {
     }
 
     /// Built-in overlays may retain overlapping hit regions when their host owns touch routing.
-    public enum HitOverlapPolicy: Sendable {
+    @frozen public enum HitOverlapPolicy: Sendable {
         case reject
         case warn
     }

@@ -2,7 +2,7 @@ import Foundation
 import ZIPFoundation
 
 /// Severity level for validation findings
-public enum DeltaSkinValidationSeverity {
+@frozen public enum DeltaSkinValidationSeverity {
     case info
     case warning
     case error

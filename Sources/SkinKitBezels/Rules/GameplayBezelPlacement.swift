@@ -10,10 +10,10 @@ import Foundation
 /// Where a TV may surround the game picture on the device itself.
 ///
 /// Pure: every input is passed in, so the rules are testable without a device.
-public enum GameplayBezelPlacement {
+@frozen public enum GameplayBezelPlacement {
 
     /// What supplies the on-screen controls.
-    public enum Controls: Equatable, Sendable {
+    @frozen public enum Controls: Equatable, Sendable {
         /// The generated touch controls: buttons only, which can float over a TV.
         case generated
         /// A real or built-in skin, which frames the picture itself.

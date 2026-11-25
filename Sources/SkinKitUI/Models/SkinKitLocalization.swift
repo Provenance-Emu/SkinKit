@@ -7,7 +7,7 @@ import SwiftUI
 /// that keeps its strings elsewhere points this at its table once at launch (iCube: the `Core`
 /// table). Keys are the English strings; a key the table lacks is shown as it is.
 @MainActor
-public enum SkinKitLocalization {
+@frozen public enum SkinKitLocalization {
     public static var bundle: Bundle = .main
     /// `nil` is the bundle's default table, `Localizable`.
     public static var tableName: String?

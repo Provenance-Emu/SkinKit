@@ -2,13 +2,13 @@ import CoreGraphics
 import Foundation
 
 /// Core types for DeltaSkin functionality
-public enum DeltaSkinDevice: String, Codable, Hashable, Equatable, CaseIterable {
+@frozen public enum DeltaSkinDevice: String, Codable, Hashable, Equatable, CaseIterable {
     case iphone
     case ipad
     case tv
 }
 
-public enum DeltaSkinDisplayType: String, Codable, Hashable, Equatable, CaseIterable {
+@frozen public enum DeltaSkinDisplayType: String, Codable, Hashable, Equatable, CaseIterable {
     case standard
     case edgeToEdge
     case splitView
@@ -16,13 +16,13 @@ public enum DeltaSkinDisplayType: String, Codable, Hashable, Equatable, CaseIter
     case externalDisplay // External display mode
 }
 
-public enum DeltaSkinOrientation: String, Codable, Hashable, Equatable, CaseIterable {
+@frozen public enum DeltaSkinOrientation: String, Codable, Hashable, Equatable, CaseIterable {
     case portrait
     case landscape
 }
 
 /// Represents specific iPad models for layout customization
-public enum DeltaSkinIPadModel: String, Codable, Hashable, Equatable, CaseIterable {
+@frozen public enum DeltaSkinIPadModel: String, Codable, Hashable, Equatable, CaseIterable {
     case mini    // 8.3"
     case air     // 10.9"
     case pro11   // 11"
@@ -43,7 +43,7 @@ public enum DeltaSkinIPadModel: String, Codable, Hashable, Equatable, CaseIterab
 }
 
 /// Represents display configuration for external screens
-public enum DeltaSkinExternalDisplay: String, Codable, Hashable, Equatable, CaseIterable {
+@frozen public enum DeltaSkinExternalDisplay: String, Codable, Hashable, Equatable, CaseIterable {
     case none      // No external display
     case mirror    // Mirror internal display
     case extended  // Extended desktop mode
@@ -276,7 +276,7 @@ public struct DeltaSkinFilter: Codable, Hashable, Equatable {
 }
 
 /// Parameter types for CoreImage filters
-public enum FilterParameter: Codable, Hashable, Equatable, Sendable {
+@frozen public enum FilterParameter: Codable, Hashable, Equatable, Sendable {
     case number(Float)
     case vector(x: Float, y: Float)
     case color(r: Float, g: Float, b: Float)
@@ -380,7 +380,7 @@ private struct NumericValue: Codable {
 
 /// Identifies which virtual keyboard layout to display for keyboard-based systems.
 /// Maps to the `VirtualKeyboardLayout` cases defined in the keyboard overlay subsystem.
-public enum VirtualKeyboardVariant: String, Codable, Hashable, Equatable, CaseIterable {
+@frozen public enum VirtualKeyboardVariant: String, Codable, Hashable, Equatable, CaseIterable {
     /// Full QWERTY layout (e.g. DOS, generic PC)
     case full
     /// Compact layout — fewer rows, suitable for smaller screens (MSX, Atari 8-bit)
@@ -399,7 +399,7 @@ public enum VirtualKeyboardVariant: String, Codable, Hashable, Equatable, CaseIt
 
 
 /// Position on screen where the keyboard overlay should appear.
-public enum KeyboardOverlayPosition: String, Codable, Hashable, Equatable {
+@frozen public enum KeyboardOverlayPosition: String, Codable, Hashable, Equatable {
     case bottom
     case top
 }
@@ -448,7 +448,7 @@ public struct KeyboardOverlayConfig: Codable, Hashable, Equatable {
 
 
 /// Game type identifiers
-public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
+@frozen public enum DeltaSkinGameType: Codable, Hashable, Equatable, Comparable {
     case gb
     case gbc
     case gba

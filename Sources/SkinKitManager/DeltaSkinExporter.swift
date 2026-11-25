@@ -4,7 +4,7 @@ import SkinKitCore
 
 // MARK: - Errors
 
-public enum DeltaSkinExportError: LocalizedError {
+@frozen public enum DeltaSkinExportError: LocalizedError {
     case invalidJSON
     case noItemsFound(device: String, displayType: String, orientation: String)
     case archiveCreationFailed(underlying: Error)

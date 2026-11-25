@@ -5,7 +5,7 @@ import SkinKitCore
 ///
 /// Moved out of Provenance's `DeltaSkinNintendoHomeConsoleMapping`, whose other tables (GameCube and Wii
 /// buttons) need `PVCoreBridge` and stay in the app. Provenance's `stickSide(for:buttonId:)` can forward here.
-public enum DeltaSkinThumbstickSide: Equatable, Sendable {
+@frozen public enum DeltaSkinThumbstickSide: Equatable, Sendable {
     case left
     case right
 

@@ -14,7 +14,7 @@
 
 /// A step of controller input, as the bezel views understand it. An app maps its own menu
 /// input onto these; tvOS moves focus instead and needs none.
-public enum BezelNavigationCommand: Equatable, Sendable {
+@frozen public enum BezelNavigationCommand: Equatable, Sendable {
     case left, right, up, down
     /// Jump to the group of TVs before or after the selection's (the shoulder buttons).
     case previousGroup, nextGroup

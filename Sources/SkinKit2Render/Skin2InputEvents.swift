@@ -142,7 +142,7 @@ public struct Skin2HapticRequest: Equatable, Sendable {
     public var intensity: Double
 }
 
-public enum Skin2Haptics {
+@frozen public enum Skin2Haptics {
     public static let defaultStyle = "medium"
     public static let defaultIntensity = 1.0
 

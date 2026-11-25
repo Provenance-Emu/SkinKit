@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Pure: the catalogue of TVs and every setting are passed in, so the rules are testable
 /// without a display, a catalogue file or a shader library.
-public enum ExternalDisplayBezelRules {
+@frozen public enum ExternalDisplayBezelRules {
 
     /// The stored value of `externalDisplayBezel` that means no TV.
     public static let noBezelID = ""
@@ -41,7 +41,7 @@ public enum ExternalDisplayBezelRules {
 
     /// What the rules decided for one game, and how they got there.
     public struct Resolution: Equatable, Sendable {
-        public enum Outcome: Equatable, Sendable {
+        @frozen public enum Outcome: Equatable, Sendable {
             case bezel(String)
             /// The player chose None, or pinned the game to none.
             case noneChosen
@@ -145,7 +145,7 @@ public enum ExternalDisplayBezelRules {
     }
 
     /// What draws the tube look inside a TV's glass.
-    public enum TubeFilter: Equatable, Sendable {
+    @frozen public enum TubeFilter: Equatable, Sendable {
         /// The look the TV suggests.
         case tvOwn
         /// The filter the user picked for the external display.

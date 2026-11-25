@@ -8,7 +8,7 @@ import SwiftUI
 
 /// Host switches for the achievements UI (gamification spec §3).
 @MainActor
-public enum SkinKitAchievements {
+@frozen public enum SkinKitAchievements {
     /// Show a brief banner when a badge is earned. Off by default: the spec's choice is no popups, and
     /// a host that finds the card too quiet can turn this on per app without touching the data.
     public static var showsToasts = false

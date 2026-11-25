@@ -42,10 +42,22 @@ empty output directory to keep the numbered archives separate from earlier bakes
 
 ## Prebuilt XCFrameworks
 
-Each release has static XCFrameworks attached, built by [release-xcframeworks.yml](.github/workflows/release-xcframeworks.yml) with [scripts/build-xcframeworks.sh](scripts/build-xcframeworks.sh). There is one per module (`SkinKitCore`, `SkinCatalogKit`, `SkinKitManager`, `SkinKitUI`, `SkinKitRetroArch`, `SkinKit2Core`, `SkinKit2Render`) plus `ZIPFoundation`, with slices for iOS, the iOS simulator, tvOS, the tvOS simulator and Mac Catalyst. They are built with library evolution, so newer compilers can use them.
+A version tag resolves to prebuilt XCFrameworks: the tag's `Package.swift` is one
+`binaryTarget` per module, pointing at the tag's GitHub Release, so an app that depends on
+a version compiles none of SkinKit. The frameworks are dynamic and carry their own
+resources (the default font, the bundled TVs, the JSON tables); an app adds nothing to its
+Copy Bundle Resources phase. `main` and every other branch build from source.
 
-- Link the modules you use and every module they depend on, `ZIPFoundation` included. Each library holds only its own module's code.
-- Static libraries carry no resources. Add the bundles from `SkinKit-Resources-<version>.zip` to the app's Copy Bundle Resources phase. `SkinKitCore`, `SkinKitRetroArch` and `SkinKit2Render` read theirs at runtime.
-- `checksums.txt` lists each zip's SwiftPM checksum, for a `.binaryTarget(url:checksum:)`.
+ZIPFoundation comes from [PVDependencies](https://github.com/Provenance-Emu/PVDependencies),
+a prebuilt copy shared with the apps. An app that uses SkinKit takes ZIPFoundation from
+there too: a package graph cannot hold that copy and the upstream package at once.
 
-To build them locally: `scripts/build-xcframeworks.sh <version> [ios ios-sim tvos tvos-sim catalyst]`. The output goes to `dist/`.
+To build a tagged version from source (to step into it in the debugger, say), set
+`PV_BUILD_FROM_SOURCE=1` in the environment `xcodebuild` or Xcode starts in, then resolve
+packages again.
+
+To release, run **Release XCFramework** from the Actions tab with the new version. Do not
+push version tags by hand: such a tag has no binary and builds from source.
+[How releases work](https://github.com/Provenance-Emu/.github/blob/main/docs/xcframework-releases.md).
+Releases up to 0.7.0 carry static XCFrameworks and a separate resources zip instead;
+nothing resolves to those.
