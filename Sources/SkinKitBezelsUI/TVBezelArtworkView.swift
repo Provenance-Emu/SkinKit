@@ -100,16 +100,24 @@ public struct TVBezelStage<Picture: View>: View {
             ZStack {
                 Color.black
                 if let bezel, let layout {
-                    if layout.placement == .behindPicture { TVBezelArtworkView(bezel: bezel, canvas: layout.canvas, shape: layout.shape) }
+                    // The artwork goes where the layout put it: in a portrait space that is
+                    // near the top, not the centre an aspect-fit of the whole space gives.
+                    if layout.placement == .behindPicture { artwork(bezel, layout: layout) }
                     picture(layout.pictureFrame)
                         .position(x: layout.pictureFrame.midX, y: layout.pictureFrame.midY)
-                    if layout.placement == .abovePicture { TVBezelArtworkView(bezel: bezel) }
+                    if layout.placement == .abovePicture { artwork(bezel, layout: layout) }
                 } else {
                     picture(nil)
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
+    }
+
+    private func artwork(_ bezel: TVBezel, layout: TVBezelLayout) -> some View {
+        TVBezelArtworkView(bezel: bezel, canvas: layout.canvas, shape: layout.shape)
+            .frame(width: layout.artworkFrame.width, height: layout.artworkFrame.height)
+            .position(x: layout.artworkFrame.midX, y: layout.artworkFrame.midY)
     }
 }
 #endif

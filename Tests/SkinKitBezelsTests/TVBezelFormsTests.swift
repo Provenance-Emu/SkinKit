@@ -133,4 +133,37 @@ struct TVBezelFormsTests {
         #expect(abs(scene.tubeRect.width / scene.tubeRect.height - 16.0 / 9) < 0.01)
         #expect(abs(scene.tubeRect.midX - TVBezelArtwork.canvas.width / 2) < 0.5)
     }
+
+    @Test("The tube is whole on the display at every seat and landscape shape, wide picture or not",
+          arguments: TVBezelCatalog.bundled.map(\.id), TVBezelSeat.allCases)
+    func tubeStaysOnTheDisplay(id: String, seat: TVBezelSeat) throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: id))
+        let displays = [CGSize(width: 1024, height: 768), CGSize(width: 1500, height: 1000), CGSize(width: 1600, height: 1000),
+                        CGSize(width: 1920, height: 1080), CGSize(width: 932, height: 430), CGSize(width: 2400, height: 1000)]
+        for display in displays {
+            for picture in [Self.standard, Self.wide] {
+                let layout = try #require(TVBezelLayout(bezel: bezel, container: display, pictureAspect: picture, seat: seat))
+                let bounds = CGRect(origin: .zero, size: display)
+                #expect(bounds.contains(layout.screenFrame), "\(id) \(seat) \(display) \(picture)")
+                #expect(layout.screenFrame.contains(layout.pictureFrame.insetBy(dx: 0.5, dy: 0.5)))
+            }
+        }
+    }
+
+    @Test("A 4:3 display from the front seat is too narrow for the wide tube: the TV keeps its 4:3 one")
+    func wideTubeNeedsRoom() throws {
+        let bezel = try flatTube()
+        let display = CGSize(width: 1024, height: 768)
+        let front = try #require(TVBezelLayout(bezel: bezel, container: display, pictureAspect: Self.wide, seat: .front))
+        #expect(front.shape == .standard)
+        #expect(abs(aspect(front.screenFrame) - 4.0 / 3) < 0.01)
+        #expect(front.pictureFrame.height < front.screenFrame.height * 0.8)
+        let back = try #require(TVBezelLayout(bezel: bezel, container: display, pictureAspect: Self.wide, seat: .back))
+        #expect(back.shape == .wide)
+        // The shader scene makes the same choice.
+        let canvas = TVBezelCanvas.size(display: display, seat: .front)
+        let scene = try #require(TVBezelScene.make(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480,
+                                                   key: "front", canvas: canvas, shape: .wide, hasPreset: { _ in true }))
+        #expect(abs(scene.tubeRect.width / scene.tubeRect.height - 4.0 / 3) < 0.01)
+    }
 }

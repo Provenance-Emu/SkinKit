@@ -71,7 +71,7 @@ public struct TVBezelLayout: Equatable, Sendable {
         }
         let portraitCanvas = bezel.drawsPortrait ? seat.flatMap { TVBezelCanvas.portraitSize(display: container, seat: $0) } : nil
         let artworkCanvas = portraitCanvas ?? seat.map { TVBezelCanvas.size(display: container, seat: $0) } ?? TVBezelArtwork.canvas
-        let pictureShape = TVBezelPictureShape(aspect: pictureAspect)
+        let pictureShape = TVBezelPictureShape(aspect: pictureAspect).fitting(bezel: bezel, canvas: artworkCanvas)
         guard bezel.presetID == nil,
               let tube = TVBezelPlainArtwork.tubeRect(of: bezel, canvas: artworkCanvas, shape: pictureShape) else { return nil }
         // A canvas made for this container has its proportions, so the fit is the container.
@@ -102,6 +102,27 @@ public struct TVBezelLayout: Equatable, Sendable {
         let scale = min(bounds.width / aspect.width, bounds.height / aspect.height)
         let size = CGSize(width: aspect.width * scale, height: aspect.height * scale)
         return CGRect(x: bounds.midX - size.width / 2, y: bounds.midY - size.height / 2, width: size.width, height: size.height)
+    }
+}
+
+extension TVBezelPictureShape {
+
+    /// How much of the canvas, in points, must stay on each side of a wide tube: the edge of
+    /// its frame.
+    static let wideTubeMargin: CGFloat = 8
+
+    /// The shape `bezel` is drawn for on `canvas` when the picture has this shape. `wide` only
+    /// when the TV has a widescreen form and its wide tube is whole on the canvas: a closer
+    /// seat on a 4:3 display draws a canvas narrower than the wide tube, and there the TV
+    /// keeps its 4:3 tube with the picture fitted inside it, as before the forms existed.
+    public func fitting(bezel: TVBezel, canvas: CGSize) -> TVBezelPictureShape {
+        guard self == .wide, let tube = TVBezelPlainArtwork.tubeRect(of: bezel, canvas: canvas, shape: .wide) else {
+            return .standard
+        }
+        let isWideTube = TVBezelPictureShape(aspect: tube.size) == .wide
+        let fits = tube.minX >= Self.wideTubeMargin && tube.maxX <= canvas.width - Self.wideTubeMargin
+            && tube.minY >= 0 && tube.maxY <= canvas.height
+        return isWideTube && fits ? .wide : .standard
     }
 }
 

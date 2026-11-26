@@ -48,7 +48,8 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
        running down under the touch controls. An image bezel keeps its own shape, placed near the
        top.
      - *Widescreen*: for a picture of 16:10 or wider (`TVBezelPictureShape`) the tube and cabinet are 16:9,
-       so the picture has no bars. A TV without the form keeps its 4:3 tube and the picture is fitted in it.
+       so the picture has no bars. A TV without the form keeps its 4:3 tube and the picture is fitted in it, and so does any
+       TV on a canvas narrower than its wide tube (a 4:3 display from the Middle or Front seat).
        `pictureAspect` is all the app passes. Pass the shape the game is set to, not each frame's: a game
        that changes shape for a menu should not change the TV.
    - *Shader* (glass, reflections, room light): `TVBezelScene.make` off the main thread, kept in
