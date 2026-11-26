@@ -15,6 +15,10 @@ import UIKit
 /// press plays the control's haptic. The rules live in `SkinKit2Render` (`Skin2TouchTracker`, `Skin2Haptics`,
 /// `Skin2ScaleEasing`) and are tested on the macOS host. tvOS draws the skin without touch handling.
 ///
+/// Drawing is cached (`Skin2RenderCache`): the skin at rest is painted once per layout into an image, and a touch
+/// change or a frame of the press ease repaints only the rectangles of the controls that are not at rest. A layout,
+/// edit, selection, option or `assetIdentity` change paints the image again; a moving shelf is drawn directly.
+///
 /// Accessory panels: the app says what it can supply right now in `capabilities` and hands over the pictures in a
 /// `Skin2PictureStore`. Each accessory screen the app can fill gets a layer of its own, with the skin drawn in
 /// parts under and over it; a skin with none is one canvas as before. The view owns which shelves are open (their
@@ -50,8 +54,19 @@ public struct Skin2SkinView: View {
     /// What the skin provides, on appear and whenever it changes; `.none` when the view goes away. `pictures` holds
     /// only sources the app has delivered a picture for.
     public var onProvidedChange: ((Skin2Provided) -> Void)?
+    /// Names what `asset` reads from. The drawn skin is cached, and `asset` is a closure the view cannot compare:
+    /// change this when the files behind it change while the document stays the same (a skin edited in place).
+    public var assetIdentity: AnyHashable?
 
     private let extendsIntoSafeArea: Bool
+    /// Tests: controls drawn as held, as if a finger were on them.
+    var heldForTesting: [String: Skin2ControlState] = [:]
+    /// Tests: the cache to draw through, so they can read its counters; and the switch to draw without one.
+    var renderCacheForTesting: Skin2RenderCache?
+    var usesRenderCache = true
+
+    @State private var ownRenderCache = Skin2RenderCache()
+    private var renderCache: Skin2RenderCache { renderCacheForTesting ?? ownRenderCache }
 
     @StateObject private var panelState: Skin2PanelState
     @State private var delivered: Set<String>
@@ -80,8 +95,10 @@ public struct Skin2SkinView: View {
                 onLayout: ((Skin2Resolution) -> Void)? = nil,
                 onReleaseAll: @escaping () -> Void = {}, safeAreaOverride: Skin2Insets? = nil,
                 capabilities: Set<String> = [], pictures: Skin2PictureStore? = nil, skinIdentifier: String? = nil,
-                onProvidedChange: ((Skin2Provided) -> Void)? = nil, extendsIntoSafeArea: Bool = true) {
+                onProvidedChange: ((Skin2Provided) -> Void)? = nil, extendsIntoSafeArea: Bool = true,
+                assetIdentity: AnyHashable? = nil) {
         self.extendsIntoSafeArea = extendsIntoSafeArea
+        self.assetIdentity = assetIdentity
         self.capabilities = capabilities
         self.pictures = pictures
         self.skinIdentifier = skinIdentifier
@@ -138,7 +155,9 @@ public struct Skin2SkinView: View {
                 let provided = resolution.provided.keeping(pictures: delivered)
                 TimelineView(.animation(minimumInterval: nil, paused: !isAnimating)) { timeline in
                     let now = timeline.date.timeIntervalSinceReferenceDate
-                    layers(drawnLayout(resolution, at: now), states: drawnStates(at: now))
+                    // A moving shelf is a new layout every frame: nothing to keep.
+                    let blend = blendedLayout(resolution, at: now)
+                    layers(blend ?? resolution, states: drawnStates(at: now), cached: blend == nil)
                 }
                 #if os(iOS)
                 .overlay(
@@ -158,7 +177,13 @@ public struct Skin2SkinView: View {
         }
         .onReceive(deliveredChanges) { delivered = $0 }
         .onChange(of: document) { _, new in panelState.adopt(document: new, skinIdentifier: skinIdentifier) }
-        .onDisappear { onProvidedChange?(.none) }
+        .onDisappear {
+            onProvidedChange?(.none)
+            renderCache.removeAll()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+            renderCache.removeAll()
+        }
     }
 
     // MARK: Layers
@@ -166,13 +191,13 @@ public struct Skin2SkinView: View {
     /// The skin as one canvas, or, when the app can fill accessory screens, in parts with each screen's picture
     /// in a layer between the part under it and the part over it.
     @ViewBuilder
-    private func layers(_ layout: Skin2Resolution, states: [String: Skin2ControlState]) -> some View {
+    private func layers(_ layout: Skin2Resolution, states: [String: Skin2ControlState], cached: Bool) -> some View {
         let live = pictures == nil ? [] : layout.accessoryScreens.filter { screen in
             screen.node.source.map { capabilities.contains(Skin2Capabilities.picture($0)) } ?? false
         }
         if let pictures, !live.isEmpty {
             ZStack(alignment: .topLeading) {
-                canvas(layout, part: .upTo(screen: live[0].pointer), states: states)
+                canvas(layout, part: .upTo(screen: live[0].pointer), states: states, cached: cached, parts: live.count + 1)
                 ForEach(Array(live.enumerated()), id: \.element.pointer) { index, screen in
                     Skin2PictureLayerView(store: pictures, source: screen.node.source ?? "", sampling: screen.node.sampling ?? .nearest)
                         .frame(width: screen.frame.width, height: screen.frame.height)
@@ -180,28 +205,47 @@ public struct Skin2SkinView: View {
                         .opacity(layout.effectiveOpacity(of: screen.pointer))
                         .allowsHitTesting(false)
                     canvas(layout, part: index + 1 < live.count ? .between(after: screen.pointer, upTo: live[index + 1].pointer)
-                                                                : .after(screen: screen.pointer), states: states)
+                                                                : .after(screen: screen.pointer), states: states,
+                           cached: cached, parts: live.count + 1)
                 }
             }
         } else {
-            canvas(layout, part: .all, states: states)
+            canvas(layout, part: .all, states: states, cached: cached, parts: 1)
         }
     }
 
-    private func canvas(_ layout: Skin2Resolution, part: Skin2DrawPart, states: [String: Skin2ControlState]) -> some View {
-        Canvas(rendersAsynchronously: false) { context, _ in
+    /// One canvas of the skin. `parts` is how many canvases the skin is drawn in; each keeps an image of its own.
+    private func canvas(_ layout: Skin2Resolution, part: Skin2DrawPart, states: [String: Skin2ControlState], cached: Bool,
+                        parts: Int) -> some View {
+        let cache = renderCache
+        let base = selectedStates
+        // tvOS has no touches, so nothing redraws a skin that has not changed: an image would only cost memory.
+        #if os(tvOS)
+        let useCache = false
+        #else
+        let useCache = cached && usesRenderCache
+        #endif
+        let identity = AnyHashable([AnyHashable(skinIdentifier), assetIdentity])
+        return Canvas(rendersAsynchronously: false) { context, _ in
             var options = Skin2RenderOptions(states: states, screenPlaceholders: screenPlaceholders, showHitFrames: showHitFrames, asset: asset)
             options.part = part
-            context.withCGContext { cg in Skin2Renderer.draw(layout, in: cg, options: options) }
+            context.withCGContext { cg in
+                if useCache {
+                    cache.capacity = max(cache.capacity, parts)
+                    cache.draw(layout, in: cg, options: options, baseStates: base, assetIdentity: identity)
+                } else {
+                    Skin2Renderer.draw(layout, in: cg, options: options)
+                }
+            }
         }
         .allowsHitTesting(false)
     }
 
-    /// The layout to draw: while a shelf moves, the blend between where it started and where it is going.
-    private func drawnLayout(_ resolution: Skin2Resolution, at now: TimeInterval) -> Skin2Resolution {
-        guard let transition, transition.from.environment.size == resolution.environment.size else { return resolution }
+    /// While a shelf moves, the blend between where it started and where it is going; nil when nothing moves.
+    private func blendedLayout(_ resolution: Skin2Resolution, at now: TimeInterval) -> Skin2Resolution? {
+        guard let transition, transition.from.environment.size == resolution.environment.size else { return nil }
         let t = (now - transition.start) / Self.shelfDuration
-        guard t < 1 else { return resolution }
+        guard t < 1 else { return nil }
         let eased = max(0, t) * max(0, t) * (3 - 2 * max(0, t))
         return Skin2LayoutBlend.blend(from: transition.from, to: resolution, progress: eased)
     }
@@ -266,9 +310,14 @@ public struct Skin2SkinView: View {
 
     /// The held states with the selected controls and the 80 ms scale ease folded in.
     private func drawnStates(at now: TimeInterval) -> [String: Skin2ControlState] {
-        var states = snapshot.states
+        var states = snapshot.states.merging(heldForTesting) { _, test in test }
         for id in selected { states[id, default: Skin2ControlState()].selected = true }
         return easing.apply(to: states, at: now)
+    }
+
+    /// The states the cached image holds: the selected controls, with nothing held.
+    private var selectedStates: [String: Skin2ControlState] {
+        Dictionary(uniqueKeysWithValues: selected.map { ($0, Skin2ControlState(selected: true)) })
     }
 
     #if os(iOS)

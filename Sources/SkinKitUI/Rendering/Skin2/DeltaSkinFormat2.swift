@@ -150,7 +150,8 @@ struct DeltaSkinFormat2View: View {
             capabilities: capabilities,
             pictures: pictures,
             skinIdentifier: skin.identifier,
-            onProvidedChange: onProvidedChange
+            onProvidedChange: onProvidedChange,
+            assetIdentity: skin.fileURL
         )
         .onDisappear { bridge.releaseAll(sink: sink) }
     }
