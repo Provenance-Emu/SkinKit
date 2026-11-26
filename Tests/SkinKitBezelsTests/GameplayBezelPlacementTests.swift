@@ -31,6 +31,21 @@ struct GameplayBezelPlacementTests {
         #expect(Placement.showsTV(inputs) == expected)
     }
 
+    @Test("An app that lays a TV out for portrait shows it there as in landscape, never around a skin", arguments: [
+        // controls, the choice is Automatic, a TV shows
+        (Placement.Controls.generated, true, true),
+        (.generated, false, true),
+        (.bare, true, true),
+        (.hiddenByController, true, true),
+        (.skin, false, false)
+    ])
+    func portrait(controls: Placement.Controls, automatic: Bool, expected: Bool) {
+        let inputs = Placement.Inputs(isAppleTV: false, isLandscape: false, controls: controls, layoutSupportsTV: true,
+                                      choiceIsAutomatic: automatic, supportsPortrait: true)
+        #expect(Placement.showsTV(inputs) == expected)
+        #expect(Placement.offersSwitcher(inputs) == expected)
+    }
+
     @Test("No TV when the layout cannot take one, or while the layout editor is open")
     func guards() {
         #expect(!Placement.showsTV(.init(isAppleTV: true, isLandscape: true, controls: .bare,

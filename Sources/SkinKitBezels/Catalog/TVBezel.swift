@@ -81,8 +81,12 @@ public struct TVBezel: Decodable, Identifiable, Equatable, Sendable {
     /// Shown in the picker. Artwork fetched for a single game is on the device without
     /// being listed.
     public let isListed: Bool
+    /// The artwork document has a portrait form: on a portrait canvas
+    /// (`TVBezelCanvas.portraitSize(display:seat:)`) it puts the TV at the top and carries
+    /// the room down to the bottom. Always false for an image bezel.
+    public let drawsPortrait: Bool
 
-    private enum CodingKeys: String, CodingKey { case id, name, preferredSystems, frame, look, lightsRoom, artwork }
+    private enum CodingKeys: String, CodingKey { case id, name, preferredSystems, frame, look, lightsRoom, artwork, portrait }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -97,6 +101,7 @@ public struct TVBezel: Decodable, Identifiable, Equatable, Sendable {
         presetID = nil
         source = .builtIn
         isListed = true
+        drawsPortrait = try container.decodeIfPresent(Bool.self, forKey: .portrait) ?? false
     }
 
     /// A bundled shader bezel that was checked with its own artwork.
@@ -112,6 +117,7 @@ public struct TVBezel: Decodable, Identifiable, Equatable, Sendable {
         self.presetID = presetID
         source = .builtIn
         isListed = true
+        drawsPortrait = false
     }
 
     /// An image bezel.
@@ -127,6 +133,7 @@ public struct TVBezel: Decodable, Identifiable, Equatable, Sendable {
         presetID = nil
         self.source = source
         self.isListed = isListed
+        drawsPortrait = false
     }
 }
 

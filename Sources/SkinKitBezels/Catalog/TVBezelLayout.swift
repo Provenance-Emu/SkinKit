@@ -33,21 +33,32 @@ public struct TVBezelLayout: Equatable, Sendable {
     /// image bezel, which is its own picture.
     public let canvas: CGSize?
 
+    /// The picture's shape the artwork was laid out for: pass it to
+    /// `TVBezelPlainArtwork.image(for:maxPixel:canvas:shape:)` or `TVBezelArtworkView` with
+    /// `canvas`. `standard` for an image bezel.
+    public let shape: TVBezelPictureShape
+
+    /// How far down a portrait container the top of a TV that has no portrait form goes, as
+    /// a fraction of the container's height: under the status bar, clear of the controls.
+    static let portraitTopFraction: CGFloat = 0.08
+
     /// `nil` for a TV with no artwork of its own (a shader-only preset), an empty container
     /// or artwork that cannot be read.
     ///
     /// - Parameters:
-    ///   - pictureAspect: the picture's shape (only the ratio matters).
+    ///   - pictureAspect: the picture's shape (only the ratio matters). A built-in TV with a
+    ///     widescreen form is drawn with a wide tube for a wide picture.
     ///   - seat: where the player sits. With a seat, a built-in TV's room is drawn for the
     ///     container's shape (`TVBezelCanvas`), so the artwork is the whole container on
-    ///     anything from 4:3 to 2.4:1. Without one the room is the fixed 16:9 scene, fitted
-    ///     inside the container. An image bezel ignores it.
+    ///     anything from 4:3 to 2.4:1, and on a portrait container for a TV with a portrait
+    ///     form. Without one the room is the fixed 16:9 scene, fitted inside the container.
+    ///     An image bezel ignores it.
     public init?(bezel: TVBezel, container: CGSize, pictureAspect: CGSize, seat: TVBezelSeat? = nil) {
         guard container.width > 0, container.height > 0 else { return nil }
         let bounds = CGRect(origin: .zero, size: container)
         if let art = bezel.image {
             guard art.size.width > 0, art.size.height > 0 else { return nil }
-            let frame = Self.aspectFit(aspect: art.size, in: bounds)
+            let frame = Self.placed(aspect: art.size, in: bounds)
             let scale = frame.width / art.size.width
             artworkFrame = frame
             screenFrame = CGRect(x: frame.minX + art.screen.minX * scale, y: frame.minY + art.screen.minY * scale,
@@ -55,20 +66,34 @@ public struct TVBezelLayout: Equatable, Sendable {
             pictureFrame = BezelPictureFit.rect(aspect: pictureAspect, in: screenFrame)
             placement = .abovePicture
             canvas = nil
+            shape = .standard
             return
         }
-        let artworkCanvas = seat.map { TVBezelCanvas.size(display: container, seat: $0) } ?? TVBezelArtwork.canvas
-        guard bezel.presetID == nil, let tube = TVBezelPlainArtwork.tubeRect(of: bezel, canvas: artworkCanvas) else { return nil }
+        let portraitCanvas = bezel.drawsPortrait ? seat.flatMap { TVBezelCanvas.portraitSize(display: container, seat: $0) } : nil
+        let artworkCanvas = portraitCanvas ?? seat.map { TVBezelCanvas.size(display: container, seat: $0) } ?? TVBezelArtwork.canvas
+        let pictureShape = TVBezelPictureShape(aspect: pictureAspect)
+        guard bezel.presetID == nil,
+              let tube = TVBezelPlainArtwork.tubeRect(of: bezel, canvas: artworkCanvas, shape: pictureShape) else { return nil }
         // A canvas made for this container has its proportions, so the fit is the container.
-        let fitted = Self.aspectFit(aspect: artworkCanvas, in: bounds)
-        let frame = seat != nil && TVBezelCanvas.fitsDisplay(container) ? bounds : fitted
+        let fills = portraitCanvas != nil || (seat != nil && TVBezelCanvas.fitsDisplay(container))
+        let frame = fills ? bounds : Self.placed(aspect: artworkCanvas, in: bounds)
         let scale = frame.width / artworkCanvas.width
         canvas = artworkCanvas
+        shape = pictureShape
         artworkFrame = frame
         screenFrame = CGRect(x: frame.minX + tube.minX * scale, y: frame.minY + tube.minY * scale,
                              width: tube.width * scale, height: tube.height * scale)
         pictureFrame = Self.aspectFit(aspect: pictureAspect, in: screenFrame)
         placement = .behindPicture
+    }
+
+    /// `aspectFit`, except in a portrait container, where artwork that leaves room above and
+    /// below goes near the top: the lower part of a portrait screen belongs to the controls.
+    static func placed(aspect: CGSize, in bounds: CGRect) -> CGRect {
+        let fitted = aspectFit(aspect: aspect, in: bounds)
+        guard bounds.height > bounds.width else { return fitted }
+        let top = min(fitted.minY, bounds.minY + bounds.height * portraitTopFraction)
+        return CGRect(x: fitted.minX, y: top, width: fitted.width, height: fitted.height)
     }
 
     /// Largest rect with `aspect`'s proportions that fits in `bounds`, centred.
@@ -91,11 +116,12 @@ public struct TVBezelLayout: Equatable, Sendable {
 
     /// A built-in TV's tube in `canvas` points. Lays the TV's skin document out the first
     /// time for each canvas; `nil` for a TV without one.
-    public static func tubeRect(of bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas) -> CGRect? {
+    public static func tubeRect(of bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas,
+                                shape: TVBezelPictureShape = .standard) -> CGRect? {
         guard bezel.image == nil, bezel.presetID == nil else { return nil }
-        let key = "\(bezel.id)|\(canvas.width)x\(canvas.height)"
+        let key = "\(bezel.id)|\(canvas.width)x\(canvas.height)|\(shape.rawValue)"
         if let known = lock.withLock({ tubes[key] }) { return known }
-        guard let tube = try? TVBezelArtwork(bezel: bezel, canvas: canvas).tubeRect else { return nil }
+        guard let tube = try? TVBezelArtwork(bezel: bezel, canvas: canvas, shape: shape).tubeRect else { return nil }
         lock.withLock {
             // A window being resized asks for a new canvas every frame: do not keep them all.
             if tubes.count >= tubeCacheLimit { tubes.removeAll(keepingCapacity: true) }
@@ -111,14 +137,19 @@ public struct TVBezelLayout: Equatable, Sendable {
     /// a built-in TV's cabinet and room with the tube painted black. Slow: call it off the
     /// main thread. `nil` for a shader-only TV or artwork that cannot be read.
     ///
-    /// - Parameter canvas: the canvas a built-in TV is laid out on (`TVBezelLayout.canvas`).
-    public static func image(for bezel: TVBezel, maxPixel: CGFloat, canvas: CGSize = TVBezelArtwork.canvas) -> CGImage? {
+    /// - Parameters:
+    ///   - canvas: the canvas a built-in TV is laid out on (`TVBezelLayout.canvas`).
+    ///   - shape: the picture's shape it is laid out for (`TVBezelLayout.shape`).
+    public static func image(for bezel: TVBezel, maxPixel: CGFloat, canvas: CGSize = TVBezelArtwork.canvas,
+                             shape: TVBezelPictureShape = .standard) -> CGImage? {
         guard maxPixel >= 1 else { return nil }
         if let art = bezel.image {
             return TVBezelImage.displayImage(art.fileURL, maxPixel: maxPixel)
         }
-        guard bezel.presetID == nil, let artwork = try? TVBezelArtwork(bezel: bezel, canvas: canvas),
-              let cabinet = artwork.image(pixelWidth: maxPixel) else { return nil }
+        // `maxPixel` is the longer side; the renderer wants the width.
+        let pixelWidth = canvas.height > canvas.width ? maxPixel * canvas.width / canvas.height : maxPixel
+        guard bezel.presetID == nil, let artwork = try? TVBezelArtwork(bezel: bezel, canvas: canvas, shape: shape),
+              let cabinet = artwork.image(pixelWidth: pixelWidth) else { return nil }
         let (width, height) = (cabinet.width, cabinet.height)
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                       space: CGColorSpaceCreateDeviceRGB(),

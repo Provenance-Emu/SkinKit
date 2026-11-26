@@ -23,6 +23,41 @@ import CoreGraphics
         case .front: return 900
         }
     }
+
+    /// The width of the canvas a portrait room is drawn on from this seat, in points. The
+    /// tubes are about 1040 points wide and the narrow cabinets 1152, so the front seat is
+    /// the cabinet edge to edge.
+    public var portraitCanvasWidth: CGFloat {
+        switch self {
+        case .back: return 1280
+        case .middle: return 1216
+        case .front: return 1152
+        }
+    }
+}
+
+/// The shape of the game picture a TV is drawn for. A TV whose document has a widescreen
+/// form (it reads the `TVBezelPictureShape.wideFlag` flag) widens its tube and cabinet for a
+/// wide picture; any other TV keeps its 4:3 tube and the picture is fitted inside it.
+@frozen public enum TVBezelPictureShape: String, Hashable, Sendable {
+    case standard
+    case wide
+
+    /// The flag a TV's document reads in a `when` or `visible` condition.
+    public static let wideFlag = "tv.wide"
+
+    /// Pictures at least this wide (width over height) are wide: 16:10 and up, so 3:2 and
+    /// 4:3 stay in a 4:3 tube.
+    public static let wideThreshold: CGFloat = 1.6
+
+    /// How far below `wideThreshold` a ratio may be and still count as wide.
+    private static let tolerance: CGFloat = 0.001
+
+    /// The shape of a picture of `aspect` (only the ratio matters).
+    public init(aspect: CGSize) {
+        let isWide = aspect.height > 0 && aspect.width / aspect.height >= Self.wideThreshold - Self.tolerance
+        self = isWide ? .wide : .standard
+    }
 }
 
 /// The canvas for a display. A TV's document is resolved on it, so the room has the
@@ -45,6 +80,22 @@ import CoreGraphics
         if ratio < ratioRange.lowerBound { return CGSize(width: height * 4 / 3, height: height) }
         if ratio > ratioRange.upperBound { return CGSize(width: height * 12 / 5, height: height) }
         return CGSize(width: height * display.width / display.height, height: height)
+    }
+
+    /// The portrait displays (width over height) a portrait room is drawn for: from a tall
+    /// phone to an iPad held upright. Squarer windows get the 4:3 landscape canvas.
+    public static let portraitRatioRange: ClosedRange<CGFloat> = 0.4...0.8
+
+    /// The canvas of a portrait room for `display`: `seat.portraitCanvasWidth` wide, with the
+    /// display's proportions, so the room is the whole display. `nil` for a display that is
+    /// not a portrait shape. Only a TV whose document has a portrait form
+    /// (`TVBezel.drawsPortrait`) can be laid out on it.
+    public static func portraitSize(display: CGSize, seat: TVBezelSeat = .back) -> CGSize? {
+        guard display.width > 0, display.height > 0 else { return nil }
+        let ratio = display.width / display.height
+        guard portraitRatioRange.contains(ratio) else { return nil }
+        let width = seat.portraitCanvasWidth
+        return CGSize(width: width, height: (width / ratio).rounded())
     }
 
     /// Whether `display`'s shape is one the canvas can match exactly. When it is not, the

@@ -118,6 +118,20 @@
                   ]
                 ]
               }
+            ],
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    0,
+                    847,
+                    "100%",
+                    14
+                  ]
+                }
+              }
             ]
           },
           {
@@ -156,7 +170,34 @@
                   ]
                 ]
               }
+            ],
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    0,
+                    861,
+                    "100%",
+                    24
+                  ]
+                }
+              }
             ]
+          }
+        ],
+        "when": [
+          {
+            "orientation": "portrait",
+            "layout": {
+              "anchor": {
+                "y": "top"
+              },
+              "offset": {
+                "y": 60
+              }
+            }
           }
         ]
       },
@@ -170,6 +211,604 @@
           }
         },
         "children": [
+          {
+            "type": "shape",
+            "id": "console-body",
+            "layout": {
+              "frame": [
+                150,
+                1056,
+                1620,
+                6000
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "linear",
+                "start": [
+                  0,
+                  0.5
+                ],
+                "end": [
+                  1,
+                  0.5
+                ],
+                "stops": [
+                  [
+                    "#22242A",
+                    0
+                  ],
+                  [
+                    "#34373E",
+                    0.18
+                  ],
+                  [
+                    "#24262B",
+                    0.36
+                  ],
+                  [
+                    "#3A3D45",
+                    0.55
+                  ],
+                  [
+                    "#25272C",
+                    0.74
+                  ],
+                  [
+                    "#33363D",
+                    0.9
+                  ],
+                  [
+                    "#202227",
+                    1
+                  ]
+                ]
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    861,
+                    1620,
+                    6000
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-falloff",
+            "layout": {
+              "frame": [
+                150,
+                1056,
+                1620,
+                2400
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "linear",
+                "start": [
+                  0.5,
+                  0
+                ],
+                "end": [
+                  0.5,
+                  1
+                ],
+                "stops": [
+                  [
+                    "#000000",
+                    0.0,
+                    0
+                  ],
+                  [
+                    "#000000",
+                    0.5,
+                    1
+                  ]
+                ]
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    861,
+                    1620,
+                    2400
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-deep",
+            "layout": {
+              "frame": [
+                150,
+                3456,
+                1620,
+                6000
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "solid",
+                "color": "#000000",
+                "opacity": 0.5
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    3261,
+                    1620,
+                    6000
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-lip",
+            "layout": {
+              "frame": [
+                150,
+                1056,
+                1620,
+                14
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "linear",
+                "start": [
+                  0.5,
+                  0
+                ],
+                "end": [
+                  0.5,
+                  1
+                ],
+                "stops": [
+                  [
+                    "#F2F4F6",
+                    0
+                  ],
+                  [
+                    "#B9BEC5",
+                    0.35
+                  ],
+                  [
+                    "#7C828B",
+                    0.6
+                  ],
+                  [
+                    "#D3D7DC",
+                    1
+                  ]
+                ]
+              }
+            ],
+            "effects": [
+              {
+                "type": "shadow",
+                "color": "#000000",
+                "opacity": 0.7,
+                "radius": 18,
+                "offset": [
+                  0,
+                  10
+                ]
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    861,
+                    1620,
+                    14
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-groove",
+            "layout": {
+              "frame": [
+                150,
+                1152,
+                1620,
+                4
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "solid",
+                "color": "#000000",
+                "opacity": 0.55
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    957,
+                    1620,
+                    4
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-groove-light",
+            "layout": {
+              "frame": [
+                150,
+                1156,
+                1620,
+                2
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "solid",
+                "color": "#FFFFFF",
+                "opacity": 0.08
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    961,
+                    1620,
+                    2
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-plate",
+            "layout": {
+              "frame": [
+                810.0,
+                1096,
+                300,
+                34
+              ]
+            },
+            "shape": {
+              "kind": "rect",
+              "cornerRadius": 6
+            },
+            "fills": [
+              {
+                "type": "linear",
+                "start": [
+                  0.5,
+                  0
+                ],
+                "end": [
+                  0.5,
+                  1
+                ],
+                "stops": [
+                  [
+                    "#F2F4F6",
+                    0
+                  ],
+                  [
+                    "#B9BEC5",
+                    0.35
+                  ],
+                  [
+                    "#7C828B",
+                    0.6
+                  ],
+                  [
+                    "#D3D7DC",
+                    1
+                  ]
+                ]
+              }
+            ],
+            "strokes": [
+              {
+                "color": "#4B5058",
+                "width": 1.5,
+                "align": "outer",
+                "opacity": 0.9
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    810.0,
+                    901,
+                    300,
+                    34
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "id": "console-plate-text",
+            "layout": {
+              "frame": [
+                810.0,
+                1102,
+                300,
+                22
+              ]
+            },
+            "text": "HI-FI  STEREO  SYSTEM",
+            "font": {
+              "size": 15,
+              "weight": "semibold"
+            },
+            "color": "#3A3E45",
+            "align": "center",
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    810.0,
+                    907,
+                    300,
+                    22
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "group",
+            "id": "console-holes-a",
+            "layout": {
+              "frame": [
+                256.0,
+                1206,
+                1408,
+                11
+              ]
+            },
+            "repeat": {
+              "count": 64,
+              "offset": {
+                "x": 0,
+                "y": 44
+              }
+            },
+            "children": [
+              {
+                "type": "shape",
+                "id": "console-holes-a-hole",
+                "layout": {
+                  "frame": [
+                    0,
+                    0,
+                    11,
+                    11
+                  ]
+                },
+                "shape": {
+                  "kind": "ellipse"
+                },
+                "fills": [
+                  {
+                    "type": "linear",
+                    "start": [
+                      0.5,
+                      0
+                    ],
+                    "end": [
+                      0.5,
+                      1
+                    ],
+                    "stops": [
+                      [
+                        "#050506",
+                        0
+                      ],
+                      [
+                        "#16171A",
+                        1
+                      ]
+                    ]
+                  }
+                ],
+                "repeat": {
+                  "count": 64,
+                  "offset": {
+                    "x": 22,
+                    "y": 0
+                  }
+                }
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    256.0,
+                    1011,
+                    1408,
+                    11
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "group",
+            "id": "console-holes-b",
+            "layout": {
+              "frame": [
+                267.0,
+                1228.0,
+                1408,
+                11
+              ]
+            },
+            "repeat": {
+              "count": 64,
+              "offset": {
+                "x": 0,
+                "y": 44
+              }
+            },
+            "children": [
+              {
+                "type": "shape",
+                "id": "console-holes-b-hole",
+                "layout": {
+                  "frame": [
+                    0,
+                    0,
+                    11,
+                    11
+                  ]
+                },
+                "shape": {
+                  "kind": "ellipse"
+                },
+                "fills": [
+                  {
+                    "type": "linear",
+                    "start": [
+                      0.5,
+                      0
+                    ],
+                    "end": [
+                      0.5,
+                      1
+                    ],
+                    "stops": [
+                      [
+                        "#050506",
+                        0
+                      ],
+                      [
+                        "#16171A",
+                        1
+                      ]
+                    ]
+                  }
+                ],
+                "repeat": {
+                  "count": 64,
+                  "offset": {
+                    "x": 22,
+                    "y": 0
+                  }
+                }
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    267.0,
+                    1033.0,
+                    1408,
+                    11
+                  ]
+                }
+              }
+            ]
+          },
           {
             "type": "shape",
             "id": "stand-side",
@@ -206,6 +845,33 @@
                     1
                   ]
                 ]
+              }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "minWidth": 1920,
+                "layout": {
+                  "frame": [
+                    -23,
+                    1004,
+                    1966,
+                    52
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    809,
+                    1620,
+                    52
+                  ]
+                }
               }
             ]
           },
@@ -245,6 +911,33 @@
                     1
                   ]
                 ]
+              }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "minWidth": 1920,
+                "layout": {
+                  "frame": [
+                    7,
+                    1012,
+                    1906,
+                    44
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    180,
+                    817,
+                    1560,
+                    44
+                  ]
+                }
               }
             ]
           },
@@ -293,6 +986,32 @@
                 "align": "inner",
                 "opacity": 0.6
               }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    527,
+                    1018,
+                    866,
+                    38
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    700,
+                    823,
+                    520,
+                    38
+                  ]
+                }
+              }
             ]
           },
           {
@@ -315,6 +1034,32 @@
                 "type": "solid",
                 "color": "#060807"
               }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1233,
+                    1026,
+                    124,
+                    22
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1060,
+                    831,
+                    124,
+                    22
+                  ]
+                }
+              }
             ]
           },
           {
@@ -334,7 +1079,33 @@
               "weight": "semibold"
             },
             "color": "#3DF58A",
-            "align": "center"
+            "align": "center",
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1239,
+                    1027,
+                    112,
+                    20
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1066,
+                    832,
+                    112,
+                    20
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -355,6 +1126,32 @@
               {
                 "type": "solid",
                 "color": "#0A0A0B"
+              }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    551,
+                    1028,
+                    646,
+                    6
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    724,
+                    833,
+                    300,
+                    6
+                  ]
+                }
               }
             ]
           },
@@ -407,6 +1204,33 @@
                   12
                 ]
               }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "minWidth": 1920,
+                "layout": {
+                  "frame": [
+                    -53,
+                    990,
+                    2026,
+                    18
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    120,
+                    795,
+                    1680,
+                    18
+                  ]
+                }
+              }
             ]
           },
           {
@@ -428,6 +1252,33 @@
                 "type": "solid",
                 "color": "#8C9099",
                 "opacity": 0.55
+              }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "minWidth": 1920,
+                "layout": {
+                  "frame": [
+                    -53,
+                    990,
+                    2026,
+                    2
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    120,
+                    795,
+                    1680,
+                    2
+                  ]
+                }
               }
             ]
           },
@@ -504,6 +1355,43 @@
                     912
                   ]
                 }
+              },
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    211,
+                    80,
+                    1498,
+                    912
+                  ]
+                }
+              },
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "minWidth": 1920,
+                "layout": {
+                  "frame": [
+                    23,
+                    80,
+                    1874,
+                    912
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    384,
+                    80,
+                    1152,
+                    717
+                  ]
+                }
               }
             ]
           },
@@ -553,6 +1441,31 @@
                     196,
                     80,
                     1528,
+                    22
+                  ]
+                }
+              },
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    211,
+                    80,
+                    1498,
+                    22
+                  ]
+                }
+              },
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "minWidth": 1920,
+                "layout": {
+                  "frame": [
+                    23,
+                    80,
+                    1874,
                     22
                   ]
                 }
@@ -607,7 +1520,36 @@
             ],
             "visible": {
               "minWidth": 1568
-            }
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "visible": {
+                  "minWidth": 1920
+                },
+                "layout": {
+                  "frame": [
+                    49,
+                    120,
+                    168,
+                    828
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    222,
+                    120,
+                    168,
+                    633
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -640,7 +1582,24 @@
             },
             "visible": {
               "minWidth": 1568
-            }
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "visible": {
+                  "minWidth": 1920
+                },
+                "layout": {
+                  "frame": [
+                    67,
+                    138,
+                    132,
+                    4
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -690,7 +1649,36 @@
             ],
             "visible": {
               "minWidth": 1568
-            }
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "visible": {
+                  "minWidth": 1920
+                },
+                "layout": {
+                  "frame": [
+                    1703,
+                    120,
+                    168,
+                    828
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1530,
+                    120,
+                    168,
+                    633
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -723,7 +1711,24 @@
             },
             "visible": {
               "minWidth": 1568
-            }
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "visible": {
+                  "minWidth": 1920
+                },
+                "layout": {
+                  "frame": [
+                    1721,
+                    138,
+                    132,
+                    4
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -776,6 +1781,32 @@
                 "align": "outer",
                 "opacity": 0.5
               }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    237,
+                    120,
+                    1446,
+                    828
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    410,
+                    120,
+                    1100,
+                    633
+                  ]
+                }
+              }
             ]
           },
           {
@@ -806,6 +1837,32 @@
                 "align": "inner",
                 "opacity": 0.7
               }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    259,
+                    142,
+                    1402,
+                    796
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    432,
+                    142,
+                    1056,
+                    601
+                  ]
+                }
+              }
             ]
           },
           {
@@ -825,7 +1882,33 @@
               "weight": "semibold"
             },
             "color": "#5F646C",
-            "align": "leading"
+            "align": "leading",
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    267,
+                    956,
+                    360,
+                    24
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    440,
+                    761,
+                    360,
+                    24
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -871,6 +1954,32 @@
                 "width": 1.5,
                 "align": "inner",
                 "opacity": 0.8
+              }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1213,
+                    956,
+                    180,
+                    24
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1040,
+                    761,
+                    180,
+                    24
+                  ]
+                }
               }
             ]
           },
@@ -926,7 +2035,33 @@
                 "x": 42,
                 "y": 0
               }
-            }
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1423,
+                    959,
+                    30,
+                    18
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1250,
+                    764,
+                    30,
+                    18
+                  ]
+                }
+              }
+            ]
           },
           {
             "type": "shape",
@@ -947,6 +2082,32 @@
               {
                 "type": "solid",
                 "color": "#1A0D10"
+              }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1601,
+                    958,
+                    44,
+                    20
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1428,
+                    763,
+                    44,
+                    20
+                  ]
+                }
               }
             ]
           },
@@ -999,6 +2160,32 @@
                   0
                 ]
               }
+            ],
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1657,
+                    962,
+                    12,
+                    12
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1484,
+                    767,
+                    12,
+                    12
+                  ]
+                }
+              }
             ]
           },
           {
@@ -1011,6 +2198,45 @@
                 1040,
                 780
               ]
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    267,
+                    150,
+                    1386,
+                    780
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    440,
+                    150,
+                    1040,
+                    585
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "when": [
+          {
+            "orientation": "portrait",
+            "layout": {
+              "anchor": {
+                "y": "top"
+              },
+              "offset": {
+                "y": 60
+              }
             }
           }
         ]

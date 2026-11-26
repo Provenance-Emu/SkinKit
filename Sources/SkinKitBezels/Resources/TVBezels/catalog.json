@@ -108,6 +108,7 @@
     },
     {
       "id": "flat-tube-tv",
+      "portrait": true,
       "name": "Flat-Tube TV",
       "artwork": "flat-tube-tv.skin.json",
       "lightsRoom": true,
