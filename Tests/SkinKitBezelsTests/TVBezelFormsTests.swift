@@ -105,4 +105,32 @@ struct TVBezelFormsTests {
         #expect(max(image.width, image.height) <= 600)
         #expect(abs(CGFloat(image.width) / CGFloat(image.height) - canvas.width / canvas.height) < 0.01)
     }
+
+    @Test("The tube can be left see-through, for artwork laid over the picture")
+    func cutOutTube() throws {
+        let bezel = try flatTube()
+        let layout = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.standard, seat: .back))
+        let canvas = try #require(layout.canvas)
+        let image = try #require(TVBezelPlainArtwork.image(for: bezel, maxPixel: 600, canvas: canvas, cutsOutTube: true))
+        let tube = try #require(TVBezelPlainArtwork.tubeRect(of: bezel, canvas: canvas))
+        let scale = CGFloat(image.width) / canvas.width
+        func alpha(x: CGFloat, y: CGFloat) throws -> UInt8 {
+            let data = try #require(image.dataProvider?.data as Data?)
+            return data[Int(y * scale) * image.bytesPerRow + Int(x * scale) * 4 + 3]
+        }
+        #expect(try alpha(x: tube.midX, y: tube.midY) == 0)
+        #expect(try alpha(x: tube.midX, y: tube.maxY + 400) == 255)
+    }
+
+    @Test("The shader scene has the wide tube for a wide picture, under its own key")
+    func shaderScene() throws {
+        let bezel = try flatTube()
+        let standardKey = TVBezelScene.key(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480)
+        let wideKey = TVBezelScene.key(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480, shape: .wide)
+        #expect(standardKey != wideKey)
+        let scene = try #require(TVBezelScene.make(bezel: bezel, lightsRoom: false, flatGlass: false, scenePixelWidth: 480,
+                                                   key: wideKey, shape: .wide, hasPreset: { _ in true }))
+        #expect(abs(scene.tubeRect.width / scene.tubeRect.height - 16.0 / 9) < 0.01)
+        #expect(abs(scene.tubeRect.midX - TVBezelArtwork.canvas.width / 2) < 0.5)
+    }
 }

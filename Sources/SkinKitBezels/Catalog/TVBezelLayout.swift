@@ -140,8 +140,11 @@ public struct TVBezelLayout: Equatable, Sendable {
     /// - Parameters:
     ///   - canvas: the canvas a built-in TV is laid out on (`TVBezelLayout.canvas`).
     ///   - shape: the picture's shape it is laid out for (`TVBezelLayout.shape`).
+    ///   - cutsOutTube: leave a built-in TV's tube see-through, for an app that lays the
+    ///     artwork over its picture as it does an image bezel. Otherwise the tube is black
+    ///     and the artwork goes behind the picture.
     public static func image(for bezel: TVBezel, maxPixel: CGFloat, canvas: CGSize = TVBezelArtwork.canvas,
-                             shape: TVBezelPictureShape = .standard) -> CGImage? {
+                             shape: TVBezelPictureShape = .standard, cutsOutTube: Bool = false) -> CGImage? {
         guard maxPixel >= 1 else { return nil }
         if let art = bezel.image {
             return TVBezelImage.displayImage(art.fileURL, maxPixel: maxPixel)
@@ -162,6 +165,7 @@ public struct TVBezelLayout: Equatable, Sendable {
                           width: tube.width * scale, height: tube.height * scale)
         let radius = rect.width * tubeCornerFraction
         context.setFillColor(CGColor(red: 0, green: 0, blue: 0, alpha: 1))
+        if cutsOutTube { context.setBlendMode(.clear) }
         context.addPath(CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil))
         context.fillPath()
         return context.makeImage() ?? cabinet
