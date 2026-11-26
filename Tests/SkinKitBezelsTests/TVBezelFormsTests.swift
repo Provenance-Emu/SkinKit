@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import Foundation
 import Testing
 @testable import SkinKitBezels
 
@@ -61,22 +62,38 @@ struct TVBezelFormsTests {
         #expect(abs(aspect(layout.screenFrame) - 4.0 / 3) < 0.01)
     }
 
-    @Test("A TV with no portrait form keeps its landscape scene, near the top of a portrait screen")
-    func noPortraitForm() throws {
-        let bezel = try #require(TVBezelCatalog.bundled.first { !$0.drawsPortrait && $0.presetID == nil })
-        let layout = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.standard, seat: .back))
-        let canvas = try #require(layout.canvas)
-        #expect(canvas.width > canvas.height)
-        #expect(abs(layout.artworkFrame.minY - Self.phone.height * TVBezelLayout.portraitTopFraction) < 0.5)
-        #expect(layout.artworkFrame.width == Self.phone.width)
+    @Test("Every bundled TV has both forms", arguments: TVBezelCatalog.bundled.map(\.id))
+    func everyTV(id: String) throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: id))
+        #expect(bezel.drawsPortrait)
+        for container in [Self.phone, Self.tablet] {
+            let layout = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: Self.standard, seat: .back))
+            #expect(layout.artworkFrame == CGRect(origin: .zero, size: container))
+            #expect(layout.screenFrame.maxY < container.height * 0.6)
+            #expect(abs(aspect(layout.screenFrame) - 4.0 / 3) < 0.01)
+        }
+        for container in [Self.phone, Self.phoneLandscape, CGSize(width: 1920, height: 1080)] {
+            let layout = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: Self.wide, seat: .back))
+            #expect(abs(aspect(layout.screenFrame) - 16.0 / 9) < 0.01)
+            #expect(CGRect(origin: .zero, size: container).contains(layout.screenFrame))
+        }
+        // The landscape scene for a 4:3 picture is what it always was: the tube is centred.
+        let landscape = try TVBezelArtwork(bezel: bezel)
+        #expect(abs(landscape.tubeRect.midX - TVBezelArtwork.canvas.width / 2) < 0.5)
+        #expect(abs(landscape.tubeAspect - 4.0 / 3) < 0.01)
     }
 
-    @Test("A TV with no widescreen form keeps its tube, and the picture is fitted inside it")
-    func noWideForm() throws {
-        let bezel = try #require(TVBezelCatalog.bezel(id: "living-room-tv"))
-        let layout = try #require(TVBezelLayout(bezel: bezel, container: Self.phoneLandscape, pictureAspect: Self.wide, seat: .back))
-        #expect(abs(aspect(layout.screenFrame) - 4.0 / 3) < 0.01)
-        #expect(layout.pictureFrame.height < layout.screenFrame.height * 0.8)
+    @Test("An image bezel keeps its own shape, near the top of a portrait screen")
+    func imageBezelInPortrait() throws {
+        let art = TVBezel.ImageArtwork(fileURL: URL(fileURLWithPath: "/nonexistent.png"), size: CGSize(width: 1920, height: 1080),
+                                       screen: CGRect(x: 480, y: 180, width: 960, height: 720))
+        let bezel = TVBezel(id: "file:test", name: "Test", preferredSystems: [], image: art, source: .imported, isListed: true)
+        let layout = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.wide, seat: .back))
+        #expect(layout.shape == .standard)
+        #expect(abs(layout.artworkFrame.minY - Self.phone.height * TVBezelLayout.portraitTopFraction) < 0.5)
+        #expect(layout.artworkFrame.width == Self.phone.width)
+        let landscape = try #require(TVBezelLayout(bezel: bezel, container: Self.phoneLandscape, pictureAspect: Self.wide, seat: .back))
+        #expect(abs(landscape.artworkFrame.midY - Self.phoneLandscape.height / 2) < 0.5)
     }
 
     @Test("The artwork is drawn at the canvas's shape", arguments: [phone, phoneLandscape])

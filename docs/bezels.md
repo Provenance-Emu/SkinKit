@@ -45,8 +45,8 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
      `TVBezelArtworkView`. Two forms come from that, for a TV whose document has them:
      - *Portrait* (`TVBezel.drawsPortrait`, `"portrait": true` in the catalogue): on a portrait container
        (`TVBezelCanvas.portraitRatioRange`) the room is the whole screen, the TV at the top and a console
-       running down under the touch controls. A TV without the form keeps its landscape scene, placed
-       near the top.
+       running down under the touch controls. An image bezel keeps its own shape, placed near the
+       top.
      - *Widescreen*: for a picture of 16:10 or wider (`TVBezelPictureShape`) the tube and cabinet are 16:9,
        so the picture has no bars. A TV without the form keeps its 4:3 tube and the picture is fitted in it.
        `pictureAspect` is all the app passes. Pass the shape the game is set to, not each frame's: a game
@@ -86,11 +86,11 @@ gets the TV whose `preferredSystems` lists it, else `living-room-tv`.
 ![Flat-Tube TV in portrait on a phone](images/bezels/portrait-iphone-portrait.jpg)
 ![Flat-Tube TV in portrait on a tablet](images/bezels/portrait-ipad-portrait.jpg)
 
-Only `flat-tube-tv` has the portrait and widescreen forms so far. They are `when` entries and
-`console-*` nodes in its document, written by `python3 scripts/tv_bezel_forms.py <id>` (which expects a
-`room-band` group and a 1920x1080 `set` group with a `stand-side` and a `cabinet`); run it again after
-changing the TV's artwork. In a document the forms are conditions on `"orientation": "portrait"` and on
-the flag `tv.wide`.
+Every bundled TV has the portrait and widescreen forms. They are `when` entries and `console-*` nodes
+in its document, written by `python3 scripts/tv_bezel_forms.py` from the table at the top of that
+script (the TV's cabinet node, the surface it stands on, and the colour and texture of what is under
+it in portrait). Run it again after changing a TV's artwork, and add a row for a new TV. In a document
+the forms are conditions on `"orientation": "portrait"` and on the flag `tv.wide`.
 
 To add one: write `<id>.skin.json` (a format 2 document on the 1920x1080 canvas, drawn from shapes, with
 exactly one `screen` node that is 4:3 and centred both ways), add its catalogue entry, and run

@@ -3,6 +3,7 @@
   "bezels": [
     {
       "id": "studio-monitor",
+      "portrait": true,
       "name": "Studio Monitor",
       "artwork": "studio-monitor.skin.json",
       "lightsRoom": true,
@@ -34,6 +35,7 @@
     },
     {
       "id": "living-room-tv",
+      "portrait": true,
       "name": "Living Room TV",
       "artwork": "living-room-tv.skin.json",
       "lightsRoom": true,
@@ -65,6 +67,7 @@
     },
     {
       "id": "computer-monitor",
+      "portrait": true,
       "name": "Computer Monitor",
       "artwork": "computer-monitor.skin.json",
       "lightsRoom": true,
@@ -144,6 +147,7 @@
     },
     {
       "id": "dorm-tv",
+      "portrait": true,
       "name": "Dorm TV",
       "artwork": "dorm-tv.skin.json",
       "lightsRoom": true,
@@ -175,6 +179,7 @@
     },
     {
       "id": "vga-monitor",
+      "portrait": true,
       "name": "VGA Monitor",
       "artwork": "vga-monitor.skin.json",
       "lightsRoom": true,
@@ -202,6 +207,7 @@
     },
     {
       "id": "candy-cabinet",
+      "portrait": true,
       "name": "Candy Cabinet",
       "artwork": "candy-cabinet.skin.json",
       "lightsRoom": true,

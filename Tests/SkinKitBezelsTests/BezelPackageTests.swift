@@ -248,14 +248,16 @@ struct TVBezelLayoutTests {
         #expect(layout.pictureFrame == layout.screenFrame)
     }
 
-    @Test("A wider container letterboxes the scene, and a wide picture is fitted inside the tube")
+    @Test("A wider container letterboxes the scene, and a wide picture gets the TV's wide tube")
     func letterboxed() throws {
         let bezel = try #require(TVBezelCatalog.bezel(id: "living-room-tv"))
         let layout = try #require(TVBezelLayout(bezel: bezel, container: CGSize(width: 1200, height: 540),
                                                 pictureAspect: CGSize(width: 16, height: 9)))
         #expect(layout.artworkFrame == CGRect(x: 120, y: 0, width: 960, height: 540))
+        // The wide tube is 1280x720 at (320, 180) on the 1920x1080 canvas.
+        #expect(layout.screenFrame == CGRect(x: 280, y: 90, width: 640, height: 360))
         #expect(layout.pictureFrame.width == layout.screenFrame.width)
-        #expect(abs(layout.pictureFrame.height - 270) < 0.001)
+        #expect(abs(layout.pictureFrame.height - 360) < 0.001)
         #expect(abs(layout.pictureFrame.midY - layout.screenFrame.midY) < 0.001)
     }
 

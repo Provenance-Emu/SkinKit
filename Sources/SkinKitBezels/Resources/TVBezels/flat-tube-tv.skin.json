@@ -238,31 +238,31 @@
                 ],
                 "stops": [
                   [
-                    "#22242A",
+                    "#23252A",
                     0
                   ],
                   [
-                    "#34373E",
+                    "#3C3E43",
                     0.18
                   ],
                   [
-                    "#24262B",
+                    "#26282D",
                     0.36
                   ],
                   [
-                    "#3A3D45",
+                    "#494A50",
                     0.55
                   ],
                   [
-                    "#25272C",
+                    "#27282E",
                     0.74
                   ],
                   [
-                    "#33363D",
+                    "#383A3F",
                     0.9
                   ],
                   [
-                    "#202227",
+                    "#222328",
                     1
                   ]
                 ]
@@ -384,13 +384,13 @@
           },
           {
             "type": "shape",
-            "id": "console-lip",
+            "id": "console-shade",
             "layout": {
               "frame": [
                 150,
                 1056,
                 1620,
-                14
+                60
               ]
             },
             "shape": {
@@ -409,33 +409,15 @@
                 ],
                 "stops": [
                   [
-                    "#F2F4F6",
+                    "#000000",
+                    0.55,
                     0
                   ],
                   [
-                    "#B9BEC5",
-                    0.35
-                  ],
-                  [
-                    "#7C828B",
-                    0.6
-                  ],
-                  [
-                    "#D3D7DC",
+                    "#000000",
+                    0.0,
                     1
                   ]
-                ]
-              }
-            ],
-            "effects": [
-              {
-                "type": "shadow",
-                "color": "#000000",
-                "opacity": 0.7,
-                "radius": 18,
-                "offset": [
-                  0,
-                  10
                 ]
               }
             ],
@@ -451,7 +433,7 @@
                     150,
                     861,
                     1620,
-                    14
+                    60
                   ]
                 }
               }
@@ -530,6 +512,81 @@
                     961,
                     1620,
                     2
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-lip",
+            "layout": {
+              "frame": [
+                150,
+                1056,
+                1620,
+                14
+              ]
+            },
+            "shape": {
+              "kind": "rect"
+            },
+            "fills": [
+              {
+                "type": "linear",
+                "start": [
+                  0.5,
+                  0
+                ],
+                "end": [
+                  0.5,
+                  1
+                ],
+                "stops": [
+                  [
+                    "#F2F4F6",
+                    0
+                  ],
+                  [
+                    "#B7BBC0",
+                    0.35
+                  ],
+                  [
+                    "#7C828B",
+                    0.6
+                  ],
+                  [
+                    "#D4D8DB",
+                    1
+                  ]
+                ]
+              }
+            ],
+            "effects": [
+              {
+                "type": "shadow",
+                "color": "#000000",
+                "opacity": 0.7,
+                "radius": 18,
+                "offset": [
+                  0,
+                  10
+                ]
+              }
+            ],
+            "visible": {
+              "orientation": "portrait"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    150,
+                    861,
+                    1620,
+                    14
                   ]
                 }
               }
@@ -645,7 +702,7 @@
           },
           {
             "type": "group",
-            "id": "console-holes-a",
+            "id": "console-dots-a",
             "layout": {
               "frame": [
                 256.0,
@@ -664,7 +721,7 @@
             "children": [
               {
                 "type": "shape",
-                "id": "console-holes-a-hole",
+                "id": "console-dots-a-dot",
                 "layout": {
                   "frame": [
                     0,
@@ -689,11 +746,11 @@
                     ],
                     "stops": [
                       [
-                        "#050506",
+                        "#060708",
                         0
                       ],
                       [
-                        "#16171A",
+                        "#16161A",
                         1
                       ]
                     ]
@@ -728,7 +785,7 @@
           },
           {
             "type": "group",
-            "id": "console-holes-b",
+            "id": "console-dots-b",
             "layout": {
               "frame": [
                 267.0,
@@ -747,7 +804,7 @@
             "children": [
               {
                 "type": "shape",
-                "id": "console-holes-b-hole",
+                "id": "console-dots-b-dot",
                 "layout": {
                   "frame": [
                     0,
@@ -772,11 +829,11 @@
                     ],
                     "stops": [
                       [
-                        "#050506",
+                        "#060708",
                         0
                       ],
                       [
-                        "#16171A",
+                        "#16161A",
                         1
                       ]
                     ]
@@ -993,9 +1050,9 @@
                 "flag": "tv.wide",
                 "layout": {
                   "frame": [
-                    527,
+                    700,
                     1018,
-                    866,
+                    520,
                     38
                   ]
                 }
@@ -1134,9 +1191,9 @@
                 "flag": "tv.wide",
                 "layout": {
                   "frame": [
-                    551,
+                    724,
                     1028,
-                    646,
+                    300,
                     6
                   ]
                 }
@@ -1574,7 +1631,7 @@
               }
             ],
             "repeat": {
-              "count": 61,
+              "count": 46,
               "offset": {
                 "x": 0,
                 "y": 13
@@ -1598,6 +1655,61 @@
                     4
                   ]
                 }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "slots-left-rest",
+            "layout": {
+              "frame": [
+                240,
+                736,
+                132,
+                4
+              ]
+            },
+            "shape": {
+              "kind": "rect",
+              "cornerRadius": 2
+            },
+            "fills": [
+              {
+                "type": "solid",
+                "color": "#3C4046",
+                "opacity": 0.7
+              }
+            ],
+            "repeat": {
+              "count": 15,
+              "offset": {
+                "x": 0,
+                "y": 13
+              }
+            },
+            "visible": {
+              "minWidth": 1568
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "visible": {
+                  "minWidth": 1920
+                },
+                "layout": {
+                  "frame": [
+                    67,
+                    736,
+                    132,
+                    4
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "visible": false
               }
             ]
           },
@@ -1703,7 +1815,7 @@
               }
             ],
             "repeat": {
-              "count": 61,
+              "count": 46,
               "offset": {
                 "x": 0,
                 "y": 13
@@ -1727,6 +1839,61 @@
                     4
                   ]
                 }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "slots-right-rest",
+            "layout": {
+              "frame": [
+                1548,
+                736,
+                132,
+                4
+              ]
+            },
+            "shape": {
+              "kind": "rect",
+              "cornerRadius": 2
+            },
+            "fills": [
+              {
+                "type": "solid",
+                "color": "#3C4046",
+                "opacity": 0.7
+              }
+            ],
+            "repeat": {
+              "count": 15,
+              "offset": {
+                "x": 0,
+                "y": 13
+              }
+            },
+            "visible": {
+              "minWidth": 1568
+            },
+            "when": [
+              {
+                "orientation": "landscape",
+                "flag": "tv.wide",
+                "visible": {
+                  "minWidth": 1920
+                },
+                "layout": {
+                  "frame": [
+                    1721,
+                    736,
+                    132,
+                    4
+                  ]
+                }
+              },
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "visible": false
               }
             ]
           },
