@@ -83,6 +83,9 @@ gets the TV whose `preferredSystems` lists it, else `living-room-tv`.
 ![Flat-Tube TV](images/bezels/flat-tube-tv.jpg) ![Dorm TV](images/bezels/dorm-tv.jpg)
 ![VGA Monitor](images/bezels/vga-monitor.jpg) ![Candy Cabinet](images/bezels/candy-cabinet.jpg)
 
+![Flat-Tube TV in portrait on a phone](images/bezels/portrait-iphone-portrait.jpg)
+![Flat-Tube TV in portrait on a tablet](images/bezels/portrait-ipad-portrait.jpg)
+
 Only `flat-tube-tv` has the portrait and widescreen forms so far. They are `when` entries and
 `console-*` nodes in its document, written by `python3 scripts/tv_bezel_forms.py <id>` (which expects a
 `room-band` group and a 1920x1080 `set` group with a `stand-side` and a `cabinet`); run it again after
