@@ -38,22 +38,50 @@ final class Skin2Bitmap {
     /// Pixels kept in a buffer: a 4096 × 4096 limit keeps a stray huge shadow from allocating gigabytes.
     static let maxSide = 4096
 
-    init?(region: CGRect, scale: CGFloat) {
+    /// The bitmap `init(region:scale:)` makes for a region: its standardised rectangle, its scale after the size
+    /// limit, and its size in pixels.
+    static func geometry(region: CGRect, scale: CGFloat) -> (rect: CGRect, scale: CGFloat, width: Int, height: Int)? {
         let r = region.standardized
         guard r.width > 0, r.height > 0, scale > 0, r.width.isFinite, r.height.isFinite else { return nil }
         var s = scale
         let longest = max(r.width, r.height) * s
         if longest > CGFloat(Self.maxSide) { s *= CGFloat(Self.maxSide) / longest }
-        let w = max(1, Int((r.width * s).rounded(.up))), h = max(1, Int((r.height * s).rounded(.up)))
-        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: Skin2Color2CG.sRGB,
+        return (r, s, max(1, Int((r.width * s).rounded(.up))), max(1, Int((r.height * s).rounded(.up))))
+    }
+
+    convenience init?(region: CGRect, scale: CGFloat) {
+        guard let g = Self.geometry(region: region, scale: scale) else { return nil }
+        self.init(origin: g.rect.origin, width: g.width, height: g.height, scale: g.scale)
+    }
+
+    /// A bitmap of `width` × `height` pixels whose top-left pixel starts at `origin`. `scale` is used as given.
+    init?(origin: CGPoint, width w: Int, height h: Int, scale s: CGFloat) {
+        guard w > 0, h > 0, s > 0,
+              let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0, space: Skin2Color2CG.sRGB,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
         ctx.translateBy(x: 0, y: CGFloat(h))
         ctx.scaleBy(x: s, y: -s)
-        ctx.translateBy(x: -r.minX, y: -r.minY)
+        ctx.translateBy(x: -origin.x, y: -origin.y)
         Skin2Bitmap.configure(ctx)
-        self.region = CGRect(x: r.minX, y: r.minY, width: CGFloat(w) / s, height: CGFloat(h) / s)
+        self.region = CGRect(x: origin.x, y: origin.y, width: CGFloat(w) / s, height: CGFloat(h) / s)
         self.scale = s
         width = w; height = h; context = ctx
+    }
+
+    /// An empty bitmap over the same pixels.
+    func twin() -> Skin2Bitmap? { Skin2Bitmap(origin: region.origin, width: width, height: height, scale: scale) }
+
+    /// A copy of the pixels `x0..<x1` × `y0..<y1` (row 0 is the top) as a bitmap of its own over the same points.
+    func cropped(x0: Int, y0: Int, x1: Int, y1: Int) -> Skin2Bitmap? {
+        guard x0 >= 0, y0 >= 0, x1 <= width, y1 <= height, x1 > x0, y1 > y0,
+              let out = Skin2Bitmap(origin: CGPoint(x: region.minX + CGFloat(x0) / scale, y: region.minY + CGFloat(y0) / scale),
+                                    width: x1 - x0, height: y1 - y0, scale: scale),
+              let src = context.data, let dst = out.context.data else { return nil }
+        let rowBytes = (x1 - x0) * 4
+        for row in 0..<(y1 - y0) {
+            (dst + row * out.context.bytesPerRow).copyMemory(from: src + (y0 + row) * context.bytesPerRow + x0 * 4, byteCount: rowBytes)
+        }
+        return out
     }
 
     static func configure(_ ctx: CGContext) {
@@ -94,6 +122,37 @@ final class Skin2Bitmap {
             vImageSepConvolve_ARGB8888(&src, &buffer, nil, 0, 0, k.baseAddress!, UInt32(k.count), k.baseAddress!, UInt32(k.count),
                                        0, background, vImage_Flags(kvImageBackgroundColorFill))
         }
+    }
+}
+
+/// Whole-canvas working bitmaps for partial redraws. Their memory comes from `calloc`, which hands out untouched
+/// zero pages: a canvas-sized bitmap that is drawn into in one corner costs that corner.
+enum Skin2Scratch {
+    /// A cleared RGBA8 (premultiplied, sRGB) bitmap with the identity transform.
+    static func context(width: Int, height: Int) -> CGContext? {
+        guard width > 0, height > 0, let memory = calloc(height, width * 4) else { return nil }
+        guard let ctx = CGContext(data: memory, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4, space: Skin2Color2CG.sRGB,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue, releaseCallback: { _, data in free(data) },
+                                  releaseInfo: nil) else {
+            free(memory)
+            return nil
+        }
+        return ctx
+    }
+
+    /// A copy of `width` × `height` pixels of a bitmap as an image; `top` counts rows from the top of the bitmap.
+    static func image(from ctx: CGContext, x: Int, top: Int, width: Int, height: Int) -> CGImage? {
+        guard x >= 0, top >= 0, width > 0, height > 0, x + width <= ctx.width, top + height <= ctx.height, let src = ctx.data else { return nil }
+        var data = Data(count: width * height * 4)
+        data.withUnsafeMutableBytes { dst in
+            for row in 0..<height {
+                (dst.baseAddress! + row * width * 4).copyMemory(from: src + (top + row) * ctx.bytesPerRow + x * 4, byteCount: width * 4)
+            }
+        }
+        guard let provider = CGDataProvider(data: data as CFData) else { return nil }
+        return CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: Skin2Color2CG.sRGB,
+                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue), provider: provider, decode: nil,
+                       shouldInterpolate: false, intent: .defaultIntent)
     }
 }
 

@@ -150,9 +150,17 @@ struct DeltaSkinFormat2View: View {
             capabilities: capabilities,
             pictures: pictures,
             skinIdentifier: skin.identifier,
-            onProvidedChange: onProvidedChange
+            onProvidedChange: onProvidedChange,
+            assetIdentity: assetIdentity
         )
         .onDisappear { bridge.releaseAll(sink: sink) }
+    }
+
+    /// The bundle file and when it last changed, as the document cache keys it: a skin imported again over the
+    /// same file with new artwork and the same `skin.json` is drawn again.
+    private var assetIdentity: AnyHashable {
+        let modified = (try? skin.fileURL.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+        return "\(skin.fileURL.path)|\(modified?.timeIntervalSinceReferenceDate ?? 0)"
     }
 
     private var assetLoader: @Sendable (String) -> Data? {
