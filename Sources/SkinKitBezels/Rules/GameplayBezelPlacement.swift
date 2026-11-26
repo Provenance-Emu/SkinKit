@@ -40,9 +40,14 @@ import Foundation
         /// The GPU could not draw a TV this game. Trying again risks a GPU hang, after which
         /// the system refuses every frame the app draws.
         public var droppedForSession: Bool
+        /// The app lays a TV out for a portrait window (`TVBezelLayout` with a seat, whose
+        /// portrait scene puts the TV at the top and leaves the room below it to the
+        /// controls). Without it portrait keeps the older rule.
+        public var supportsPortrait: Bool
 
         public init(isAppleTV: Bool, isLandscape: Bool, controls: Controls, layoutSupportsTV: Bool,
-                    choiceIsAutomatic: Bool, editingLayout: Bool = false, droppedForSession: Bool = false) {
+                    choiceIsAutomatic: Bool, editingLayout: Bool = false, droppedForSession: Bool = false,
+                    supportsPortrait: Bool = false) {
             self.isAppleTV = isAppleTV
             self.isLandscape = isLandscape
             self.controls = controls
@@ -50,18 +55,21 @@ import Foundation
             self.choiceIsAutomatic = choiceIsAutomatic
             self.editingLayout = editingLayout
             self.droppedForSession = droppedForSession
+            self.supportsPortrait = supportsPortrait
         }
     }
 
     /// Whether the TV the rules resolved may be drawn.
     ///
-    /// Apple TV always; elsewhere in landscape unless a skin is on screen. In portrait only a
-    /// TV the player chose, and only when a controller hid the on-screen controls.
+    /// Apple TV always; elsewhere never around a skin. In landscape always. In portrait, an
+    /// app that lays a TV out for portrait (`supportsPortrait`) shows it as in landscape; any
+    /// other app only a TV the player chose, and only when a controller hid the on-screen
+    /// controls.
     public static func showsTV(_ inputs: Inputs) -> Bool {
         guard inputs.layoutSupportsTV, !inputs.editingLayout, !inputs.droppedForSession else { return false }
         if inputs.isAppleTV { return true }
         guard inputs.controls != .skin else { return false }
-        if inputs.isLandscape { return true }
+        if inputs.isLandscape || inputs.supportsPortrait { return true }
         return inputs.controls == .hiddenByController && !inputs.choiceIsAutomatic
     }
 

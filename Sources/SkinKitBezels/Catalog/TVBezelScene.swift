@@ -45,11 +45,13 @@ public struct TVBezelScene: Sendable, Equatable {
 
     /// The key of `bezel` drawn `scenePixelWidth` pixels wide on `canvas`.
     public static func key(bezel: TVBezel, lightsRoom: Bool, flatGlass: Bool, scenePixelWidth: CGFloat,
-                           canvas: CGSize = TVBezelArtwork.canvas) -> String {
+                           canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard) -> String {
         let base = "\(bezel.id)|\(Int(scenePixelWidth))|\(lightsRoom)|\(flatGlass)"
-        // A standalone preset draws its own scene, so the canvas does not change it.
-        guard canvas != TVBezelArtwork.canvas, bezel.presetID == nil else { return base }
-        return base + "|\(Int(canvas.width.rounded()))x\(Int(canvas.height.rounded()))"
+        // A standalone preset draws its own scene, so neither the canvas nor the picture's shape changes it.
+        guard bezel.presetID == nil else { return base }
+        let shaped = shape == .standard ? base : base + "|\(shape.rawValue)"
+        guard canvas != TVBezelArtwork.canvas else { return shaped }
+        return shaped + "|\(Int(canvas.width.rounded()))x\(Int(canvas.height.rounded()))"
     }
 
     /// Loads `bezel`'s artwork and draws it `scenePixelWidth` pixels wide. Slow: call it off
@@ -61,10 +63,14 @@ public struct TVBezelScene: Sendable, Equatable {
     ///   - flatGlass: switch the glass's own curvature off.
     ///   - key: identifies this TV at this size (see `key(bezel:lightsRoom:flatGlass:scenePixelWidth:canvas:)`).
     ///   - canvas: the canvas to lay the TV out on (`TVBezelCanvas.size(display:seat:)`). A
-    ///     standalone preset ignores it.
+    ///     standalone preset ignores it. The presets place a centred tube only, so this is a
+    ///     landscape canvas: a portrait room is drawn the plain way (`TVBezelLayout`).
+    ///   - shape: the picture's shape (`TVBezelPictureShape(aspect:)`). For a wide picture a
+    ///     TV with a widescreen form has a 16:9 tube, where the canvas is wide enough for it
+    ///     (`TVBezelPictureShape.fitting(bezel:canvas:)`).
     ///   - hasPreset: whether the app's shader library has a preset id.
     public static func make(bezel: TVBezel, lightsRoom: Bool, flatGlass: Bool, scenePixelWidth: CGFloat, key: String,
-                            canvas: CGSize = TVBezelArtwork.canvas,
+                            canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard,
                             hasPreset: (String) -> Bool = BezelEnvironment.current.hasShaderPreset) -> TVBezelScene? {
         if let presetID = bezel.presetID {
             guard hasPreset(presetID) else { return nil }
@@ -84,7 +90,8 @@ public struct TVBezelScene: Sendable, Equatable {
         }
         let artwork: TVBezelArtwork
         do {
-            artwork = try TVBezelArtwork(bezel: bezel, canvas: canvas)
+            // A canvas too narrow for the wide tube keeps the 4:3 one.
+            artwork = try TVBezelArtwork(bezel: bezel, canvas: canvas, shape: shape.fitting(bezel: bezel, canvas: canvas))
         } catch {
             BezelLog.error("TV bezels: artwork of '\(bezel.id)' is unusable: \(error)")
             return nil

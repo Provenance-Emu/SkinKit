@@ -46,4 +46,33 @@ struct TVBezelCanvasTests {
         #expect(TVBezelCanvas.size(display: .zero) == TVBezelArtwork.canvas)
         #expect(!TVBezelCanvas.fitsDisplay(.zero))
     }
+
+    @Test("A portrait display gets a canvas of its own shape, as wide as the seat says",
+          arguments: [CGSize(width: 430, height: 932), CGSize(width: 820, height: 1180), CGSize(width: 1024, height: 1366)])
+    func portrait(display: CGSize) throws {
+        let canvas = try #require(TVBezelCanvas.portraitSize(display: display))
+        #expect(canvas.width == TVBezelSeat.back.portraitCanvasWidth)
+        #expect(abs(canvas.width / canvas.height - display.width / display.height) < 0.001)
+        #expect(try #require(TVBezelCanvas.portraitSize(display: display, seat: .front)).width == 1152)
+        // The landscape canvas, which shader-drawn TVs use, is unchanged.
+        #expect(TVBezelCanvas.size(display: display) == CGSize(width: 1440, height: 1080))
+    }
+
+    @Test("Landscape and nearly square displays have no portrait canvas",
+          arguments: [CGSize(width: 932, height: 430), CGSize(width: 1000, height: 1000), CGSize(width: 900, height: 1000), CGSize.zero])
+    func notPortrait(display: CGSize) {
+        #expect(TVBezelCanvas.portraitSize(display: display) == nil)
+    }
+
+    @Test("A picture is wide from 16:10", arguments: [
+        (CGSize(width: 4, height: 3), TVBezelPictureShape.standard),
+        (CGSize(width: 3, height: 2), .standard),
+        (CGSize(width: 16, height: 10), .wide),
+        (CGSize(width: 16, height: 9), .wide),
+        (CGSize(width: 1.7777, height: 1), .wide),
+        (CGSize.zero, .standard)
+    ])
+    func pictureShape(aspect: CGSize, expected: TVBezelPictureShape) {
+        #expect(TVBezelPictureShape(aspect: aspect) == expected)
+    }
 }

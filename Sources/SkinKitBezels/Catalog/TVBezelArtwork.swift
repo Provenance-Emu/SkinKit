@@ -45,11 +45,16 @@ public struct TVBezelArtwork {
 
     /// - Parameters:
     ///   - data: the skin document (`skin.json` contents).
-    ///   - canvas: the canvas to lay the document out on, in points.
-    public init(data: Data, canvas: CGSize = TVBezelArtwork.canvas) throws {
+    ///   - canvas: the canvas to lay the document out on, in points. A canvas taller than it
+    ///     is wide is laid out as `portrait` (`TVBezelCanvas.portraitSize(display:seat:)`).
+    ///   - shape: the picture's shape. `wide` sets `TVBezelPictureShape.wideFlag`, which a
+    ///     document with a widescreen form reads.
+    public init(data: Data, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard) throws {
         let document = try Skin2Document.load(data: data)
         let environment = Skin2Environment(size: .init(width: canvas.width, height: canvas.height),
-                                           orientation: .landscape, device: .tv, displayType: .standard)
+                                           orientation: canvas.height > canvas.width ? .portrait : .landscape,
+                                           device: .tv, displayType: .standard,
+                                           flags: shape == .wide ? [TVBezelPictureShape.wideFlag] : [])
         let resolution = Skin2Resolver.resolve(document, in: environment)
         let screens = resolution.screens
         guard screens.count == 1, let frame = screens.first?.frame else {
@@ -69,11 +74,11 @@ public struct TVBezelArtwork {
     }
 
     /// The bundled artwork of `bezel`, laid out on `canvas`.
-    public init(bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas) throws {
+    public init(bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard) throws {
         guard let url = TVBezelCatalog.folderURL?.appendingPathComponent(bezel.artwork) else {
             throw CocoaError(.fileNoSuchFile)
         }
-        try self.init(data: Data(contentsOf: url), canvas: canvas)
+        try self.init(data: Data(contentsOf: url), canvas: canvas, shape: shape)
     }
 
     /// The cabinet and room as an image `pixelWidth` pixels wide (the canvas scaled uniformly).

@@ -19,15 +19,19 @@ public struct TVBezelArtworkView: View {
     let bezel: TVBezel
     /// The canvas a built-in TV is laid out on (`TVBezelLayout.canvas`); `nil` is the fixed 16:9 one.
     var canvas: CGSize?
+    /// The picture's shape a built-in TV is laid out for (`TVBezelLayout.shape`).
+    var shape: TVBezelPictureShape
     /// Called on the main actor when the artwork is on screen, or could not be read.
     var onLoad: (@MainActor (Bool) -> Void)?
 
     @Environment(\.displayScale) private var displayScale
     @State private var image: CGImage?
 
-    public init(bezel: TVBezel, canvas: CGSize? = nil, onLoad: (@MainActor (Bool) -> Void)? = nil) {
+    public init(bezel: TVBezel, canvas: CGSize? = nil, shape: TVBezelPictureShape = .standard,
+                onLoad: (@MainActor (Bool) -> Void)? = nil) {
         self.bezel = bezel
         self.canvas = canvas
+        self.shape = shape
         self.onLoad = onLoad
     }
 
@@ -35,7 +39,7 @@ public struct TVBezelArtworkView: View {
         GeometryReader { geometry in
             let maxPixel = (max(geometry.size.width, geometry.size.height) * displayScale).rounded()
             let canvas = canvas ?? TVBezelArtwork.canvas
-            let key = "\(bezel.id)|\(Int(maxPixel))|\(canvas.width)x\(canvas.height)"
+            let key = "\(bezel.id)|\(Int(maxPixel))|\(canvas.width)x\(canvas.height)|\(shape.rawValue)"
             ZStack {
                 if let image {
                     Image(decorative: image, scale: 1)
@@ -47,8 +51,9 @@ public struct TVBezelArtworkView: View {
             .task(id: key) {
                 guard maxPixel >= 1 else { return }
                 let bezel = bezel
+                let shape = shape
                 let loaded = await Task.detached(priority: .userInitiated) {
-                    TVBezelPlainArtwork.image(for: bezel, maxPixel: maxPixel, canvas: canvas)
+                    TVBezelPlainArtwork.image(for: bezel, maxPixel: maxPixel, canvas: canvas, shape: shape)
                 }.value
                 guard !Task.isCancelled else { return }
                 image = loaded
@@ -95,16 +100,24 @@ public struct TVBezelStage<Picture: View>: View {
             ZStack {
                 Color.black
                 if let bezel, let layout {
-                    if layout.placement == .behindPicture { TVBezelArtworkView(bezel: bezel, canvas: layout.canvas) }
+                    // The artwork goes where the layout put it: in a portrait space that is
+                    // near the top, not the centre an aspect-fit of the whole space gives.
+                    if layout.placement == .behindPicture { artwork(bezel, layout: layout) }
                     picture(layout.pictureFrame)
                         .position(x: layout.pictureFrame.midX, y: layout.pictureFrame.midY)
-                    if layout.placement == .abovePicture { TVBezelArtworkView(bezel: bezel) }
+                    if layout.placement == .abovePicture { artwork(bezel, layout: layout) }
                 } else {
                     picture(nil)
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
+    }
+
+    private func artwork(_ bezel: TVBezel, layout: TVBezelLayout) -> some View {
+        TVBezelArtworkView(bezel: bezel, canvas: layout.canvas, shape: layout.shape)
+            .frame(width: layout.artworkFrame.width, height: layout.artworkFrame.height)
+            .position(x: layout.artworkFrame.midX, y: layout.artworkFrame.midY)
     }
 }
 #endif

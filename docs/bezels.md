@@ -31,13 +31,27 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
 
 3. **Whether it may show**: `GameplayBezelPlacement.showsTV(.init(isAppleTV:isLandscape:controls:layoutSupportsTV:choiceIsAutomatic:))`
    with `choiceIsAutomatic: resolved.resolution.isAutomatic`. Apple TV always; elsewhere in landscape with a
-   controller or generated touch controls, never around a skin.
+   controller or generated touch controls, never around a skin. In portrait, an app that shows the TV the
+   plain way with a seat passes `supportsPortrait: true` and gets the same answer as in landscape; without
+   it only a TV the player chose shows, and only with a controller connected. The shader way has no
+   portrait scene, so an app that draws TVs through the shader leaves it off.
 
 4. **Show it**. Two ways.
    - *Plain* (no shader, works with any presenter): `TVBezelLayout(bezel:container:pictureAspect:)` gives the
      artwork's frame and the picture's. Put `TVBezelArtworkView(bezel:)` behind the game surface for
      `.behindPicture` (a built-in TV) and above it for `.abovePicture` (an image bezel), and give the surface
-     `pictureFrame`. `TVBezelStage` does all of that for a SwiftUI surface.
+     `pictureFrame`. `TVBezelStage` does all of that for a SwiftUI surface. With a `seat`, a built-in TV's
+     room is drawn for the container's shape; pass the layout's `canvas` and `shape` on to
+     `TVBezelArtworkView`. Two forms come from that, for a TV whose document has them:
+     - *Portrait* (`TVBezel.drawsPortrait`, `"portrait": true` in the catalogue): on a portrait container
+       (`TVBezelCanvas.portraitRatioRange`) the room is the whole screen, the TV at the top and a console
+       running down under the touch controls. An image bezel keeps its own shape, placed near the
+       top.
+     - *Widescreen*: for a picture of 16:10 or wider (`TVBezelPictureShape`) the tube and cabinet are 16:9,
+       so the picture has no bars. A TV without the form keeps its 4:3 tube and the picture is fitted in it, and so does any
+       TV on a canvas narrower than its wide tube (a 4:3 display from the Middle or Front seat).
+       `pictureAspect` is all the app passes. Pass the shape the game is set to, not each frame's: a game
+       that changes shape for a menu should not change the TV.
    - *Shader* (glass, reflections, room light): `TVBezelScene.make` off the main thread, kept in
      `TVBezelSceneCache.shared`. Draw the game into a texture the size of the tube, then run the scene's
      preset over the 16:9 scene with `values` as parameters and `borderPNG` as the `BORDER` texture. The app
@@ -69,6 +83,15 @@ gets the TV whose `preferredSystems` lists it, else `living-room-tv`.
 
 ![Flat-Tube TV](images/bezels/flat-tube-tv.jpg) ![Dorm TV](images/bezels/dorm-tv.jpg)
 ![VGA Monitor](images/bezels/vga-monitor.jpg) ![Candy Cabinet](images/bezels/candy-cabinet.jpg)
+
+![Flat-Tube TV in portrait on a phone](images/bezels/portrait-iphone-portrait.jpg)
+![Flat-Tube TV in portrait on a tablet](images/bezels/portrait-ipad-portrait.jpg)
+
+Every bundled TV has the portrait and widescreen forms. They are `when` entries and `console-*` nodes
+in its document, written by `python3 scripts/tv_bezel_forms.py` from the table at the top of that
+script (the TV's cabinet node, the surface it stands on, and the colour and texture of what is under
+it in portrait). Run it again after changing a TV's artwork, and add a row for a new TV. In a document
+the forms are conditions on `"orientation": "portrait"` and on the flag `tv.wide`.
 
 To add one: write `<id>.skin.json` (a format 2 document on the 1920x1080 canvas, drawn from shapes, with
 exactly one `screen` node that is 4:3 and centred both ways), add its catalogue entry, and run
