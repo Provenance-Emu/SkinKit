@@ -69,20 +69,7 @@ public struct BezelSwitcherStrip: View {
                     withAnimation(.easeInOut(duration: 0.15)) { proxy.scrollTo(id, anchor: .center) }
                 }
             }
-            HStack(spacing: 12) {
-                action(String(localized: "Keep"), hint: "a.circle", perform: onKeep)
-                action(String(localized: "Cancel"), hint: "b.circle", perform: onCancel)
-                if showsThisGameOnly {
-                    action(model.thisGameOnly ? String(localized: "This game only: On") : String(localized: "This game only: Off"),
-                           hint: "y.circle") { model.thisGameOnly.toggle() }
-                }
-                if supportsRoomLight {
-                    action(model.lightsRoom ? String(localized: "Room light: On") : String(localized: "Room light: Off"),
-                           hint: "x.circle") { model.lightsRoom.toggle() }
-                }
-                Spacer(minLength: 0)
-                if isLoading { ProgressView() }
-            }
+            actionRows
             .padding(.horizontal, 16)
             #if os(tvOS)
             // The buttons sit at the left and the selected TV in the middle: as a section the
@@ -113,6 +100,58 @@ public struct BezelSwitcherStrip: View {
         }
         .onExitCommand(perform: onCancel)
         #endif
+    }
+
+    @ViewBuilder
+    private var actionRows: some View {
+        #if os(tvOS)
+        inlineActions
+        #else
+        ViewThatFits(in: .horizontal) {
+            inlineActions.fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    confirmationActions
+                    if isLoading { ProgressView() }
+                }
+                HStack(spacing: 12) { optionActions }
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 8) {
+                confirmationActions
+                optionActions
+                if isLoading { ProgressView() }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        #endif
+    }
+
+    private var inlineActions: some View {
+        HStack(spacing: 12) {
+            confirmationActions
+            optionActions
+            Spacer(minLength: 0)
+            if isLoading { ProgressView() }
+        }
+    }
+
+    @ViewBuilder
+    private var confirmationActions: some View {
+        action(String(localized: "Keep"), hint: "a.circle", perform: onKeep)
+        action(String(localized: "Cancel"), hint: "b.circle", perform: onCancel)
+    }
+
+    @ViewBuilder
+    private var optionActions: some View {
+        if showsThisGameOnly {
+            action(model.thisGameOnly ? String(localized: "This game only: On") : String(localized: "This game only: Off"),
+                   hint: "y.circle") { model.thisGameOnly.toggle() }
+        }
+        if supportsRoomLight {
+            action(model.lightsRoom ? String(localized: "Room light: On") : String(localized: "Room light: Off"),
+                   hint: "x.circle") { model.lightsRoom.toggle() }
+        }
     }
 
     private func chip(_ item: BezelSwitcherModel.Item) -> some View {
@@ -154,6 +193,9 @@ public struct BezelSwitcherStrip: View {
                 Text(title)
             }
         }
+        #if os(iOS)
+        .fixedSize(horizontal: false, vertical: true)
+        #endif
         .buttonStyle(.bordered)
     }
 }
