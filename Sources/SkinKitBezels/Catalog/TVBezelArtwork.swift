@@ -52,14 +52,17 @@ public struct TVBezelArtwork {
     ///   - topInset: what covers the top of the canvas (a notch, a Dynamic Island), in canvas
     ///     points (`TVBezelLayout.canvasTopInset`). A portrait form moves its set below it;
     ///     the room still reaches the top.
+    ///   - shelf: draw the bay for a second screen the app owns (`shelfFlag`), where the
+    ///     document has one for this canvas.
     public init(data: Data, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard,
-                topInset: CGFloat = 0) throws {
+                topInset: CGFloat = 0, shelf: Bool = false) throws {
         let document = try Skin2Document.load(data: data)
         let environment = Skin2Environment(size: .init(width: canvas.width, height: canvas.height),
                                            safeArea: Skin2Insets(top: max(0, topInset), left: 0, bottom: 0, right: 0),
                                            orientation: canvas.height > canvas.width ? .portrait : .landscape,
                                            device: .tv, displayType: .standard,
-                                           flags: shape == .wide ? [TVBezelPictureShape.wideFlag] : [])
+                                           flags: Set((shape == .wide ? [TVBezelPictureShape.wideFlag] : [])
+                                               + (shelf ? [Self.shelfFlag] : [])))
         let resolution = Skin2Resolver.resolve(document, in: environment)
         let screens = resolution.screens
         guard screens.count == 1, let frame = screens.first?.frame else {
@@ -69,7 +72,20 @@ public struct TVBezelArtwork {
         self.resolution = resolution
         canvasSize = canvas
         tubeRect = CGRect(x: frame.x, y: frame.y, width: frame.width, height: frame.height)
+        shelfRect = shelf ? resolution.node(id: Self.shelfScreenNodeID).map {
+            CGRect(x: $0.frame.x, y: $0.frame.y, width: $0.frame.width, height: $0.frame.height)
+        } : nil
     }
+
+    /// The flag a TV's document reads to draw its shelf: a bay for a small second screen the
+    /// app owns, such as a Dreamcast VMU.
+    public static let shelfFlag = "tv.shelf"
+    /// The node whose frame is where that screen goes.
+    static let shelfScreenNodeID = "console-shelf-screen"
+
+    /// Where the app's second screen goes, in `canvasSize` points. `nil` when no shelf was
+    /// asked for, or the document has none on this canvas (today: in landscape).
+    public let shelfRect: CGRect?
 
     /// Where the visible node `id` sits on the canvas; `nil` when the document has none or it
     /// is hidden on this canvas.
@@ -80,11 +96,11 @@ public struct TVBezelArtwork {
 
     /// The bundled artwork of `bezel`, laid out on `canvas`.
     public init(bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard,
-                topInset: CGFloat = 0) throws {
+                topInset: CGFloat = 0, shelf: Bool = false) throws {
         guard let url = TVBezelCatalog.folderURL?.appendingPathComponent(bezel.artwork) else {
             throw CocoaError(.fileNoSuchFile)
         }
-        try self.init(data: Data(contentsOf: url), canvas: canvas, shape: shape, topInset: topInset)
+        try self.init(data: Data(contentsOf: url), canvas: canvas, shape: shape, topInset: topInset, shelf: shelf)
     }
 
     /// The cabinet and room as an image `pixelWidth` pixels wide (the canvas scaled uniformly).

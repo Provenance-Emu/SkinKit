@@ -537,6 +537,136 @@
           },
           {
             "type": "shape",
+            "id": "console-shelf",
+            "layout": {
+              "frame": [
+                1196.0,
+                1236,
+                300,
+                208
+              ]
+            },
+            "shape": {
+              "kind": "rect",
+              "cornerRadius": 16
+            },
+            "fills": [
+              {
+                "type": "linear",
+                "start": [
+                  0.5,
+                  0
+                ],
+                "end": [
+                  0.5,
+                  1
+                ],
+                "stops": [
+                  [
+                    "#5D5E61",
+                    0
+                  ],
+                  [
+                    "#404145",
+                    0.5
+                  ],
+                  [
+                    "#232428",
+                    1
+                  ]
+                ]
+              }
+            ],
+            "strokes": [
+              {
+                "color": "#000000",
+                "width": 2,
+                "align": "outer",
+                "opacity": 0.6
+              }
+            ],
+            "effects": [
+              {
+                "type": "shadow",
+                "color": "#000000",
+                "opacity": 0.6,
+                "radius": 14,
+                "offset": [
+                  0,
+                  8
+                ]
+              }
+            ],
+            "visible": {
+              "orientation": "portrait",
+              "flag": "tv.shelf"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1196.0,
+                    1041,
+                    300,
+                    208
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
+            "id": "console-shelf-screen",
+            "layout": {
+              "frame": [
+                1208.0,
+                1248,
+                276,
+                184
+              ]
+            },
+            "shape": {
+              "kind": "rect",
+              "cornerRadius": 8
+            },
+            "fills": [
+              {
+                "type": "solid",
+                "color": "#0B0C0E",
+                "opacity": 1
+              }
+            ],
+            "strokes": [
+              {
+                "color": "#000000",
+                "width": 2,
+                "align": "inner",
+                "opacity": 0.8
+              }
+            ],
+            "visible": {
+              "orientation": "portrait",
+              "flag": "tv.shelf"
+            },
+            "when": [
+              {
+                "orientation": "portrait",
+                "flag": "tv.wide",
+                "layout": {
+                  "frame": [
+                    1208.0,
+                    1053,
+                    276,
+                    184
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "type": "shape",
             "id": "glow-left",
             "layout": {
               "frame": [

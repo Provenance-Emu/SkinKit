@@ -23,6 +23,8 @@ public struct TVBezelArtworkView: View {
     var shape: TVBezelPictureShape
     /// What covers the top of a portrait canvas (`TVBezelLayout.canvasTopInset`).
     var topInset: CGFloat
+    /// Draw the TV's shelf for the app's second screen (`TVBezelLayout.shelfFrame`).
+    var shelf = false
     /// Called on the main actor when the artwork is on screen, or could not be read.
     var onLoad: (@MainActor (Bool) -> Void)?
 
@@ -38,11 +40,18 @@ public struct TVBezelArtworkView: View {
         self.onLoad = onLoad
     }
 
+    /// The artwork exactly as `layout` placed it: its canvas, picture shape, top inset and
+    /// shelf. Prefer this to passing them one by one.
+    public init(bezel: TVBezel, layout: TVBezelLayout, onLoad: (@MainActor (Bool) -> Void)? = nil) {
+        self.init(bezel: bezel, canvas: layout.canvas, shape: layout.shape, topInset: layout.canvasTopInset, onLoad: onLoad)
+        shelf = layout.shelfFrame != nil
+    }
+
     public var body: some View {
         GeometryReader { geometry in
             let maxPixel = (max(geometry.size.width, geometry.size.height) * displayScale).rounded()
             let canvas = canvas ?? TVBezelArtwork.canvas
-            let key = "\(bezel.id)|\(Int(maxPixel))|\(canvas.width)x\(canvas.height)|\(shape.rawValue)|\(topInset)"
+            let key = "\(bezel.id)|\(Int(maxPixel))|\(canvas.width)x\(canvas.height)|\(shape.rawValue)|\(topInset)|\(shelf)"
             ZStack {
                 if let image {
                     Image(decorative: image, scale: 1)
@@ -56,8 +65,10 @@ public struct TVBezelArtworkView: View {
                 let bezel = bezel
                 let shape = shape
                 let topInset = topInset
+                let shelf = shelf
                 let loaded = await Task.detached(priority: .userInitiated) {
-                    TVBezelPlainArtwork.image(for: bezel, maxPixel: maxPixel, canvas: canvas, shape: shape, topInset: topInset)
+                    TVBezelPlainArtwork.image(for: bezel, maxPixel: maxPixel, canvas: canvas, shape: shape, topInset: topInset,
+                                              shelf: shelf)
                 }.value
                 guard !Task.isCancelled else { return }
                 image = loaded
@@ -124,7 +135,7 @@ public struct TVBezelStage<Picture: View>: View {
     }
 
     private func artwork(_ bezel: TVBezel, layout: TVBezelLayout) -> some View {
-        TVBezelArtworkView(bezel: bezel, canvas: layout.canvas, shape: layout.shape, topInset: layout.canvasTopInset)
+        TVBezelArtworkView(bezel: bezel, layout: layout)
             .frame(width: layout.artworkFrame.width, height: layout.artworkFrame.height)
             .position(x: layout.artworkFrame.midX, y: layout.artworkFrame.midY)
     }

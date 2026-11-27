@@ -44,6 +44,12 @@ public struct TVBezelLayout: Equatable, Sendable {
     /// set is drawn below the inset. Zero in landscape and for an image bezel.
     public let canvasTopInset: CGFloat
 
+    /// Where a small second screen the app owns (a Dreamcast VMU) goes: the screen of the
+    /// TV's shelf, in the container's coordinates. `nil` unless the layout was made with
+    /// `shelf: true` and the TV has a shelf here (a built-in TV's portrait room). When it is
+    /// set the artwork must be drawn with its shelf (`TVBezelArtworkView(bezel:layout:)`).
+    public let shelfFrame: CGRect?
+
     /// How far down a portrait container the top of a TV that has no portrait form goes, as
     /// a fraction of the container's height: under the status bar, clear of the controls.
     static let portraitTopFraction: CGFloat = 0.08
@@ -67,8 +73,10 @@ public struct TVBezelLayout: Equatable, Sendable {
     ///     Island, the status bar), in the container's unit. In a portrait container the TV
     ///     and its picture are placed below it. Pass the window's inset: a view that ignores
     ///     the safe area reports zero for its own.
+    ///   - shelf: the app has a small second screen to show. Where the TV has a shelf for it,
+    ///     `shelfFrame` says where it goes; elsewhere the app places it as it always did.
     public init?(bezel: TVBezel, container: CGSize, pictureAspect: CGSize, seat: TVBezelSeat? = nil,
-                 safeAreaTop: CGFloat = 0) {
+                 safeAreaTop: CGFloat = 0, shelf: Bool = false) {
         guard container.width > 0, container.height > 0 else { return nil }
         let bounds = CGRect(origin: .zero, size: container)
         if let art = bezel.image {
@@ -76,6 +84,7 @@ public struct TVBezelLayout: Equatable, Sendable {
             let frame = Self.placed(aspect: art.size, in: bounds, safeAreaTop: safeAreaTop)
             let scale = frame.width / art.size.width
             canvasTopInset = 0
+            shelfFrame = nil
             artworkFrame = frame
             screenFrame = CGRect(x: frame.minX + art.screen.minX * scale, y: frame.minY + art.screen.minY * scale,
                                  width: art.screen.width * scale, height: art.screen.height * scale)
@@ -106,6 +115,12 @@ public struct TVBezelLayout: Equatable, Sendable {
                              width: tube.width * scale, height: tube.height * scale)
         pictureFrame = Self.aspectFit(aspect: pictureAspect, in: screenFrame)
         placement = .behindPicture
+        let shelfRect = shelf ? TVBezelPlainArtwork.shelfRect(of: bezel, canvas: artworkCanvas, shape: pictureShape,
+                                                              topInset: topInset) : nil
+        shelfFrame = shelfRect.map {
+            CGRect(x: frame.minX + $0.minX * scale, y: frame.minY + $0.minY * scale,
+                   width: $0.width * scale, height: $0.height * scale)
+        }
     }
 
     /// `aspectFit`, except in a portrait container, where artwork that leaves room above and
@@ -176,6 +191,14 @@ extension TVBezelPictureShape {
         return tube
     }
 
+    /// A built-in TV's shelf screen in `canvas` points (`TVBezelArtwork.shelfRect`); `nil` for
+    /// a TV or canvas without one.
+    public static func shelfRect(of bezel: TVBezel, canvas: CGSize, shape: TVBezelPictureShape = .standard,
+                                 topInset: CGFloat = 0) -> CGRect? {
+        guard bezel.image == nil, bezel.presetID == nil else { return nil }
+        return try? TVBezelArtwork(bezel: bezel, canvas: canvas, shape: shape, topInset: topInset, shelf: true).shelfRect
+    }
+
     /// How many laid-out tubes are remembered before the cache starts over.
     private static let tubeCacheLimit = 64
 
@@ -187,11 +210,12 @@ extension TVBezelPictureShape {
     ///   - canvas: the canvas a built-in TV is laid out on (`TVBezelLayout.canvas`).
     ///   - shape: the picture's shape it is laid out for (`TVBezelLayout.shape`).
     ///   - topInset: what covers the top of the canvas (`TVBezelLayout.canvasTopInset`).
+    ///   - shelf: draw the TV's shelf (`TVBezelLayout.shelfFrame != nil`).
     ///   - cutsOutTube: leave a built-in TV's tube see-through, for an app that lays the
     ///     artwork over its picture as it does an image bezel. Otherwise the tube is black
     ///     and the artwork goes behind the picture.
     public static func image(for bezel: TVBezel, maxPixel: CGFloat, canvas: CGSize = TVBezelArtwork.canvas,
-                             shape: TVBezelPictureShape = .standard, topInset: CGFloat = 0,
+                             shape: TVBezelPictureShape = .standard, topInset: CGFloat = 0, shelf: Bool = false,
                              cutsOutTube: Bool = false) -> CGImage? {
         guard maxPixel >= 1 else { return nil }
         if let art = bezel.image {
@@ -199,7 +223,7 @@ extension TVBezelPictureShape {
         }
         // `maxPixel` is the longer side; the renderer wants the width.
         let pixelWidth = canvas.height > canvas.width ? maxPixel * canvas.width / canvas.height : maxPixel
-        guard bezel.presetID == nil, let artwork = try? TVBezelArtwork(bezel: bezel, canvas: canvas, shape: shape, topInset: topInset),
+        guard bezel.presetID == nil, let artwork = try? TVBezelArtwork(bezel: bezel, canvas: canvas, shape: shape, topInset: topInset, shelf: shelf),
               let cabinet = artwork.image(pixelWidth: pixelWidth) else { return nil }
         let (width, height) = (cabinet.width, cabinet.height)
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,

@@ -8,6 +8,9 @@ the same document also draws:
 - portrait: the set at the top of a tall canvas, and under it a surface in the TV's own
   material that runs down to the bottom (`console-*` nodes: a hi-fi console, a desk front,
   a carpet), textured but dark and even enough for the touch controls to float over;
+- shelf (flag `tv.shelf`), portrait: a small bay in the lower surface, at the right under the
+  set, for a second screen the app owns (a Dreamcast VMU). `console-shelf-screen` is where
+  that screen goes; an app that has none leaves the flag off and the bay is not drawn;
 - wide (flag `tv.wide`), landscape: the tube and cabinet widened to 16:9 at the same height;
 - wide, portrait: the tube and cabinet shortened to 16:9 at the same width.
 
@@ -47,7 +50,14 @@ SLAT_STEP = 46
 # A centre-spanning node at least this much of the tube's width is part of the frame and
 # widens with it; a narrower one (a tape slot, a base) keeps its size.
 FRAME_SHARE = 0.9
+# The bay for the app's second screen: its right edge is inside the narrowest portrait canvas
+# (1152 points, the front seat), and its screen is 3:2, the shape of a VMU's.
+SHELF_FLAG = "tv.shelf"
+SHELF_WIDTH, SHELF_HEIGHT, SHELF_RIM = 300, 208, 12
+SHELF_RIGHT = CENTER_X + 1152 / 2 - 40
+SHELF_DROP = 128
 PORTRAIT = {"orientation": "portrait"}
+PORTRAIT_SHELF = {"orientation": "portrait", "flag": SHELF_FLAG}
 LANDSCAPE_WIDE = {"orientation": "landscape", "flag": WIDE_FLAG}
 PORTRAIT_WIDE = {"orientation": "portrait", "flag": WIDE_FLAG}
 
@@ -191,6 +201,23 @@ def console(top, tv):
     nodes += texture(tv["texture"], base, top + 150)
     for node in nodes:
         node["visible"] = dict(PORTRAIT)
+    return nodes + shelf(top, base)
+
+
+def shelf(top, base):
+    """The bay for the app's second screen, drawn only when the app asks for it."""
+    x, y = SHELF_RIGHT - SHELF_WIDTH, top + SHELF_DROP
+    inner = [x + SHELF_RIM, y + SHELF_RIM, SHELF_WIDTH - 2 * SHELF_RIM, SHELF_HEIGHT - 2 * SHELF_RIM]
+    nodes = [
+        rect("console-shelf", [x, y, SHELF_WIDTH, SHELF_HEIGHT],
+             [vertical((lighter(base, 0.22), 0), (lighter(base, 0.08), 0.5), (darker(base, 0.25), 1))], radius=16,
+             strokes=[{"color": "#000000", "width": 2, "align": "outer", "opacity": 0.6}],
+             effects=[{"type": "shadow", "color": "#000000", "opacity": 0.6, "radius": 14, "offset": [0, 8]}]),
+        rect("console-shelf-screen", inner, [solid("#0B0C0E", 1)], radius=8,
+             strokes=[{"color": "#000000", "width": 2, "align": "inner", "opacity": 0.8}]),
+    ]
+    for node in nodes:
+        node["visible"] = dict(PORTRAIT_SHELF)
     return nodes
 
 

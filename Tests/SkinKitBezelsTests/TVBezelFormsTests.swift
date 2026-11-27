@@ -137,6 +137,40 @@ struct TVBezelFormsTests {
         #expect(inset.canvasTopInset == 0)
     }
 
+    @Test("In portrait every TV has a shelf for the app's second screen, when asked for", arguments: TVBezelCatalog.bundled.map(\.id))
+    func shelf(id: String) throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: id))
+        for (container, seat) in [(Self.phone, TVBezelSeat.back), (Self.phone, .front), (Self.shortWindow, .back), (Self.tablet, .middle)] {
+            for picture in [Self.standard, Self.wide] {
+                let layout = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: picture, seat: seat,
+                                                        safeAreaTop: Self.islandTop, shelf: true))
+                let shelf = try #require(layout.shelfFrame)
+                // A VMU's screen is 3:2. It is whole on the screen, under the TV's own screen.
+                #expect(abs(aspect(shelf) - 1.5) < 0.02)
+                #expect(shelf.minX >= 0 && shelf.maxX <= container.width)
+                #expect(shelf.minY > layout.screenFrame.maxY)
+                #expect(shelf.width >= 60)
+                // Asking for the shelf moves nothing else.
+                let plain = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: picture, seat: seat,
+                                                       safeAreaTop: Self.islandTop))
+                #expect(plain.shelfFrame == nil)
+                #expect(plain.screenFrame == layout.screenFrame)
+            }
+        }
+    }
+
+    @Test("There is no shelf in landscape, nor for an image bezel: the app places its screen itself")
+    func noShelf() throws {
+        let landscape = try #require(TVBezelLayout(bezel: flatTube(), container: Self.phoneLandscape, pictureAspect: Self.standard,
+                                                   seat: .back, shelf: true))
+        #expect(landscape.shelfFrame == nil)
+        let art = TVBezel.ImageArtwork(fileURL: URL(fileURLWithPath: "/nonexistent.png"), size: CGSize(width: 1920, height: 1080),
+                                       screen: CGRect(x: 480, y: 180, width: 960, height: 720))
+        let image = TVBezel(id: "file:test", name: "Test", preferredSystems: [], image: art, source: .imported, isListed: true)
+        #expect(try #require(TVBezelLayout(bezel: image, container: Self.phone, pictureAspect: Self.standard, seat: .back,
+                                           shelf: true)).shelfFrame == nil)
+    }
+
     @Test("An image bezel in portrait starts below the top safe-area inset")
     func imageBezelClearsSafeArea() throws {
         let art = TVBezel.ImageArtwork(fileURL: URL(fileURLWithPath: "/nonexistent.png"), size: CGSize(width: 1920, height: 1080),
