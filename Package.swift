@@ -24,7 +24,7 @@ import PackageDescription
 // `main` always builds from source. The release workflow fills this in on the tagged
 // commit only, so it stays `nil` on every branch.
 // Set PV_BUILD_FROM_SOURCE=1 to build a tagged version from source instead.
-let binaryRelease: (version: String, checksums: [String: String])? = nil
+let binaryRelease: (version: String, checksums: [String: String])? = ("0.10.0", ["SkinCatalogKit": "f87cb8999c006f89e8814352454281a05f6294098a081f7e830f5e112fb3bc85", "SkinKit2Bake": "e0da817586850442e3f4df4e48366a402fb7e362186fdadd03802f39b1dae5e9", "SkinKit2Core": "b0d8579fc027ac39e0773c2a62f0a5587b9f2321ca92d7f71a06920834bab208", "SkinKit2Render": "58db9564e3af1baa4624e4eb5c8be523b484b7aea433abbba35fcc4df21779a6", "SkinKitBezels": "a0cb4cf84f0e743d66e540f07ef69a98e73d58024103838bbeff6785eb21240a", "SkinKitBezelsUI": "c711c3cea562437f8bcf887e18fe5a32a6f577a03609b3d61a6a2fec8df7979f", "SkinKitCore": "8bba4833490c2e8b3933e385a97a103edea652b64a0fadbdbae550c924e8a0c4", "SkinKitManager": "e912d0fbe9cc22c3b018d1f762efdb1392e17e236868ea06441c46859c95a86c", "SkinKitRetroArch": "fd70cc4f9e5aeb1be8c80f11fa94d870e97a856ea9a472e6a999b2ec15d910bd", "SkinKitUI": "5d42fe1da853b44ba7f9a6982aa7532e314cc7c65932a561d1926dc439dfbc39"])
 
 let environment = ProcessInfo.processInfo.environment
 let buildFromSource = binaryRelease == nil || environment["PV_BUILD_FROM_SOURCE"] != nil
