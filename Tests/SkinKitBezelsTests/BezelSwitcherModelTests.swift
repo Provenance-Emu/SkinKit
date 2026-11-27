@@ -87,4 +87,30 @@ struct BezelSwitcherModelTests {
         model.select(id: "more")
         #expect(model.commit(gameHasPin: false) == nil)
     }
+
+    @Test("Kept for every game, a TV another rule would hide is pinned to the running game")
+    func pinsWhatWouldBeHidden() {
+        var model = model(current: "auto")
+        model.select(id: "studio-monitor")
+        // Nothing hides it: saved, and an old pin dropped.
+        #expect(model.commit(gameHasPin: false) { $0 } == .init(chosen: "studio-monitor", pin: .unchanged, lightsRoom: true))
+        #expect(model.commit(gameHasPin: true) { $0 } == .init(chosen: "studio-monitor", pin: .remove, lightsRoom: true))
+        // Game artwork or the player's own system bezel would show instead: pinned as well.
+        #expect(model.commit(gameHasPin: false) { _ in "file:game-art.png" }
+            == .init(chosen: "studio-monitor", pin: .set("studio-monitor"), lightsRoom: true))
+        #expect(model.commit(gameHasPin: true) { _ in "file:game-art.png" }
+            == .init(chosen: "studio-monitor", pin: .set("studio-monitor"), lightsRoom: true))
+        // Off while artwork would show is pinned; Off that shows nothing is not.
+        model.select(id: "")
+        #expect(model.commit(gameHasPin: false) { _ in "file:game-art.png" }?.pin == .set(""))
+        #expect(model.commit(gameHasPin: false) { _ in nil }?.pin == .unchanged)
+        // Automatic is never pinned, whatever it shows.
+        model.select(id: "auto")
+        #expect(model.commit(gameHasPin: true) { _ in "file:game-art.png" }?.pin == .remove)
+        // This game only is unchanged by what would show.
+        model.select(id: "studio-monitor")
+        model.thisGameOnly = true
+        #expect(model.commit(gameHasPin: false) { _ in "file:game-art.png" }
+            == .init(chosen: nil, pin: .set("studio-monitor"), lightsRoom: true))
+    }
 }

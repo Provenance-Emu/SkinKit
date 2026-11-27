@@ -49,9 +49,14 @@ public struct TVBezelArtwork {
     ///     is wide is laid out as `portrait` (`TVBezelCanvas.portraitSize(display:seat:)`).
     ///   - shape: the picture's shape. `wide` sets `TVBezelPictureShape.wideFlag`, which a
     ///     document with a widescreen form reads.
-    public init(data: Data, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard) throws {
+    ///   - topInset: what covers the top of the canvas (a notch, a Dynamic Island), in canvas
+    ///     points (`TVBezelLayout.canvasTopInset`). A portrait form moves its set below it;
+    ///     the room still reaches the top.
+    public init(data: Data, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard,
+                topInset: CGFloat = 0) throws {
         let document = try Skin2Document.load(data: data)
         let environment = Skin2Environment(size: .init(width: canvas.width, height: canvas.height),
+                                           safeArea: Skin2Insets(top: max(0, topInset), left: 0, bottom: 0, right: 0),
                                            orientation: canvas.height > canvas.width ? .portrait : .landscape,
                                            device: .tv, displayType: .standard,
                                            flags: shape == .wide ? [TVBezelPictureShape.wideFlag] : [])
@@ -74,11 +79,12 @@ public struct TVBezelArtwork {
     }
 
     /// The bundled artwork of `bezel`, laid out on `canvas`.
-    public init(bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard) throws {
+    public init(bezel: TVBezel, canvas: CGSize = TVBezelArtwork.canvas, shape: TVBezelPictureShape = .standard,
+                topInset: CGFloat = 0) throws {
         guard let url = TVBezelCatalog.folderURL?.appendingPathComponent(bezel.artwork) else {
             throw CocoaError(.fileNoSuchFile)
         }
-        try self.init(data: Data(contentsOf: url), canvas: canvas, shape: shape)
+        try self.init(data: Data(contentsOf: url), canvas: canvas, shape: shape, topInset: topInset)
     }
 
     /// The cabinet and room as an image `pixelWidth` pixels wide (the canvas scaled uniformly).

@@ -83,6 +83,72 @@ struct TVBezelFormsTests {
         #expect(abs(landscape.tubeAspect - 4.0 / 3) < 0.01)
     }
 
+    /// The node of each TV whose top edge is the top of the set (`scripts/tv_bezel_forms.py`).
+    static let topNodes = ["flat-tube-tv": "cabinet", "studio-monitor": "body", "computer-monitor": "case",
+                           "vga-monitor": "case", "dorm-tv": "cabinet", "living-room-tv": "cabinet",
+                           "candy-cabinet": "header"]
+    /// A phone with a Dynamic Island, and the same phone's window shortened for a clamshell controller.
+    static let islandTop: CGFloat = 59
+    static let shortWindow = CGSize(width: 430, height: 560)
+
+    @Test("In portrait the set starts below the top safe-area inset", arguments: TVBezelCatalog.bundled.map(\.id))
+    func portraitClearsSafeArea(id: String) throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: id))
+        let topNode = try #require(Self.topNodes[id])
+        for container in [Self.phone, Self.shortWindow] {
+            let layout = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: Self.standard,
+                                                    seat: .back, safeAreaTop: Self.islandTop))
+            let canvas = try #require(layout.canvas)
+            let scale = container.width / canvas.width
+            #expect(abs(layout.canvasTopInset * scale - Self.islandTop) < 0.01)
+            // The room still covers the whole container; only the set moves.
+            #expect(layout.artworkFrame == CGRect(origin: .zero, size: container))
+            let artwork = try TVBezelArtwork(bezel: bezel, canvas: canvas, shape: layout.shape, topInset: layout.canvasTopInset)
+            let top = try #require(artwork.frame(ofNode: topNode))
+            #expect(top.minY * scale >= Self.islandTop)
+            #expect(top.minY * scale < Self.islandTop + 8)
+            #expect(layout.screenFrame.minY > Self.islandTop)
+            #expect(layout.pictureFrame == layout.screenFrame)
+        }
+    }
+
+    @Test("Without an inset a portrait TV is where it was", arguments: TVBezelCatalog.bundled.map(\.id))
+    func portraitWithoutInset(id: String) throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: id))
+        let plain = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.standard, seat: .back))
+        #expect(plain.canvasTopInset == 0)
+        let canvas = try #require(plain.canvas)
+        // The set hangs 60 canvas points from the top: its tube is 60 below its landscape place.
+        let landscapeTube = try TVBezelArtwork(bezel: bezel).tubeRect
+        #expect(abs(plain.screenFrame.minY * canvas.width / Self.phone.width - (landscapeTube.minY + 60)) < 0.5)
+        // A small inset the set already clears changes nothing.
+        let small = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.standard,
+                                               seat: .back, safeAreaTop: 4))
+        #expect(small.screenFrame == plain.screenFrame)
+    }
+
+    @Test("In landscape the inset is ignored")
+    func landscapeIgnoresInset() throws {
+        let bezel = try flatTube()
+        let plain = try #require(TVBezelLayout(bezel: bezel, container: Self.phoneLandscape, pictureAspect: Self.standard, seat: .back))
+        let inset = try #require(TVBezelLayout(bezel: bezel, container: Self.phoneLandscape, pictureAspect: Self.standard,
+                                               seat: .back, safeAreaTop: Self.islandTop))
+        #expect(inset == plain)
+        #expect(inset.canvasTopInset == 0)
+    }
+
+    @Test("An image bezel in portrait starts below the top safe-area inset")
+    func imageBezelClearsSafeArea() throws {
+        let art = TVBezel.ImageArtwork(fileURL: URL(fileURLWithPath: "/nonexistent.png"), size: CGSize(width: 1920, height: 1080),
+                                       screen: CGRect(x: 480, y: 180, width: 960, height: 720))
+        let bezel = TVBezel(id: "file:test", name: "Test", preferredSystems: [], image: art, source: .imported, isListed: true)
+        // 8% of the short window is 45 points: less than the inset.
+        let layout = try #require(TVBezelLayout(bezel: bezel, container: Self.shortWindow, pictureAspect: Self.standard,
+                                                seat: .back, safeAreaTop: Self.islandTop))
+        #expect(layout.artworkFrame.minY >= Self.islandTop)
+        #expect(layout.canvasTopInset == 0)
+    }
+
     @Test("An image bezel keeps its own shape, near the top of a portrait screen")
     func imageBezelInPortrait() throws {
         let art = TVBezel.ImageArtwork(fileURL: URL(fileURLWithPath: "/nonexistent.png"), size: CGSize(width: 1920, height: 1080),

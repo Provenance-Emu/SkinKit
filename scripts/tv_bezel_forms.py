@@ -28,9 +28,11 @@ WIDE_FLAG = "tv.wide"
 SET_WIDTH = 1920
 CENTER_X = SET_WIDTH / 2
 WIDE_ASPECT = 16 / 9
-# How far the set sits below the top of a portrait canvas: the cabinet's top edge clears a
-# phone's status bar.
+# How far the set sits below the top of a portrait canvas where nothing is in the way.
 PORTRAIT_TOP = 60
+# The gap kept between the canvas's top safe-area inset (a notch, a Dynamic Island) and the
+# top of the set, where that is lower than PORTRAIT_TOP puts it.
+SAFE_TOP_GAP = 12
 # Taller than any portrait canvas, so what is carried down reaches the bottom.
 PORTRAIT_DEPTH = 6000
 # The lower surface is wider than any portrait canvas.
@@ -51,6 +53,8 @@ PORTRAIT_WIDE = {"orientation": "portrait", "flag": WIDE_FLAG}
 
 # cabinet: the node whose frame bounds the set (its narrow form).
 # surface: the node the set stands on; the lower surface starts at its bottom edge.
+# top: the node whose top edge must clear the safe area, when that is not the cabinet (a
+# cabinet that runs off the top of the canvas names its marquee).
 # base: the lower surface's colour. texture: holes, tufts or slats. lip: a trim strip's
 # colours along the top, or None. plate: the text of a name plate, or None.
 TVS = {
@@ -66,7 +70,7 @@ TVS = {
                 "lip": None, "plate": None},
     "living-room-tv": {"cabinet": "cabinet", "surface": "carpet", "base": "#2C1E16", "texture": "tufts",
                        "lip": None, "plate": None},
-    "candy-cabinet": {"cabinet": "body", "surface": "panel", "base": "#2F3035", "texture": "slats",
+    "candy-cabinet": {"cabinet": "body", "top": "header", "surface": "panel", "base": "#2F3035", "texture": "slats",
                       "lip": ("#F4F4F1", "#C9C9C2"), "plate": None},
 }
 
@@ -250,7 +254,10 @@ def write_forms(name, tv):
     split_repeats(tv_set["children"], tube, short_delta)
 
     # Portrait: the set and the room's band hang from the top, on the lower surface.
-    top = {"layout": {"anchor": {"y": "top"}, "offset": {"y": PORTRAIT_TOP}}}
+    # Under a notch the set moves down until its top edge is clear of it.
+    set_top = by_id[tv.get("top", tv["cabinet"])]["layout"]["frame"][1]
+    clear = {"sum": [{"safe": "top"}, SAFE_TOP_GAP - set_top]}
+    top = {"layout": {"anchor": {"y": "top"}, "offset": {"y": {"max": [PORTRAIT_TOP, clear]}}}}
     for group in (band, tv_set):
         if group:
             add(group, PORTRAIT, top)

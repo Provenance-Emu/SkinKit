@@ -299,16 +299,15 @@ public struct BezelSwitcherHost: View {
     private func keep() {
         guard !isClosed else { return }
         let gameID = session.bezelGameID
-        guard let commit = model.commit(gameHasPin: settings.pinnedBezel(forGame: gameID) != nil) else { return more() }
+        let (systemID, suitsTV, settings) = (session.bezelSystemID, session.bezelSystemSuitsTV, settings)
+        let commit = model.commit(gameHasPin: settings.pinnedBezel(forGame: gameID) != nil) { choice in
+            BezelChoice.shownBezelID(ifChosen: choice, gameID: gameID, systemID: systemID, systemSuitsTV: suitsTV,
+                                     settings: settings)
+        }
+        guard let commit else { return more() }
         isClosed = true
         if let chosen = commit.chosen { settings.chosenBezel = chosen }
-        if let gameID {
-            switch commit.pin {
-            case .set(let id): settings.pinnedBezels[gameID] = id
-            case .remove: settings.pinnedBezels[gameID] = nil
-            case .unchanged: break
-            }
-        }
+        if let gameID { BezelChoice.apply(commit.pin, toGame: gameID, settings: settings) }
         // Only a change is stored: an untouched setting keeps going by the device.
         if supportsRoomLight, commit.lightsRoom != TVBezelRoomLight.isOn { TVBezelRoomLight.set(commit.lightsRoom) }
         session.bezelPreview = nil
