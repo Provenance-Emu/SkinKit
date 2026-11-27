@@ -24,9 +24,20 @@ import CoreGraphics
         }
     }
 
-    /// The width of the canvas a portrait room is drawn on from this seat, in points. The
-    /// tubes are about 1040 points wide and the narrow cabinets 1152, so the front seat is
-    /// the cabinet edge to edge.
+    /// How much of a portrait canvas is kept on each side of the TV's tube from this seat, in
+    /// points. A portrait screen is narrow, so the picture gets nearly all of its width: only
+    /// the inner edge of the TV's frame shows beside it, and the cabinet's sides are off screen.
+    public var portraitTubeMargin: CGFloat {
+        switch self {
+        case .back: return 28
+        case .middle: return 18
+        case .front: return 10
+        }
+    }
+
+    /// The width of the canvas a portrait room is drawn on from this seat when the TV's tube
+    /// is not known, in points. `TVBezelCanvas.portraitSize(display:seat:tube:)` draws
+    /// closer: prefer it.
     public var portraitCanvasWidth: CGFloat {
         switch self {
         case .back: return 1280
@@ -95,6 +106,28 @@ import CoreGraphics
         let ratio = display.width / display.height
         guard portraitRatioRange.contains(ratio) else { return nil }
         let width = seat.portraitCanvasWidth
+        return CGSize(width: width, height: (width / ratio).rounded())
+    }
+
+    /// How much of a portrait canvas's height the set may take: the rest is the console the
+    /// app's touch controls float over.
+    public static let portraitSetShare: CGFloat = 0.55
+    /// What a set adds to its tube's height on a portrait canvas, in points: the gap above
+    /// it and the cabinet above and below the tube.
+    static let portraitSetExtraHeight: CGFloat = 260
+
+    /// The canvas of a portrait room for a TV whose tube is `tube` canvas points large: the
+    /// tube and `seat.portraitTubeMargin` on each side, with the display's proportions. On a
+    /// squarer display (a tablet held upright) that would fill the screen with the set, so
+    /// the canvas is widened until the set takes `portraitSetShare` of its height.
+    /// `nil` for a display that is not a portrait shape, or no tube.
+    public static func portraitSize(display: CGSize, seat: TVBezelSeat = .back, tube: CGSize) -> CGSize? {
+        guard display.width > 0, display.height > 0, tube.width > 0, tube.height > 0 else { return nil }
+        let ratio = display.width / display.height
+        guard portraitRatioRange.contains(ratio) else { return nil }
+        let zoomed = tube.width + 2 * seat.portraitTubeMargin
+        let roomy = ratio * (tube.height + portraitSetExtraHeight) / portraitSetShare
+        let width = max(zoomed, roomy).rounded()
         return CGSize(width: width, height: (width / ratio).rounded())
     }
 

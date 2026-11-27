@@ -75,4 +75,21 @@ struct TVBezelCanvasTests {
     func pictureShape(aspect: CGSize, expected: TVBezelPictureShape) {
         #expect(TVBezelPictureShape(aspect: aspect) == expected)
     }
+
+    @Test("A portrait canvas for a known tube is the tube and a thin edge each side")
+    func portraitForTube() throws {
+        let display = CGSize(width: 430, height: 932)
+        let back = try #require(TVBezelCanvas.portraitSize(display: display, tube: CGSize(width: 1040, height: 780)))
+        #expect(back.width == 1040 + 2 * TVBezelSeat.back.portraitTubeMargin)
+        #expect(abs(back.width / back.height - display.width / display.height) < 0.001)
+        let front = try #require(TVBezelCanvas.portraitSize(display: display, seat: .front, tube: CGSize(width: 1040, height: 780)))
+        #expect(front.width < back.width)
+        #expect(TVBezelCanvas.portraitSize(display: CGSize(width: 932, height: 430), tube: CGSize(width: 1040, height: 780)) == nil)
+        #expect(TVBezelCanvas.portraitSize(display: display, tube: .zero) == nil)
+        // A tablet held upright has the width to spare: the set keeps to its share of the height.
+        let tablet = try #require(TVBezelCanvas.portraitSize(display: CGSize(width: 820, height: 1180),
+                                                             tube: CGSize(width: 1040, height: 780)))
+        #expect(tablet.width > back.width)
+        #expect((780 + 260) / tablet.height <= TVBezelCanvas.portraitSetShare + 0.001)
+    }
 }

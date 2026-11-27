@@ -232,7 +232,13 @@ private struct BezelProjectEntryView: View {
                     .disabled(bezel.isListed)
                     if bezel.isListed {
                         Button(chosen == bezel.id ? String(localized: "This Is Your TV") : String(localized: "Use as Your TV")) {
-                            chosen = bezel.id
+                            if let game {
+                                // Over a running game the TV chosen is the TV that shows: its pin goes.
+                                BezelChoice.chooseForEveryGame(bezel.id, playing: game.gameID, systemID: game.systemID,
+                                                               systemSuitsTV: true)
+                            } else {
+                                chosen = bezel.id
+                            }
                         }
                         .disabled(chosen == bezel.id)
                     }

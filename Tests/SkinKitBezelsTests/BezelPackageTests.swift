@@ -94,6 +94,47 @@ struct BezelChoiceTests {
         #expect(BezelChoice.lightsRoom(preview: BezelPreview(choice: "living-room-tv", lightsRoom: true)))
     }
 
+    @Test("A TV chosen for every game over a running game is the TV that game shows")
+    func chooseForEveryGame() {
+        let settings = settings()
+        let rules = ExternalDisplayBezelRules.self
+        func shown(_ game: String) -> String? {
+            BezelChoice.resolve(gameID: game, systemID: nil, systemSuitsTV: true, preview: nil, settings: settings).bezel?.id
+        }
+        // A pin would hide the new choice: it goes.
+        settings.pinnedBezels["pinned"] = "computer-monitor"
+        BezelChoice.chooseForEveryGame("studio-monitor", playing: "pinned", systemID: nil, systemSuitsTV: true, settings: settings)
+        #expect(settings.chosenBezel == "studio-monitor")
+        #expect(settings.pinnedBezel(forGame: "pinned") == nil)
+        #expect(shown("pinned") == "studio-monitor")
+
+        // Artwork found for the game comes ahead of the saved choice, so the choice is pinned to it too.
+        settings.showsGameArtwork = true
+        let style = settings.bezelProjectStyle
+        #expect(ExternalDisplayGameArtwork.shared.begin(game: "with-art", style: style))
+        #expect(ExternalDisplayGameArtwork.shared.finish(game: "with-art", style: style, bezelID: "dorm-tv"))
+        #expect(shown("with-art") == "dorm-tv")
+        BezelChoice.chooseForEveryGame("living-room-tv", playing: "with-art", systemID: nil, systemSuitsTV: true, settings: settings)
+        #expect(settings.pinnedBezel(forGame: "with-art") == "living-room-tv")
+        #expect(shown("with-art") == "living-room-tv")
+        #expect(shown("another") == "living-room-tv")
+
+        // Off is a choice as well: the artwork would still show, so Off is pinned.
+        BezelChoice.chooseForEveryGame(rules.noBezelID, playing: "with-art", systemID: nil, systemSuitsTV: true, settings: settings)
+        #expect(settings.pinnedBezel(forGame: "with-art") == rules.noBezelID)
+        #expect(shown("with-art") == nil)
+
+        // Automatic hands the choice back to the rules: the pin goes and the artwork shows.
+        BezelChoice.chooseForEveryGame(rules.automaticBezelID, playing: "with-art", systemID: nil, systemSuitsTV: true, settings: settings)
+        #expect(settings.pinnedBezel(forGame: "with-art") == nil)
+        #expect(shown("with-art") == "dorm-tv")
+
+        // With no game running only the choice is saved.
+        settings.pinnedBezels["kept"] = "computer-monitor"
+        BezelChoice.chooseForEveryGame("studio-monitor", playing: nil, systemID: nil, systemSuitsTV: true, settings: settings)
+        #expect(settings.pinnedBezels == ["kept": "computer-monitor"])
+    }
+
     @Test("Automatic gives a console a TV and a handheld none")
     func automatic() {
         let settings = settings()

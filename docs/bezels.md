@@ -46,7 +46,21 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
      - *Portrait* (`TVBezel.drawsPortrait`, `"portrait": true` in the catalogue): on a portrait container
        (`TVBezelCanvas.portraitRatioRange`) the room is the whole screen, the TV at the top and a console
        running down under the touch controls. An image bezel keeps its own shape, placed near the
-       top.
+       top. Pass the window's top safe-area inset as `safeAreaTop:` (a view that ignores the safe area
+       reports zero for its own): the set, or the image, is placed below a notch or Dynamic Island while
+       the room still reaches the top of the screen. Hand the layout's `canvasTopInset` to
+       `TVBezelArtworkView(topInset:)` with its `canvas` and `shape`.
+       On a phone the room is drawn close: the canvas is the tube and a thin edge of its frame each
+       side (`TVBezelSeat.portraitTubeMargin`), so the picture has nearly the whole width and the
+       cabinet's sides are off screen. A squarer screen (a tablet upright) is drawn wider, so the set
+       keeps to about half the height. An app that draws the portrait room itself takes the canvas from
+       `TVBezelPlainArtwork.portraitCanvas(of:display:seat:)`.
+     - *Shelf*: an app with a small second screen of its own (iFly's Dreamcast VMU) passes `shelf: true`.
+       In a portrait room the TV then has a bay in the console, centred under the set, and
+       `shelfFrame` is where the app puts that screen (3:2). Draw the artwork with
+       `TVBezelArtworkView(bezel:layout:)`, which carries the shelf along with the canvas, shape and
+       inset. `shelfFrame` is `nil` in landscape and for an image bezel: the app then places its screen
+       as it always did. An app that passes nothing gets no bay.
      - *Widescreen*: for a picture of 16:10 or wider (`TVBezelPictureShape`) the tube and cabinet are 16:9,
        so the picture has no bars. A TV without the form keeps its 4:3 tube and the picture is fitted in it, and so does any
        TV on a canvas narrower than its wide tube (a 4:3 display from the Middle or Front seat).
@@ -62,6 +76,12 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
    `BezelSwitcherHost(session:commands:showsControllerHints:onClose:onMore:)` over the paused game, where
    the game stays visible. `onMore` opens `TVBezelPickerView`. Setting `bezelPreview` must redraw the game
    through step 2.
+
+   A list of TVs shown over a running game (`TVBezelPickerView` from `onMore`) saves through
+   `BezelChoice.chooseForEveryGame(_:playing:systemID:systemSuitsTV:)`, not by writing `chosenBezel`:
+   like Keep in the strip it drops the game's pin, and pins the choice to the game where artwork found
+   for the game or the player's own bezel for the system would still show instead. The TV the player
+   picks while playing is always the TV they then see. A preview shows exactly the TV being tried.
 
 6. **Game artwork** (optional): `await BezelChoice.fetchGameArtwork(for:)`, then resolve again when it
    returns `true`.

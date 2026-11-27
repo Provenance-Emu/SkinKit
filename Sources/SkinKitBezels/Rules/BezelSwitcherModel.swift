@@ -89,6 +89,22 @@ public struct BezelSwitcherModel: Equatable, Sendable {
         case remove
     }
 
+    /// What happens to the running game's pin when `choice` is saved for every game.
+    ///
+    /// The pin goes, since it would keep hiding the choice. But the TV the player just kept
+    /// must be the TV they see: where a rule ahead of the saved choice would still replace it
+    /// for this game (artwork found for the game, their own bezel for the system), the choice
+    /// is pinned to this game as well. Automatic is never pinned: those rules are part of it.
+    ///
+    /// - Parameter shown: the TV this game would show with `choice` saved and no pin; `nil`
+    ///   from it is no TV.
+    public static func pinForEveryGame(choice: String, gameHasPin: Bool, shown: ((String) -> String?)?) -> PinChange {
+        let unpinned: PinChange = gameHasPin ? .remove : .unchanged
+        guard let shown, choice != ExternalDisplayBezelRules.automaticBezelID else { return unpinned }
+        let wanted = choice == ExternalDisplayBezelRules.noBezelID ? nil : choice
+        return shown(choice) == wanted ? unpinned : .set(choice)
+    }
+
     /// What Keep saves.
     public struct Commit: Equatable, Sendable {
         /// The new saved choice for every game; `nil` leaves it alone.
@@ -107,11 +123,16 @@ public struct BezelSwitcherModel: Equatable, Sendable {
     ///
     /// For every game the choice is saved and the game's pin dropped, since a pin would keep
     /// hiding it. For this game alone the choice is pinned; Automatic there means no pin.
-    public func commit(gameHasPin: Bool) -> Commit? {
+    ///
+    /// - Parameter shown: the TV the running game would show with a choice saved for every
+    ///   game and no pin (`BezelChoice.shownBezelID`); `nil` from it is no TV. See
+    ///   `pinForEveryGame`. Without it nothing is known to hide the choice.
+    public func commit(gameHasPin: Bool, shown: ((String) -> String?)? = nil) -> Commit? {
         let item = selection
         guard item.group != .more else { return nil }
         guard thisGameOnly else {
-            return Commit(chosen: item.id, pin: gameHasPin ? .remove : .unchanged, lightsRoom: lightsRoom)
+            let pin = Self.pinForEveryGame(choice: item.id, gameHasPin: gameHasPin, shown: shown)
+            return Commit(chosen: item.id, pin: pin, lightsRoom: lightsRoom)
         }
         let pin: PinChange = item.id == ExternalDisplayBezelRules.automaticBezelID ? .remove : .set(item.id)
         return Commit(chosen: nil, pin: pin, lightsRoom: lightsRoom)

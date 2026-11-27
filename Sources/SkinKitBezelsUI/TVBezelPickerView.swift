@@ -100,7 +100,7 @@ public struct TVBezelPickerView: View {
                 if allowsAutomatic {
                     Text("Automatic follows the Bezels settings. Anything else is used for this game only.")
                 } else if offersSystemAutomatic {
-                    Text("Automatic shows a TV for consoles and computers in landscape, and none for handhelds.")
+                    Text("Automatic shows a TV for consoles and computers, and none for handhelds.")
                 }
             }
 

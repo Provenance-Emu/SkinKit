@@ -8,6 +8,9 @@ the same document also draws:
 - portrait: the set at the top of a tall canvas, and under it a surface in the TV's own
   material that runs down to the bottom (`console-*` nodes: a hi-fi console, a desk front,
   a carpet), textured but dark and even enough for the touch controls to float over;
+- shelf (flag `tv.shelf`), portrait: a small bay in the lower surface, at the right under the
+  set, for a second screen the app owns (a Dreamcast VMU). `console-shelf-screen` is where
+  that screen goes; an app that has none leaves the flag off and the bay is not drawn;
 - wide (flag `tv.wide`), landscape: the tube and cabinet widened to 16:9 at the same height;
 - wide, portrait: the tube and cabinet shortened to 16:9 at the same width.
 
@@ -28,9 +31,11 @@ WIDE_FLAG = "tv.wide"
 SET_WIDTH = 1920
 CENTER_X = SET_WIDTH / 2
 WIDE_ASPECT = 16 / 9
-# How far the set sits below the top of a portrait canvas: the cabinet's top edge clears a
-# phone's status bar.
+# How far the set sits below the top of a portrait canvas where nothing is in the way.
 PORTRAIT_TOP = 60
+# The gap kept between the canvas's top safe-area inset (a notch, a Dynamic Island) and the
+# top of the set, where that is lower than PORTRAIT_TOP puts it.
+SAFE_TOP_GAP = 12
 # Taller than any portrait canvas, so what is carried down reaches the bottom.
 PORTRAIT_DEPTH = 6000
 # The lower surface is wider than any portrait canvas.
@@ -45,12 +50,21 @@ SLAT_STEP = 46
 # A centre-spanning node at least this much of the tube's width is part of the frame and
 # widens with it; a narrower one (a tape slot, a base) keeps its size.
 FRAME_SHARE = 0.9
+# The bay for the app's second screen: centred under the set, between the shoulder buttons of
+# an app's touch controls, and about 40% of a portrait canvas wide (those are a little wider
+# than the tube). Its screen is 3:2, the shape of a VMU's.
+SHELF_FLAG = "tv.shelf"
+SHELF_WIDTH, SHELF_HEIGHT, SHELF_RIM = 432, 296, 12
+SHELF_DROP = 116
 PORTRAIT = {"orientation": "portrait"}
+PORTRAIT_SHELF = {"orientation": "portrait", "flag": SHELF_FLAG}
 LANDSCAPE_WIDE = {"orientation": "landscape", "flag": WIDE_FLAG}
 PORTRAIT_WIDE = {"orientation": "portrait", "flag": WIDE_FLAG}
 
 # cabinet: the node whose frame bounds the set (its narrow form).
 # surface: the node the set stands on; the lower surface starts at its bottom edge.
+# top: the node whose top edge must clear the safe area, when that is not the cabinet (a
+# cabinet that runs off the top of the canvas names its marquee).
 # base: the lower surface's colour. texture: holes, tufts or slats. lip: a trim strip's
 # colours along the top, or None. plate: the text of a name plate, or None.
 TVS = {
@@ -66,7 +80,7 @@ TVS = {
                 "lip": None, "plate": None},
     "living-room-tv": {"cabinet": "cabinet", "surface": "carpet", "base": "#2C1E16", "texture": "tufts",
                        "lip": None, "plate": None},
-    "candy-cabinet": {"cabinet": "body", "surface": "panel", "base": "#2F3035", "texture": "slats",
+    "candy-cabinet": {"cabinet": "body", "top": "header", "surface": "panel", "base": "#2F3035", "texture": "slats",
                       "lip": ("#F4F4F1", "#C9C9C2"), "plate": None},
 }
 
@@ -187,6 +201,23 @@ def console(top, tv):
     nodes += texture(tv["texture"], base, top + 150)
     for node in nodes:
         node["visible"] = dict(PORTRAIT)
+    return nodes + shelf(top, base)
+
+
+def shelf(top, base):
+    """The bay for the app's second screen, drawn only when the app asks for it."""
+    x, y = CENTER_X - SHELF_WIDTH / 2, top + SHELF_DROP
+    inner = [x + SHELF_RIM, y + SHELF_RIM, SHELF_WIDTH - 2 * SHELF_RIM, SHELF_HEIGHT - 2 * SHELF_RIM]
+    nodes = [
+        rect("console-shelf", [x, y, SHELF_WIDTH, SHELF_HEIGHT],
+             [vertical((lighter(base, 0.22), 0), (lighter(base, 0.08), 0.5), (darker(base, 0.25), 1))], radius=16,
+             strokes=[{"color": "#000000", "width": 2, "align": "outer", "opacity": 0.6}],
+             effects=[{"type": "shadow", "color": "#000000", "opacity": 0.6, "radius": 14, "offset": [0, 8]}]),
+        rect("console-shelf-screen", inner, [solid("#0B0C0E", 1)], radius=8,
+             strokes=[{"color": "#000000", "width": 2, "align": "inner", "opacity": 0.8}]),
+    ]
+    for node in nodes:
+        node["visible"] = dict(PORTRAIT_SHELF)
     return nodes
 
 
@@ -250,7 +281,10 @@ def write_forms(name, tv):
     split_repeats(tv_set["children"], tube, short_delta)
 
     # Portrait: the set and the room's band hang from the top, on the lower surface.
-    top = {"layout": {"anchor": {"y": "top"}, "offset": {"y": PORTRAIT_TOP}}}
+    # Under a notch the set moves down until its top edge is clear of it.
+    set_top = by_id[tv.get("top", tv["cabinet"])]["layout"]["frame"][1]
+    clear = {"sum": [{"safe": "top"}, SAFE_TOP_GAP - set_top]}
+    top = {"layout": {"anchor": {"y": "top"}, "offset": {"y": {"max": [PORTRAIT_TOP, clear]}}}}
     for group in (band, tv_set):
         if group:
             add(group, PORTRAIT, top)
