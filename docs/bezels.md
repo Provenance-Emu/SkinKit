@@ -50,8 +50,13 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
        reports zero for its own): the set, or the image, is placed below a notch or Dynamic Island while
        the room still reaches the top of the screen. Hand the layout's `canvasTopInset` to
        `TVBezelArtworkView(topInset:)` with its `canvas` and `shape`.
+       On a phone the room is drawn close: the canvas is the tube and a thin edge of its frame each
+       side (`TVBezelSeat.portraitTubeMargin`), so the picture has nearly the whole width and the
+       cabinet's sides are off screen. A squarer screen (a tablet upright) is drawn wider, so the set
+       keeps to about half the height. An app that draws the portrait room itself takes the canvas from
+       `TVBezelPlainArtwork.portraitCanvas(of:display:seat:)`.
      - *Shelf*: an app with a small second screen of its own (iFly's Dreamcast VMU) passes `shelf: true`.
-       In a portrait room the TV then has a bay in the console under the set, at the right, and
+       In a portrait room the TV then has a bay in the console, centred under the set, and
        `shelfFrame` is where the app puts that screen (3:2). Draw the artwork with
        `TVBezelArtworkView(bezel:layout:)`, which carries the shelf along with the canvas, shape and
        inset. `shelfFrame` is `nil` in landscape and for an image bezel: the app then places its screen

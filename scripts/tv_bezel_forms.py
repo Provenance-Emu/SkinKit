@@ -50,12 +50,12 @@ SLAT_STEP = 46
 # A centre-spanning node at least this much of the tube's width is part of the frame and
 # widens with it; a narrower one (a tape slot, a base) keeps its size.
 FRAME_SHARE = 0.9
-# The bay for the app's second screen: its right edge is inside the narrowest portrait canvas
-# (1152 points, the front seat), and its screen is 3:2, the shape of a VMU's.
+# The bay for the app's second screen: centred under the set, between the shoulder buttons of
+# an app's touch controls, and about 40% of a portrait canvas wide (those are a little wider
+# than the tube). Its screen is 3:2, the shape of a VMU's.
 SHELF_FLAG = "tv.shelf"
-SHELF_WIDTH, SHELF_HEIGHT, SHELF_RIM = 300, 208, 12
-SHELF_RIGHT = CENTER_X + 1152 / 2 - 40
-SHELF_DROP = 128
+SHELF_WIDTH, SHELF_HEIGHT, SHELF_RIM = 432, 296, 12
+SHELF_DROP = 116
 PORTRAIT = {"orientation": "portrait"}
 PORTRAIT_SHELF = {"orientation": "portrait", "flag": SHELF_FLAG}
 LANDSCAPE_WIDE = {"orientation": "landscape", "flag": WIDE_FLAG}
@@ -206,7 +206,7 @@ def console(top, tv):
 
 def shelf(top, base):
     """The bay for the app's second screen, drawn only when the app asks for it."""
-    x, y = SHELF_RIGHT - SHELF_WIDTH, top + SHELF_DROP
+    x, y = CENTER_X - SHELF_WIDTH / 2, top + SHELF_DROP
     inner = [x + SHELF_RIM, y + SHELF_RIM, SHELF_WIDTH - 2 * SHELF_RIM, SHELF_HEIGHT - 2 * SHELF_RIM]
     nodes = [
         rect("console-shelf", [x, y, SHELF_WIDTH, SHELF_HEIGHT],

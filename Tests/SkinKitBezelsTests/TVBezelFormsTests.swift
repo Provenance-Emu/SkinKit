@@ -23,17 +23,22 @@ struct TVBezelFormsTests {
 
     private func aspect(_ rect: CGRect) -> CGFloat { rect.width / rect.height }
 
+    /// The same rect to within half a point: a canvas is a whole number of points tall.
+    private func close(_ a: CGRect, _ b: CGRect) -> Bool {
+        abs(a.minX - b.minX) < 0.5 && abs(a.minY - b.minY) < 0.5 && abs(a.maxX - b.maxX) < 0.5 && abs(a.maxY - b.maxY) < 0.5
+    }
+
     @Test("In portrait the room is the whole screen and the tube is in its upper half", arguments: [phone, tablet])
     func portrait(container: CGSize) throws {
         let layout = try #require(TVBezelLayout(bezel: flatTube(), container: container, pictureAspect: Self.standard, seat: .back))
         let canvas = try #require(layout.canvas)
         #expect(layout.artworkFrame == CGRect(origin: .zero, size: container))
         #expect(canvas.height > canvas.width)
-        #expect(layout.screenFrame.width > container.width * 0.8)
+        #expect(layout.screenFrame.width > container.width * 0.75)
         #expect(layout.screenFrame.minY > 0)
         #expect(layout.screenFrame.maxY < container.height * 0.6)
         #expect(abs(layout.screenFrame.midX - container.width / 2) < 0.5)
-        #expect(layout.pictureFrame == layout.screenFrame)
+        #expect(close(layout.pictureFrame, layout.screenFrame))
     }
 
     @Test("A wide picture fills a wide tube: no bars", arguments: [phone, tablet, phoneLandscape, CGSize(width: 1920, height: 1080)])
@@ -108,7 +113,7 @@ struct TVBezelFormsTests {
             #expect(top.minY * scale >= Self.islandTop)
             #expect(top.minY * scale < Self.islandTop + 8)
             #expect(layout.screenFrame.minY > Self.islandTop)
-            #expect(layout.pictureFrame == layout.screenFrame)
+            #expect(close(layout.pictureFrame, layout.screenFrame))
         }
     }
 
@@ -149,7 +154,9 @@ struct TVBezelFormsTests {
                 #expect(abs(aspect(shelf) - 1.5) < 0.02)
                 #expect(shelf.minX >= 0 && shelf.maxX <= container.width)
                 #expect(shelf.minY > layout.screenFrame.maxY)
-                #expect(shelf.width >= 60)
+                // About 40% of a phone's width (less on a squarer screen): readable, and between the shoulder buttons.
+                #expect(shelf.width >= container.width * 0.25 && shelf.width <= container.width * 0.45)
+                #expect(abs(shelf.midX - container.width / 2) < 0.5)
                 // Asking for the shelf moves nothing else.
                 let plain = try #require(TVBezelLayout(bezel: bezel, container: container, pictureAspect: picture, seat: seat,
                                                        safeAreaTop: Self.islandTop))
@@ -169,6 +176,25 @@ struct TVBezelFormsTests {
         let image = TVBezel(id: "file:test", name: "Test", preferredSystems: [], image: art, source: .imported, isListed: true)
         #expect(try #require(TVBezelLayout(bezel: image, container: Self.phone, pictureAspect: Self.standard, seat: .back,
                                            shelf: true)).shelfFrame == nil)
+    }
+
+    @Test("In portrait the picture has nearly the whole width of the screen", arguments: TVBezelCatalog.bundled.map(\.id))
+    func portraitIsZoomedIn(id: String) throws {
+        let bezel = try #require(TVBezelCatalog.bezel(id: id))
+        var widths: [CGFloat] = []
+        for seat in TVBezelSeat.allCases {
+            let layout = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.standard, seat: seat))
+            // Only a thin edge of the TV's frame shows beside the tube; it is centred and whole.
+            #expect(layout.screenFrame.width >= Self.phone.width * 0.94)
+            #expect(layout.screenFrame.minX > 0 && layout.screenFrame.maxX < Self.phone.width)
+            #expect(abs(layout.screenFrame.midX - Self.phone.width / 2) < 0.5)
+            widths.append(layout.screenFrame.width)
+            // A wide picture still gets the wide tube at this zoom.
+            let wide = try #require(TVBezelLayout(bezel: bezel, container: Self.phone, pictureAspect: Self.wide, seat: seat))
+            #expect(wide.shape == .wide)
+        }
+        // A closer seat is a larger picture.
+        #expect(widths == widths.sorted())
     }
 
     @Test("An image bezel in portrait starts below the top safe-area inset")

@@ -94,7 +94,7 @@ public struct TVBezelLayout: Equatable, Sendable {
             shape = .standard
             return
         }
-        let portraitCanvas = bezel.drawsPortrait ? seat.flatMap { TVBezelCanvas.portraitSize(display: container, seat: $0) } : nil
+        let portraitCanvas = seat.flatMap { TVBezelPlainArtwork.portraitCanvas(of: bezel, display: container, seat: $0) }
         let artworkCanvas = portraitCanvas ?? seat.map { TVBezelCanvas.size(display: container, seat: $0) } ?? TVBezelArtwork.canvas
         let pictureShape = TVBezelPictureShape(aspect: pictureAspect).fitting(bezel: bezel, canvas: artworkCanvas)
         // Only a portrait room moves its set for the inset: it is the one form that hangs
@@ -189,6 +189,15 @@ extension TVBezelPictureShape {
             tubes[key] = tube
         }
         return tube
+    }
+
+    /// The canvas `bezel`'s portrait room is drawn on for `display`: on a phone as wide as its
+    /// tube and a thin edge of its frame, so the picture has nearly the whole width of the screen. `nil`
+    /// for a TV without a portrait form or a display that is not a portrait shape. An app that
+    /// draws the portrait room itself asks here rather than `TVBezelCanvas`.
+    public static func portraitCanvas(of bezel: TVBezel, display: CGSize, seat: TVBezelSeat) -> CGSize? {
+        guard bezel.drawsPortrait, let tube = tubeRect(of: bezel) else { return nil }
+        return TVBezelCanvas.portraitSize(display: display, seat: seat, tube: tube.size)
     }
 
     /// A built-in TV's shelf screen in `canvas` points (`TVBezelArtwork.shelfRect`); `nil` for
