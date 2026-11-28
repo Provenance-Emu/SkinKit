@@ -243,7 +243,8 @@ public struct BezelSwitcherHost: View {
     /// own setting; `nil` hides the Seat button. A new seat shows on the game at once, and
     /// Cancel puts back the one the strip opened with.
     let seat: Binding<TVBezelSeat>?
-    /// The seat when the strip opened.
+    /// The seat before the strip first changed it; `nil` while it has not. Taken at the first
+    /// change, not when the view is made, so it is right whenever the binding arrives.
     @State private var openingSeat: TVBezelSeat?
     /// The strip is done (kept or cancelled): go back to the pause menu.
     let onClose: () -> Void
@@ -271,7 +272,6 @@ public struct BezelSwitcherHost: View {
                 onClose: @escaping () -> Void, onMore: @escaping () -> Void) {
         self.session = session
         self.seat = seat
-        _openingSeat = State(initialValue: seat?.wrappedValue)
         self.commands = commands
         self.showsControllerHints = showsControllerHints
         self.supportsRoomLight = supportsRoomLight
@@ -300,7 +300,7 @@ public struct BezelSwitcherHost: View {
                            showsThisGameOnly: session.bezelGameID != nil,
                            showsControllerHints: commands != nil && showsControllerHints,
                            supportsRoomLight: supportsRoomLight,
-                           seat: seat,
+                           seat: trackedSeat,
                            onKeep: keep,
                            onCancel: cancel,
                            onMore: more)
@@ -315,6 +315,15 @@ public struct BezelSwitcherHost: View {
                 isLoading = session.isBezelLoading
             }
             .onReceive(commands ?? Empty().eraseToAnyPublisher()) { handle($0) }
+    }
+
+    /// The app's seat, remembering what it was before the strip's first change to it.
+    private var trackedSeat: Binding<TVBezelSeat>? {
+        guard let seat else { return nil }
+        return Binding(get: { seat.wrappedValue }, set: { newValue in
+            if openingSeat == nil { openingSeat = seat.wrappedValue }
+            seat.wrappedValue = newValue
+        })
     }
 
     private func name(_ item: BezelSwitcherModel.Item) -> String {

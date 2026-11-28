@@ -26,6 +26,10 @@ public struct TVBezelPickerView: View {
     var seat: Binding<TVBezelSeat>?
     @Environment(\.dismiss) private var dismiss
     @State private var cursor = 0
+    /// The controller's cursor is on the Seat row, which sits above the first choice.
+    @State private var cursorOnSeat = false
+    /// The Seat row's place in the list, for scrolling to it.
+    private static let seatRowID = "SkinKitBezelsUI.seatRow"
     @State private var pickerVisible = false
 
     private var choices: [String?] {
@@ -71,6 +75,9 @@ public struct TVBezelPickerView: View {
                     guard choices.indices.contains(index) else { return }
                     scroll.scrollTo(choices[index], anchor: .center)
                 }
+                .onChange(of: cursorOnSeat) { _, onSeat in
+                    if onSeat { scroll.scrollTo(Self.seatRowID, anchor: .center) }
+                }
         }
         .onAppear {
             pickerVisible = true
@@ -80,9 +87,17 @@ public struct TVBezelPickerView: View {
         .onReceive(controllerCommands ?? Empty().eraseToAnyPublisher()) { command in
             guard pickerVisible, editing == nil, !isImporting, !choices.isEmpty else { return }
             switch command {
-            case .up: cursor = max(0, cursor - 1)
-            case .down: cursor = min(choices.count - 1, cursor + 1)
+            case .up:
+                // The Seat row is one step above the first choice.
+                if cursor == 0, seat != nil { cursorOnSeat = true }
+                cursor = max(0, cursor - 1)
+            case .down:
+                if cursorOnSeat { cursorOnSeat = false } else { cursor = min(choices.count - 1, cursor + 1) }
             case .activate:
+                if cursorOnSeat, let seat {
+                    seat.wrappedValue = seat.wrappedValue.nextCloser
+                    return
+                }
                 guard choices.indices.contains(cursor) else { return }
                 selection = choices[cursor]
             case .back: dismiss()
@@ -93,6 +108,18 @@ public struct TVBezelPickerView: View {
 
     private var pickerList: some View {
         List {
+            if let seat {
+                Section {
+                    Picker(String(localized: "Seat"), selection: seat) {
+                        ForEach(TVBezelSeat.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    .id(Self.seatRowID)
+                    .listRowBackground(controllerCommands != nil && cursorOnSeat ? Color.accentColor.opacity(0.25) : nil)
+                } footer: {
+                    Text("How close you sit to a built-in TV. A closer seat shows less of the room and a larger picture.")
+                }
+            }
+
             Section {
                 if allowsAutomatic {
                     row(String(localized: "Automatic"), id: nil)
@@ -106,16 +133,6 @@ public struct TVBezelPickerView: View {
                     Text("Automatic follows the Bezels settings. Anything else is used for this game only.")
                 } else if offersSystemAutomatic {
                     Text("Automatic shows a TV for consoles and computers, and none for handhelds.")
-                }
-            }
-
-            if let seat {
-                Section {
-                    Picker(String(localized: "Seat"), selection: seat) {
-                        ForEach(TVBezelSeat.allCases, id: \.self) { Text($0.displayName).tag($0) }
-                    }
-                } footer: {
-                    Text("How close you sit to a built-in TV. A closer seat shows less of the room and a larger picture.")
                 }
             }
 
@@ -217,7 +234,7 @@ public struct TVBezelPickerView: View {
             .contentShape(Rectangle())
         }
         .id(id)
-        .listRowBackground(controllerCommands != nil && choices.firstIndex(of: id) == cursor ? Color.accentColor.opacity(0.25) : nil)
+        .listRowBackground(controllerCommands != nil && !cursorOnSeat && choices.firstIndex(of: id) == cursor ? Color.accentColor.opacity(0.25) : nil)
         .accessibilityAddTraits(selection == id ? .isSelected : [])
     }
 

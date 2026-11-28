@@ -80,7 +80,8 @@ the paused game. Shared by Provenance, iFly and iCube. Design: Provenance
    An app with a Seat setting (`TVBezelSeat`, step 2's layout) passes it as `seat:` to both
    `BezelSwitcherHost` and `TVBezelPickerView`, as a binding to its own stored value. The strip then has
    a Seat button that steps Back, Middle, Front and the list a Seat row. The app lays the TV out again
-   when its value changes; the strip's Cancel puts back the seat it opened with.
+   when its value changes; the strip's Cancel puts back the seat it opened with. In the list a controller reaches the Seat row by
+   moving up from the first choice, and its activate button steps the seat.
 
    A list of TVs shown over a running game (`TVBezelPickerView` from `onMore`) saves through
    `BezelChoice.chooseForEveryGame(_:playing:systemID:systemSuitsTV:)`, not by writing `chosenBezel`:
