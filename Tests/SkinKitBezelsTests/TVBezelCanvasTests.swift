@@ -92,4 +92,20 @@ struct TVBezelCanvasTests {
         #expect(tablet.width > back.width)
         #expect((780 + 260) / tablet.height <= TVBezelCanvas.portraitSetShare + 0.001)
     }
+
+    @Test func oneButtonStepsThroughEverySeatAndBackToTheStart() {
+        var seat = TVBezelSeat.back
+        var seen: [TVBezelSeat] = []
+        for _ in TVBezelSeat.allCases {
+            seen.append(seat)
+            seat = seat.nextCloser
+        }
+        #expect(Set(seen) == Set(TVBezelSeat.allCases))
+        #expect(seat == .back)
+        #expect(TVBezelSeat.back.canvasHeight > TVBezelSeat.back.nextCloser.canvasHeight)
+    }
+
+    @Test func everySeatHasItsOwnName() {
+        #expect(Set(TVBezelSeat.allCases.map(\.displayName)).count == TVBezelSeat.allCases.count)
+    }
 }

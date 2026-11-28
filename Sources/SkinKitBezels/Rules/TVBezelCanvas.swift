@@ -6,6 +6,7 @@
 //
 
 import CoreGraphics
+import Foundation
 
 /// Where the player sits in front of a built-in TV. A closer seat draws less of the room, so
 /// everything in it is larger.
@@ -43,6 +44,27 @@ import CoreGraphics
         case .back: return 1280
         case .middle: return 1216
         case .front: return 1152
+        }
+    }
+}
+
+public extension TVBezelSeat {
+    /// The seat's name in a menu.
+    var displayName: String {
+        switch self {
+        case .back: return String(localized: "Back")
+        case .middle: return String(localized: "Middle")
+        case .front: return String(localized: "Front")
+        }
+    }
+
+    /// The next seat towards the TV; from the front it goes round to the back. What one
+    /// button that steps through the seats moves to.
+    var nextCloser: TVBezelSeat {
+        switch self {
+        case .back: return .middle
+        case .middle: return .front
+        case .front: return .back
         }
     }
 }

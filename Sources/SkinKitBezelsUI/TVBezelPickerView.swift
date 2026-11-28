@@ -22,8 +22,14 @@ public struct TVBezelPickerView: View {
     /// The running game, to choose its artwork from The Bezel Project by hand.
     var game: ExternalDisplayGameContext?
     var controllerCommands: AnyPublisher<BezelNavigationCommand, Never>?
+    /// Where the player sits in front of a built-in TV; `nil` hides the Seat row.
+    var seat: Binding<TVBezelSeat>?
     @Environment(\.dismiss) private var dismiss
     @State private var cursor = 0
+    /// The controller's cursor is on the Seat row, which sits above the first choice.
+    @State private var cursorOnSeat = false
+    /// The Seat row's place in the list, for scrolling to it.
+    private static let seatRowID = "SkinKitBezelsUI.seatRow"
     @State private var pickerVisible = false
 
     private var choices: [String?] {
@@ -49,9 +55,12 @@ public struct TVBezelPickerView: View {
     ///     each game's system.
     ///   - game: the running game, to choose its artwork from The Bezel Project by hand.
     ///   - controllerCommands: the app's controller input while the list is on screen.
+    ///   - seat: the app's Seat setting, to offer it in the list; `nil` leaves it out.
     public init(selection: Binding<String?>, allowsAutomatic: Bool = false, offersSystemAutomatic: Bool = false,
                 game: ExternalDisplayGameContext? = nil,
-                controllerCommands: AnyPublisher<BezelNavigationCommand, Never>? = nil) {
+                controllerCommands: AnyPublisher<BezelNavigationCommand, Never>? = nil,
+                seat: Binding<TVBezelSeat>? = nil) {
+        self.seat = seat
         _selection = selection
         self.allowsAutomatic = allowsAutomatic
         self.offersSystemAutomatic = offersSystemAutomatic
@@ -66,6 +75,9 @@ public struct TVBezelPickerView: View {
                     guard choices.indices.contains(index) else { return }
                     scroll.scrollTo(choices[index], anchor: .center)
                 }
+                .onChange(of: cursorOnSeat) { _, onSeat in
+                    if onSeat { scroll.scrollTo(Self.seatRowID, anchor: .center) }
+                }
         }
         .onAppear {
             pickerVisible = true
@@ -75,9 +87,17 @@ public struct TVBezelPickerView: View {
         .onReceive(controllerCommands ?? Empty().eraseToAnyPublisher()) { command in
             guard pickerVisible, editing == nil, !isImporting, !choices.isEmpty else { return }
             switch command {
-            case .up: cursor = max(0, cursor - 1)
-            case .down: cursor = min(choices.count - 1, cursor + 1)
+            case .up:
+                // The Seat row is one step above the first choice.
+                if cursor == 0, seat != nil { cursorOnSeat = true }
+                cursor = max(0, cursor - 1)
+            case .down:
+                if cursorOnSeat { cursorOnSeat = false } else { cursor = min(choices.count - 1, cursor + 1) }
             case .activate:
+                if cursorOnSeat, let seat {
+                    seat.wrappedValue = seat.wrappedValue.nextCloser
+                    return
+                }
                 guard choices.indices.contains(cursor) else { return }
                 selection = choices[cursor]
             case .back: dismiss()
@@ -88,6 +108,18 @@ public struct TVBezelPickerView: View {
 
     private var pickerList: some View {
         List {
+            if let seat {
+                Section {
+                    Picker(String(localized: "Seat"), selection: seat) {
+                        ForEach(TVBezelSeat.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                    .id(Self.seatRowID)
+                    .listRowBackground(controllerCommands != nil && cursorOnSeat ? Color.accentColor.opacity(0.25) : nil)
+                } footer: {
+                    Text("How close you sit to a built-in TV. A closer seat shows less of the room and a larger picture.")
+                }
+            }
+
             Section {
                 if allowsAutomatic {
                     row(String(localized: "Automatic"), id: nil)
@@ -202,7 +234,7 @@ public struct TVBezelPickerView: View {
             .contentShape(Rectangle())
         }
         .id(id)
-        .listRowBackground(controllerCommands != nil && choices.firstIndex(of: id) == cursor ? Color.accentColor.opacity(0.25) : nil)
+        .listRowBackground(controllerCommands != nil && !cursorOnSeat && choices.firstIndex(of: id) == cursor ? Color.accentColor.opacity(0.25) : nil)
         .accessibilityAddTraits(selection == id ? .isSelected : [])
     }
 
