@@ -22,6 +22,8 @@ public struct BezelSwitcherStrip: View {
     /// Name the controller's buttons beside the actions.
     let showsControllerHints: Bool
     let supportsRoomLight: Bool
+    /// Where the player sits in front of a built-in TV; `nil` hides the Seat button.
+    let seat: Binding<TVBezelSeat>?
     let onKeep: () -> Void
     let onCancel: () -> Void
     let onMore: () -> Void
@@ -38,8 +40,10 @@ public struct BezelSwitcherStrip: View {
 
     public init(model: Binding<BezelSwitcherModel>, name: @escaping (BezelSwitcherModel.Item) -> String,
                 isLoading: Bool, showsThisGameOnly: Bool, showsControllerHints: Bool, supportsRoomLight: Bool = true,
+                seat: Binding<TVBezelSeat>? = nil,
                 onKeep: @escaping () -> Void, onCancel: @escaping () -> Void, onMore: @escaping () -> Void) {
         _model = model
+        self.seat = seat
         self.name = name
         self.isLoading = isLoading
         self.showsThisGameOnly = showsThisGameOnly
@@ -152,6 +156,12 @@ public struct BezelSwitcherStrip: View {
             action(model.lightsRoom ? String(localized: "Room light: On") : String(localized: "Room light: Off"),
                    hint: "x.circle") { model.lightsRoom.toggle() }
         }
+        if let seat {
+            // No controller button is left for it: it is tapped, or reached by focus.
+            action(String(localized: "Seat: \(seat.wrappedValue.displayName)"), hint: nil) {
+                seat.wrappedValue = seat.wrappedValue.nextCloser
+            }
+        }
     }
 
     private func chip(_ item: BezelSwitcherModel.Item) -> some View {
@@ -185,9 +195,9 @@ public struct BezelSwitcherStrip: View {
         #endif
     }
 
-    private func action(_ title: String, hint: String, perform: @escaping () -> Void) -> some View {
+    private func action(_ title: String, hint: String?, perform: @escaping () -> Void) -> some View {
         Button(action: perform) {
-            if showsControllerHints {
+            if showsControllerHints, let hint {
                 Label(title, systemImage: hint)
             } else {
                 Text(title)
@@ -229,6 +239,12 @@ public struct BezelSwitcherHost: View {
     /// Name the controller's buttons beside the actions.
     let showsControllerHints: Bool
     let supportsRoomLight: Bool
+    /// Where the player sits in front of a built-in TV, read and written through the app's
+    /// own setting; `nil` hides the Seat button. A new seat shows on the game at once, and
+    /// Cancel puts back the one the strip opened with.
+    let seat: Binding<TVBezelSeat>?
+    /// The seat when the strip opened.
+    @State private var openingSeat: TVBezelSeat?
     /// The strip is done (kept or cancelled): go back to the pause menu.
     let onClose: () -> Void
     /// Open the bezel library in the strip's place.
@@ -251,8 +267,11 @@ public struct BezelSwitcherHost: View {
     @MainActor
     public init(session: any BezelSwitcherSession, commands: AnyPublisher<BezelNavigationCommand, Never>?,
                 showsControllerHints: Bool, supportsRoomLight: Bool = true,
+                seat: Binding<TVBezelSeat>? = nil,
                 onClose: @escaping () -> Void, onMore: @escaping () -> Void) {
         self.session = session
+        self.seat = seat
+        _openingSeat = State(initialValue: seat?.wrappedValue)
         self.commands = commands
         self.showsControllerHints = showsControllerHints
         self.supportsRoomLight = supportsRoomLight
@@ -281,6 +300,7 @@ public struct BezelSwitcherHost: View {
                            showsThisGameOnly: session.bezelGameID != nil,
                            showsControllerHints: commands != nil && showsControllerHints,
                            supportsRoomLight: supportsRoomLight,
+                           seat: seat,
                            onKeep: keep,
                            onCancel: cancel,
                            onMore: more)
@@ -359,6 +379,7 @@ public struct BezelSwitcherHost: View {
     private func cancel() {
         guard !isClosed else { return }
         isClosed = true
+        if let seat, let openingSeat, seat.wrappedValue != openingSeat { seat.wrappedValue = openingSeat }
         session.bezelPreview = nil
         onClose()
     }

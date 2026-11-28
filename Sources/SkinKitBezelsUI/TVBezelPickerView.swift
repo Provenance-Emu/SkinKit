@@ -22,6 +22,8 @@ public struct TVBezelPickerView: View {
     /// The running game, to choose its artwork from The Bezel Project by hand.
     var game: ExternalDisplayGameContext?
     var controllerCommands: AnyPublisher<BezelNavigationCommand, Never>?
+    /// Where the player sits in front of a built-in TV; `nil` hides the Seat row.
+    var seat: Binding<TVBezelSeat>?
     @Environment(\.dismiss) private var dismiss
     @State private var cursor = 0
     @State private var pickerVisible = false
@@ -49,9 +51,12 @@ public struct TVBezelPickerView: View {
     ///     each game's system.
     ///   - game: the running game, to choose its artwork from The Bezel Project by hand.
     ///   - controllerCommands: the app's controller input while the list is on screen.
+    ///   - seat: the app's Seat setting, to offer it in the list; `nil` leaves it out.
     public init(selection: Binding<String?>, allowsAutomatic: Bool = false, offersSystemAutomatic: Bool = false,
                 game: ExternalDisplayGameContext? = nil,
-                controllerCommands: AnyPublisher<BezelNavigationCommand, Never>? = nil) {
+                controllerCommands: AnyPublisher<BezelNavigationCommand, Never>? = nil,
+                seat: Binding<TVBezelSeat>? = nil) {
+        self.seat = seat
         _selection = selection
         self.allowsAutomatic = allowsAutomatic
         self.offersSystemAutomatic = offersSystemAutomatic
@@ -101,6 +106,16 @@ public struct TVBezelPickerView: View {
                     Text("Automatic follows the Bezels settings. Anything else is used for this game only.")
                 } else if offersSystemAutomatic {
                     Text("Automatic shows a TV for consoles and computers, and none for handhelds.")
+                }
+            }
+
+            if let seat {
+                Section {
+                    Picker(String(localized: "Seat"), selection: seat) {
+                        ForEach(TVBezelSeat.allCases, id: \.self) { Text($0.displayName).tag($0) }
+                    }
+                } footer: {
+                    Text("How close you sit to a built-in TV. A closer seat shows less of the room and a larger picture.")
                 }
             }
 
